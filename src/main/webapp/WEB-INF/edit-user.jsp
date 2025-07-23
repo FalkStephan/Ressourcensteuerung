@@ -1,50 +1,51 @@
-<%@ page contentType="text/html;charset=UTF-8" language="java" %>
+<%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
 <%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
 <!DOCTYPE html>
-<html lang="de">
+<html>
 <head>
-    <c:set var="title" value="Benutzer bearbeiten" scope="request" />
-    <jsp:include page="/WEB-INF/_header.jsp" />
+    <meta charset="UTF-8">
+    <title>Benutzer bearbeiten</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
 </head>
 <body>
-    <jsp:include page="/WEB-INF/_nav.jsp" />
-    <main>
-        <div class="container">
-            <h2>Benutzer bearbeiten</h2>
-            <form action="${pageContext.request.contextPath}/users/edit" method="post">
-                <input type="hidden" name="id" value="${userToEdit.id}">
-                <c:if test="${not empty error}">
-                    <p style="color:red; font-weight:bold;"><c:out value="${error}"/></p>
-                </c:if>
-                <div>
-                    <label for="username">Benutzername:</label>
-                    <input type="text" id="username" name="username" value="<c:out value='${userToEdit.username}'/>" required>
-                </div>
-                <div>
-                    <label for="password">Neues Passwort (leer lassen, um es nicht zu ändern):</label>
-                    <input type="password" id="password" name="password">
-                </div>
-                <div>
-                    <label style="display: block; font-weight: bold; margin-bottom: 10px;">Rechte:</label>
-                    <label for="can_manage_users" style="display: inline-block; font-weight: normal;">
-                        <%-- Dieser Teil setzt den Haken, falls das Recht 'true' ist --%>
-                        <input type="checkbox" id="can_manage_users" name="can_manage_users" ${userToEdit.can_manage_users ? 'checked' : ''} style="width: auto;">
-                        Benutzerverwaltung
-                    </label>
-                </div>
-                <div>
-                    <label for="can_view_logbook" style="display: inline-block; font-weight: normal;">
-                         <%-- Dieser Teil setzt den Haken, falls das Recht 'true' ist --%>
-                        <input type="checkbox" id="can_view_logbook" name="can_view_logbook" ${userToEdit.can_view_logbook ? 'checked' : ''} style="width: auto;">
-                        Logbuch
-                    </label>
-                </div>
-                <div>
-                    <button type="submit" class="button create">Änderungen speichern</button>
-                    <a href="${pageContext.request.contextPath}/users" class="button delete">Abbrechen</a>
-                </div>
-            </form>
-        </div>
-    </main>
+
+    <div class="container">
+        <h2 class="mt-4">Benutzer bearbeiten</h2>
+
+        <form action="editUser" method="post">
+            <input type="hidden" name="id" value="<c:out value='${user.id}' />" />
+
+            <div class="form-group">
+                <label for="username">Benutzername:</label>
+                <input type="text" class="form-control" id="username" name="username" value="<c:out value='${user.username}' />" required>
+            </div>
+
+            <div class="form-group">
+                <label for="password">Neues Passwort (optional):</label>
+                <input type="password" class="form-control" id="password" name="password">
+                <small class="form-text text-muted">Lassen Sie dieses Feld leer, um das Passwort nicht zu ändern.</small>
+            </div>
+            
+            <hr>
+            
+            <div class="form-group">
+                <label for="abteilung">Abteilung (optional):</label>
+                <input type="text" class="form-control" id="abteilung" name="abteilung" value="<c:out value='${user.abteilung}' />">
+            </div>
+
+            <div class="form-check mb-3">
+                <input type="checkbox" class="form-check-input" id="hatBenutzerverwaltung" name="hatBenutzerverwaltung" value="true" <c:if test="${user.hatBenutzerverwaltung}">checked</c:if>>
+                <label class="form-check-label" for="hatBenutzerverwaltung">
+                    Hat Recht zur Benutzerverwaltung
+                </label>
+            </div>
+            
+            <hr>
+
+            <button type="submit" class="btn btn-primary">Speichern</button>
+            <a href="users" class="btn btn-secondary">Abbrechen</a>
+        </form>
+    </div>
+
 </body>
 </html>

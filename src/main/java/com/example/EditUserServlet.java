@@ -5,60 +5,62 @@ import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import jakarta.servlet.http.HttpSession;
+
 import java.io.IOException;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.HashMap;
 import java.util.Map;
 
 @WebServlet("/users/edit")
 public class EditUserServlet extends HttpServlet {
-
+    
     @Override
-    @SuppressWarnings("unchecked")
-    protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-        HttpSession session = req.getSession(false);
-        Map<String, Object> currentUser = (session != null) ? (Map<String, Object>) session.getAttribute("user") : null;
+    protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+        int id = Integer.parseInt(request.getParameter("id"));
+        Map<String, Object> user = new HashMap<>();
+        String sql = "SELECT id, username, abteilung, can_manage_users, can_view_logbook FROM users WHERE id = ?";
 
-        if (currentUser == null || !(Boolean) currentUser.getOrDefault("can_manage_users", false)) {
-            resp.sendError(HttpServletResponse.SC_FORBIDDEN, "Zugriff verweigert");
-            return;
+        try (Connection conn = DatabaseService.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setInt(1, id);
+            ResultSet rs = pstmt.executeQuery();
+            if (rs.next()) {
+                user.put("id", rs.getInt("id"));
+                user.put("username", rs.getString("username"));
+                user.put("abteilung", rs.getString("abteilung"));
+                user.put("can_manage_users", rs.getBoolean("can_manage_users"));
+                user.put("can_view_logbook", rs.getBoolean("can_view_logbook"));
+            }
+        } catch (SQLException e) {
+            throw new ServletException(e);
         }
-        
-        int userId = Integer.parseInt(req.getParameter("id"));
-        Map<String, Object> userToEdit = DatabaseService.getUserById(userId);
-        
-        req.setAttribute("userToEdit", userToEdit);
-        req.getRequestDispatcher("/WEB-INF/edit-user.jsp").forward(req, resp);
+        request.setAttribute("user", user);
+        request.getRequestDispatcher("/WEB-INF/edit-user.jsp").forward(request, response);
     }
 
     @Override
-    @SuppressWarnings("unchecked")
-    protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-        HttpSession session = req.getSession(false);
-        Map<String, Object> currentUser = (session != null) ? (Map<String, Object>) session.getAttribute("user") : null;
-        String actor = (currentUser != null) ? (String) currentUser.get("username") : "System";
+    protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+        int id = Integer.parseInt(request.getParameter("id"));
+        String username = request.getParameter("username");
+        String abteilung = request.getParameter("abteilung");
+        boolean canManageUsers = "true".equals(request.getParameter("can_manage_users"));
+        boolean canViewLogbook = "true".equals(request.getParameter("can_view_logbook"));
 
-        if (currentUser == null || !(Boolean) currentUser.getOrDefault("can_manage_users", false)) {
-            resp.sendError(HttpServletResponse.SC_FORBIDDEN, "Zugriff verweigert");
-            return;
-        }
-        
-        int id = Integer.parseInt(req.getParameter("id"));
-        String username = req.getParameter("username");
-        String password = req.getParameter("password");
-        
-        // Dieser Teil liest die Checkbox-Werte korrekt aus
-        boolean canManageUsers = "on".equals(req.getParameter("can_manage_users"));
-        boolean canViewLogbook = "on".equals(req.getParameter("can_view_logbook"));
-
-        try {
-            DatabaseService.updateUser(id, username, password, canManageUsers, canViewLogbook, actor);
-            resp.sendRedirect(req.getContextPath() + "/users");
+        String sql = "UPDATE users SET username = ?, abteilung = ?, can_manage_users = ?, can_view_logbook = ? WHERE id = ?";
+        try (Connection conn = DatabaseService.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, username);
+            pstmt.setString(2, abteilung);
+            pstmt.setBoolean(3, canManageUsers);
+            pstmt.setBoolean(4, canViewLogbook);
+            pstmt.setInt(5, id);
+            pstmt.executeUpdate();
         } catch (SQLException e) {
-            e.printStackTrace();
-            req.setAttribute("error", "Fehler beim Aktualisieren des Benutzers.");
-            req.setAttribute("userToEdit", DatabaseService.getUserById(id));
-            req.getRequestDispatcher("/WEB-INF/edit-user.jsp").forward(req, resp);
+            throw new ServletException(e);
         }
+        response.sendRedirect(request.getContextPath() + "/users");
     }
 }

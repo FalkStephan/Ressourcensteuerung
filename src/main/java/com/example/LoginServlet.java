@@ -6,35 +6,54 @@ import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
+
 import java.io.IOException;
 import java.sql.SQLException;
 import java.util.Map;
 
 @WebServlet("/login")
 public class LoginServlet extends HttpServlet {
+
+    /**
+     * Behandelt GET-Anfragen, indem sie das Login-Formular anzeigt.
+     * Der Pfad wurde auf /WEB-INF/login.jsp korrigiert.
+     */
     @Override
-    protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-        req.getRequestDispatcher("/WEB-INF/login.jsp").forward(req, resp);
+    protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+        // **KORREKTUR: Der Pfad zur JSP-Datei wird hier korrigiert.**
+        request.getRequestDispatcher("/WEB-INF/login.jsp").forward(request, response);
     }
 
+    /**
+     * Behandelt POST-Anfragen (das Absenden des Login-Formulars).
+     */
     @Override
-    protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-        String username = req.getParameter("username");
-        String password = req.getParameter("password");
-        Map<String, Object> user = DatabaseService.findUser(username, password);
+    protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+        String username = request.getParameter("username");
+        String password = request.getParameter("password");
+        Map<String, Object> user = null;
+
+        try {
+            user = DatabaseService.findUser(username, password);
+        } catch (SQLException e) {
+            throw new ServletException("Datenbankfehler während des Logins.", e);
+        }
 
         if (user != null) {
-            HttpSession session = req.getSession();
+            HttpSession session = request.getSession();
             session.setAttribute("user", user);
+
             try {
-                DatabaseService.logAction(username, "Login", "Benutzer hat sich erfolgreich angemeldet.");
+                DatabaseService.logAction("LOGIN_SUCCESS", "Benutzer '" + username + "' hat sich erfolgreich angemeldet.", username);
             } catch (SQLException e) {
-                e.printStackTrace(); // Fehler beim Loggen, aber Login trotzdem erlauben
+                System.err.println("Fehler beim Schreiben des Login-Log-Eintrags: " + e.getMessage());
             }
-            resp.sendRedirect("index.jsp");
+
+            response.sendRedirect(request.getContextPath() + "/");
         } else {
-            req.setAttribute("error", "Ungültiger Benutzername oder Passwort.");
-            req.getRequestDispatcher("/WEB-INF/login.jsp").forward(req, resp);
+            request.setAttribute("error", "Ungültiger Benutzername oder Passwort.");
+            // **KORREKTUR: Auch hier wird der Pfad zur JSP-Datei korrigiert.**
+            request.getRequestDispatcher("/WEB-INF/login.jsp").forward(request, response);
         }
     }
 }

@@ -6,6 +6,7 @@ import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
+
 import java.io.IOException;
 import java.sql.SQLException;
 import java.util.Map;
@@ -14,35 +15,45 @@ import java.util.Map;
 public class DeleteUserServlet extends HttpServlet {
 
     @Override
-    @SuppressWarnings("unchecked")
-    protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-        HttpSession session = req.getSession(false);
-        Map<String, Object> user = (session != null) ? (Map<String, Object>) session.getAttribute("user") : null;
-        String actor = (user != null) ? (String) user.get("username") : "System";
-
-        if (user == null || !(Boolean) user.getOrDefault("can_manage_users", false)) {
-            resp.sendRedirect(req.getContextPath() + "/login");
-            return;
-        }
-
-        int id = Integer.parseInt(req.getParameter("id"));
-        String currentUsername = (String) user.get("username");
-        Map<String, Object> userToDelete = DatabaseService.getUserById(id);
-
-        // Verhindern, dass der Admin sich selbst löscht
-        if (currentUsername.equals(userToDelete.get("username"))) {
-            // Optional: Eine Fehlermeldung anzeigen
-            resp.sendRedirect(req.getContextPath() + "/users");
+    protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+        HttpSession session = request.getSession(false);
+        if (session == null || session.getAttribute("user") == null) {
+            response.sendRedirect(request.getContextPath() + "/login");
             return;
         }
 
         try {
-            DatabaseService.deleteUser(id, actor);
-            resp.sendRedirect(req.getContextPath() + "/users");
+            int id = Integer.parseInt(request.getParameter("id"));
+            Map<String, Object> userToDelete = DatabaseService.getUserById(id);
+            
+            if (userToDelete == null) {
+                // Benutzer existiert nicht, nichts zu tun
+                response.sendRedirect(request.getContextPath() + "/users");
+                return;
+            }
+
+            // Hole den angemeldeten Benutzer für die Protokollierung
+            Map<String, Object> loggedInUser = (Map<String, Object>) session.getAttribute("user");
+            String loggedInUsername = (String) loggedInUser.get("username");
+
+            // Verhindere, dass sich der Benutzer selbst löscht
+            if (loggedInUsername.equals(userToDelete.get("username"))) {
+                // Optional: eine Fehlermeldung an den Benutzer senden
+                response.sendRedirect(request.getContextPath() + "/users");
+                return;
+            }
+
+            // Führe die Löschoperation aus
+            DatabaseService.deleteUser(id, loggedInUsername);
+
         } catch (SQLException e) {
-            e.printStackTrace();
-            // Optional: Fehlerseite
-            resp.sendRedirect(req.getContextPath() + "/users");
+            throw new ServletException("Datenbankfehler beim Löschen des Benutzers", e);
+        } catch (NumberFormatException e) {
+            // Falls die ID kein gültiger Zahlenwert ist
+            response.sendRedirect(request.getContextPath() + "/users");
+            return;
         }
+
+        response.sendRedirect(request.getContextPath() + "/users");
     }
 }

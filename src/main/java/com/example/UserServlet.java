@@ -5,9 +5,14 @@ import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import jakarta.servlet.http.HttpSession;
 
 import java.io.IOException;
+import java.sql.Connection;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -15,19 +20,29 @@ import java.util.Map;
 public class UserServlet extends HttpServlet {
 
     @Override
-    @SuppressWarnings("unchecked")
-    protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-        HttpSession session = req.getSession(false);
-        Map<String, Object> user = (session != null) ? (Map<String, Object>) session.getAttribute("user") : null;
+    protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+        List<Map<String, Object>> users = new ArrayList<>();
+        String sql = "SELECT id, username, abteilung, can_manage_users, can_view_logbook FROM users ORDER BY username";
 
-        // GEÄNDERT: Prüft auf 'can_manage_users' statt 'is_admin'
-        if (user == null || !(Boolean) user.getOrDefault("can_manage_users", false)) {
-            resp.sendRedirect(req.getContextPath() + "/login");
-            return;
+        try (Connection conn = DatabaseService.getConnection();
+             Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery(sql)) {
+            while (rs.next()) {
+                Map<String, Object> user = new HashMap<>();
+                user.put("id", rs.getInt("id"));
+                user.put("username", rs.getString("username"));
+                user.put("abteilung", rs.getString("abteilung"));
+                user.put("can_manage_users", rs.getBoolean("can_manage_users"));
+                user.put("can_view_logbook", rs.getBoolean("can_view_logbook"));
+                users.add(user);
+            }
+        } catch (SQLException e) {
+            throw new ServletException("Fehler beim Laden der Benutzerliste", e);
         }
-
-        List<Map<String, Object>> userList = DatabaseService.getAllUsers();
-        req.setAttribute("users", userList);
-        req.getRequestDispatcher("/WEB-INF/users.jsp").forward(req, resp);
+        
+        request.setAttribute("users", users);
+        
+        // **KORREKTUR: Der Pfad zur JSP-Datei wird hier korrigiert.**
+        request.getRequestDispatcher("/WEB-INF/users.jsp").forward(request, response);
     }
 }

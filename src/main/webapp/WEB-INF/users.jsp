@@ -23,8 +23,9 @@
                         <tr>
                             <th class="sortable-header" onclick="sortTable(0, 'number')">ID</th>
                             <th class="sortable-header" onclick="sortTable(1, 'string')">Benutzername</th>
-                            <th class="sortable-header" onclick="sortTable(2, 'string')">Benutzerverwaltung</th>
-                            <th class="sortable-header" onclick="sortTable(3, 'string')">Logbuch</th>
+                            <th class="sortable-header" onclick="sortTable(2, 'string')">Abteilung</th>
+                            <th class="sortable-header" onclick="sortTable(3, 'string')">Benutzerverwaltung</th>
+                            <th class="sortable-header" onclick="sortTable(4, 'string')">Logbuch</th>
                             <th>Aktionen</th>
                         </tr>
                     </thead>
@@ -33,6 +34,7 @@
                             <tr>
                                 <td>${u.id}</td>
                                 <td><c:out value="${u.username}" /></td>
+                                <td><c:out value="${u.abteilung}" /></td>
                                 <td>${u.can_manage_users ? 'Ja' : 'Nein'}</td>
                                 <td>${u.can_view_logbook ? 'Ja' : 'Nein'}</td>
                                 <td>
@@ -48,7 +50,7 @@
                         </c:forEach>
                         <c:if test="${empty users}">
                             <tr>
-                                <td colspan="5" style="text-align: center;">Keine Benutzer gefunden.</td>
+                                <td colspan="6" style="text-align: center;">Keine Benutzer gefunden.</td>
                             </tr>
                         </c:if>
                     </tbody>
@@ -75,8 +77,8 @@
             const table = document.getElementById('userTable');
             const tr = table.getElementsByTagName('tr');
 
-            for (let i = 1; i < tr.length; i++) {
-                const tdUsername = tr[i].getElementsByTagName('td')[1];
+            for (let i = 1; i < tr.length; i++) { // Startet bei 1, um den Header zu überspringen
+                const tdUsername = tr[i].getElementsByTagName('td')[1]; // Spalte 1 = Benutzername
                 if (tdUsername) {
                     const txtValue = tdUsername.textContent || tdUsername.innerText;
                     if (txtValue.toLowerCase().indexOf(filter) > -1) {

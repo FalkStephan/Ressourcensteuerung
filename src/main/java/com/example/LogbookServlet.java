@@ -8,6 +8,8 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 
 import java.io.IOException;
+import java.sql.SQLException;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -15,55 +17,44 @@ import java.util.Map;
 public class LogbookServlet extends HttpServlet {
 
     @Override
-    @SuppressWarnings("unchecked")
-    protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-        HttpSession session = req.getSession(false);
-        Map<String, Object> user = (session != null) ? (Map<String, Object>) session.getAttribute("user") : null;
-
-        if (user == null || !(Boolean) user.getOrDefault("can_view_logbook", false)) {
-            resp.sendRedirect(req.getContextPath() + "/login");
+    protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+        HttpSession session = request.getSession(false);
+        if (session == null || session.getAttribute("user") == null) {
+            response.sendRedirect(request.getContextPath() + "/login");
             return;
         }
 
-        String search = req.getParameter("search");
-        if (search == null) search = "";
+        Map<String, Object> user = (Map<String, Object>) session.getAttribute("user");
+        boolean canViewLogbook = (boolean) user.getOrDefault("can_view_logbook", false);
 
-        int page = 1;
-        try {
-            if (req.getParameter("page") != null) {
-                page = Integer.parseInt(req.getParameter("page"));
-            }
-        } catch (NumberFormatException e) {
-            page = 1;
+        if (!canViewLogbook) {
+            response.sendError(HttpServletResponse.SC_FORBIDDEN, "Zugriff verweigert.");
+            return;
         }
 
-        int limit = 25;
+        String searchTerm = request.getParameter("search") == null ? "" : request.getParameter("search");
+        int page = request.getParameter("page") == null ? 1 : Integer.parseInt(request.getParameter("page"));
+        int limit = 20; // Einträge pro Seite
+        int offset = (page - 1) * limit;
+
+        List<Map<String, Object>> logs = Collections.emptyList();
+        int totalLogs = 0;
+
+        // **KORREKTUR: Der gesamte Datenbankzugriff wird in einen try-catch-Block eingeschlossen**
         try {
-            if (req.getParameter("limit") != null) {
-                limit = Integer.parseInt(req.getParameter("limit"));
-            }
-        } catch (NumberFormatException e) {
-            limit = 25;
+            logs = DatabaseService.getLogs(searchTerm, offset, limit);
+            totalLogs = DatabaseService.getTotalLogCount(searchTerm);
+        } catch (SQLException e) {
+            throw new ServletException("Fehler beim Abrufen der Logbuch-Einträge", e);
         }
-        
-        List<Map<String, Object>> logs = DatabaseService.getLogs(search, page, limit);
-        int totalLogs = DatabaseService.getTotalLogCount(search);
+
         int totalPages = (int) Math.ceil((double) totalLogs / limit);
-        
-        // =================================================================
-        // NEU: DEBUG-AUSGABEN IM TERMINAL
-        System.out.println("--- Logbuch Debug ---");
-        System.out.println("Gefundene Log-Einträge: " + logs.size());
-        System.out.println("Daten: " + logs);
-        System.out.println("---------------------");
-        // =================================================================
 
-        req.setAttribute("logs", logs);
-        req.setAttribute("currentPage", page);
-        req.setAttribute("totalPages", totalPages);
-        req.setAttribute("limit", limit);
-        req.setAttribute("search", search);
-        
-        req.getRequestDispatcher("/WEB-INF/logbook.jsp").forward(req, resp);
+        request.setAttribute("logs", logs);
+        request.setAttribute("currentPage", page);
+        request.setAttribute("totalPages", totalPages);
+        request.setAttribute("searchTerm", searchTerm);
+
+        request.getRequestDispatcher("/WEB-INF/logbook.jsp").forward(request, response);
     }
 }
