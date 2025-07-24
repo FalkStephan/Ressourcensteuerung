@@ -31,14 +31,24 @@ public class DatabaseService {
             try (Connection conn = getConnection(); Statement stmt = conn.createStatement()) {
                 // ... kontaktSql und logSql unverändert ...
 
-                // GEÄNDERT: users-Tabelle mit neuen Rechten
+                // Erweiterte users-Tabelle um abteilung
                 String userSql = "CREATE TABLE IF NOT EXISTS users (" +
-                                 " id INTEGER PRIMARY KEY AUTO_INCREMENT," +
-                                 " username VARCHAR(255) NOT NULL UNIQUE," +
-                                 " password_hash VARCHAR(255) NOT NULL," +
-                                 " can_manage_users BOOLEAN NOT NULL DEFAULT FALSE," +
-                                 " can_view_logbook BOOLEAN NOT NULL DEFAULT FALSE);";
+                        " id INTEGER PRIMARY KEY AUTO_INCREMENT," +
+                        " username VARCHAR(255) NOT NULL UNIQUE," +
+                        " password_hash VARCHAR(255) NOT NULL," +
+                        " can_manage_users BOOLEAN NOT NULL DEFAULT FALSE," +
+                        " can_view_logbook BOOLEAN NOT NULL DEFAULT FALSE," +
+                        " abteilung VARCHAR(255) NULL);";
                 stmt.execute(userSql);
+
+                // Neue Tabelle mitarbeiter
+                String mitarbeiterSql = "CREATE TABLE IF NOT EXISTS mitarbeiter (" +
+                        " id INTEGER PRIMARY KEY AUTO_INCREMENT," +
+                        " name VARCHAR(255) NOT NULL," +
+                        " stelle VARCHAR(255)," +
+                        " team VARCHAR(255)," +
+                        " abteilung VARCHAR(255) NOT NULL);";
+                stmt.execute(mitarbeiterSql);
 
                 createAdminIfNotExists(conn);
             }
@@ -198,9 +208,9 @@ public class DatabaseService {
     }
     
     public static List<Map<String, Object>> getAllUsers() {
-        // GEÄNDERT: Liest die neuen Rechte-Spalten
+        // GEÄNDERT: Liest die neuen Rechte-Spalten und abteilung
         List<Map<String, Object>> users = new ArrayList<>();
-        String sql = "SELECT id, username, can_manage_users, can_view_logbook FROM users ORDER BY username";
+        String sql = "SELECT id, username, can_manage_users, can_view_logbook, abteilung FROM users ORDER BY username";
         try (Connection conn = getConnection();
              Statement stmt = conn.createStatement();
              ResultSet rs = stmt.executeQuery(sql)) {
@@ -210,6 +220,7 @@ public class DatabaseService {
                 user.put("username", rs.getString("username"));
                 user.put("can_manage_users", rs.getBoolean("can_manage_users"));
                 user.put("can_view_logbook", rs.getBoolean("can_view_logbook"));
+                user.put("abteilung", rs.getString("abteilung"));
                 users.add(user);
             }
         } catch (Exception e) {
@@ -218,24 +229,24 @@ public class DatabaseService {
         return users;
     }
 
-    public static void addUser(String username, String password, boolean canManageUsers, boolean canViewLogbook, String actor) throws SQLException {
+    public static void addUser(String username, String password, boolean canManageUsers, boolean canViewLogbook, String abteilung, String actor) throws SQLException {
         String hashedPassword = BCrypt.hashpw(password, BCrypt.gensalt());
-        // GEÄNDERT: Schreibt in die neuen Rechte-Spalten
-        String sql = "INSERT INTO users(username, password_hash, can_manage_users, can_view_logbook) VALUES(?, ?, ?, ?)";
+        // GEÄNDERT: Schreibt in die neuen Rechte-Spalten und abteilung
+        String sql = "INSERT INTO users(username, password_hash, can_manage_users, can_view_logbook, abteilung) VALUES(?, ?, ?, ?, ?)";
         try (Connection conn = getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setString(1, username);
             pstmt.setString(2, hashedPassword);
             pstmt.setBoolean(3, canManageUsers);
             pstmt.setBoolean(4, canViewLogbook);
+            pstmt.setString(5, abteilung); // Abteilung aus Servlet übernehmen
             pstmt.executeUpdate();
-            
-            String description = String.format("Benutzer angelegt. [username=%s, benutzerverwaltung=%b, logbuch=%b]", username, canManageUsers, canViewLogbook);
+            String description = String.format("Benutzer angelegt. [username=%s, benutzerverwaltung=%b, logbuch=%b, abteilung=%s]", username, canManageUsers, canViewLogbook, abteilung);
             logAction(actor, "Erstellen", description);
         }
     }
 
-    public static void updateUser(int id, String username, String password, boolean canManageUsers, boolean canViewLogbook, String actor) throws SQLException {
+    public static void updateUser(int id, String username, String password, boolean canManageUsers, boolean canViewLogbook, String abteilung, String actor) throws SQLException {
     Map<String, Object> oldUser = getUserById(id);
     if (oldUser == null) {
         throw new SQLException("Benutzer mit ID " + id + " nicht gefunden.");
@@ -244,6 +255,7 @@ public class DatabaseService {
     String oldUsername = (String) oldUser.get("username");
     boolean oldCanManageUsers = (Boolean) oldUser.get("can_manage_users");
     boolean oldCanViewLogbook = (Boolean) oldUser.get("can_view_logbook");
+    String oldAbteilung = (String) oldUser.get("abteilung");
 
     StringJoiner changes = new StringJoiner(", ");
     if (!oldUsername.equals(username)) {
@@ -255,8 +267,10 @@ public class DatabaseService {
     if (oldCanViewLogbook != canViewLogbook) {
         changes.add(String.format("Logbuch: '%b' -> '%b'", oldCanViewLogbook, canViewLogbook));
     }
-    
-    StringBuilder sql = new StringBuilder("UPDATE users SET username = ?, can_manage_users = ?, can_view_logbook = ?");
+    if (oldAbteilung != null ? !oldAbteilung.equals(abteilung) : abteilung != null) {
+        changes.add(String.format("Abteilung: '%s' -> '%s'", oldAbteilung, abteilung));
+    }
+    StringBuilder sql = new StringBuilder("UPDATE users SET username = ?, can_manage_users = ?, can_view_logbook = ?, abteilung = ?");
     boolean passwordChanged = (password != null && !password.isEmpty());
     if (passwordChanged) {
         sql.append(", password_hash = ?");
@@ -266,18 +280,17 @@ public class DatabaseService {
 
     try (Connection conn = getConnection();
          PreparedStatement pstmt = conn.prepareStatement(sql.toString())) {
-        
         pstmt.setString(1, username);
         pstmt.setBoolean(2, canManageUsers);
         pstmt.setBoolean(3, canViewLogbook);
-        int paramIndex = 4;
+        pstmt.setString(4, abteilung);
+        int paramIndex = 5;
         if (passwordChanged) {
             String hashedPassword = BCrypt.hashpw(password, BCrypt.gensalt());
             pstmt.setString(paramIndex++, hashedPassword);
         }
         pstmt.setInt(paramIndex, id);
         pstmt.executeUpdate();
-
         String description = (changes.length() > 0)
             ? String.format("Benutzer '%s' (ID: %d) aktualisiert. Änderungen: [%s]", oldUsername, id, changes.toString())
             : String.format("Benutzer '%s' (ID: %d) bearbeitet, keine Änderungen vorgenommen.", oldUsername, id);
@@ -297,8 +310,8 @@ public class DatabaseService {
     }
 
     public static Map<String, Object> getUserById(int id) {
-        // KORRIGIERT: Wählt jetzt die neuen Rechte-Spalten aus
-        String sql = "SELECT id, username, can_manage_users, can_view_logbook FROM users WHERE id = ?";
+        // KORRIGIERT: Wählt jetzt die neuen Rechte-Spalten und abteilung aus
+        String sql = "SELECT id, username, can_manage_users, can_view_logbook, abteilung FROM users WHERE id = ?";
         try (Connection conn = getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setInt(1, id);
@@ -307,14 +320,136 @@ public class DatabaseService {
                 Map<String, Object> user = new HashMap<>();
                 user.put("id", rs.getInt("id"));
                 user.put("username", rs.getString("username"));
-                // KORRIGIERT: Liest die neuen Rechte-Spalten
                 user.put("can_manage_users", rs.getBoolean("can_manage_users"));
                 user.put("can_view_logbook", rs.getBoolean("can_view_logbook"));
+                user.put("abteilung", rs.getString("abteilung"));
                 return user;
             }
         } catch (SQLException e) {
             e.printStackTrace();
         }
         return null;
+    }
+
+    // --- Mitarbeiter-CRUD ---
+
+    public static void addMitarbeiter(String name, String stelle, String team, String abteilung, String actor) throws SQLException {
+        String sql = "INSERT INTO mitarbeiter(name, stelle, team, abteilung) VALUES (?, ?, ?, ?)";
+        try (Connection conn = getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, name);
+            pstmt.setString(2, stelle);
+            pstmt.setString(3, team);
+            pstmt.setString(4, abteilung);
+            pstmt.executeUpdate();
+            String desc = String.format("Mitarbeiter angelegt. [name=%s, stelle=%s, team=%s, abteilung=%s]", name, stelle, team, abteilung);
+            logAction(actor, "Erstellen", desc);
+        }
+    }
+
+    public static void updateMitarbeiter(int id, String name, String stelle, String team, String abteilung, String actor) throws SQLException {
+        Map<String, Object> old = getMitarbeiterById(id);
+        if (old == null) throw new SQLException("Mitarbeiter mit ID " + id + " nicht gefunden.");
+        StringJoiner changes = new StringJoiner(", ");
+        if (!old.get("name").equals(name)) changes.add(String.format("name: '%s' -> '%s'", old.get("name"), name));
+        if (!equalsNullable(old.get("stelle"), stelle)) changes.add(String.format("stelle: '%s' -> '%s'", old.get("stelle"), stelle));
+        if (!equalsNullable(old.get("team"), team)) changes.add(String.format("team: '%s' -> '%s'", old.get("team"), team));
+        if (!old.get("abteilung").equals(abteilung)) changes.add(String.format("abteilung: '%s' -> '%s'", old.get("abteilung"), abteilung));
+        String sql = "UPDATE mitarbeiter SET name=?, stelle=?, team=?, abteilung=? WHERE id=?";
+        try (Connection conn = getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, name);
+            pstmt.setString(2, stelle);
+            pstmt.setString(3, team);
+            pstmt.setString(4, abteilung);
+            pstmt.setInt(5, id);
+            pstmt.executeUpdate();
+            String desc = changes.length() > 0 ? String.format("Mitarbeiter '%s' (ID: %d) aktualisiert. Änderungen: [%s]", old.get("name"), id, changes.toString()) : String.format("Mitarbeiter '%s' (ID: %d) bearbeitet, keine Änderungen.", old.get("name"), id);
+            logAction(actor, "Bearbeiten", desc);
+        }
+    }
+
+    public static void deleteMitarbeiter(int id, String actor) throws SQLException {
+        Map<String, Object> old = getMitarbeiterById(id);
+        if (old == null) throw new SQLException("Mitarbeiter mit ID " + id + " nicht gefunden.");
+        String sql = "DELETE FROM mitarbeiter WHERE id = ?";
+        try (Connection conn = getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setInt(1, id);
+            pstmt.executeUpdate();
+            String desc = String.format("Mitarbeiter '%s' (ID: %d) gelöscht.", old.get("name"), id);
+            logAction(actor, "Löschen", desc);
+        }
+    }
+
+    public static Map<String, Object> getMitarbeiterById(int id) {
+        String sql = "SELECT id, name, stelle, team, abteilung FROM mitarbeiter WHERE id = ?";
+        try (Connection conn = getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setInt(1, id);
+            ResultSet rs = pstmt.executeQuery();
+            if (rs.next()) {
+                Map<String, Object> m = new HashMap<>();
+                m.put("id", rs.getInt("id"));
+                m.put("name", rs.getString("name"));
+                m.put("stelle", rs.getString("stelle"));
+                m.put("team", rs.getString("team"));
+                m.put("abteilung", rs.getString("abteilung"));
+                return m;
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    public static List<Map<String, Object>> getMitarbeiterList(String search, String abteilung, String sortField, String sortDir) {
+        List<Map<String, Object>> list = new ArrayList<>();
+        StringBuilder sql = new StringBuilder("SELECT id, name, stelle, team, abteilung FROM mitarbeiter");
+        List<Object> params = new ArrayList<>();
+        boolean where = false;
+        if (search != null && !search.trim().isEmpty()) {
+            sql.append(where ? " AND" : " WHERE");
+            sql.append(" (name LIKE ? OR stelle LIKE ? OR team LIKE ? OR abteilung LIKE ?)");
+            String s = "%" + search + "%";
+            params.add(s); params.add(s); params.add(s); params.add(s);
+            where = true;
+        }
+        if (abteilung != null && !abteilung.trim().isEmpty()) {
+            sql.append(where ? " AND" : " WHERE");
+            sql.append(" abteilung = ?");
+            params.add(abteilung);
+            where = true;
+        }
+        // Sortierung
+        String allowedSort = "name,stelle,team,abteilung";
+        if (sortField != null && allowedSort.contains(sortField)) {
+            sql.append(" ORDER BY ").append(sortField);
+            if ("desc".equalsIgnoreCase(sortDir)) sql.append(" DESC");
+            else sql.append(" ASC");
+        } else {
+            sql.append(" ORDER BY name ASC");
+        }
+        try (Connection conn = getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql.toString())) {
+            for (int i = 0; i < params.size(); i++) {
+                pstmt.setObject(i + 1, params.get(i));
+            }
+            ResultSet rs = pstmt.executeQuery();
+            while (rs.next()) {
+                Map<String, Object> m = new HashMap<>();
+                m.put("id", rs.getInt("id"));
+                m.put("name", rs.getString("name"));
+                m.put("stelle", rs.getString("stelle"));
+                m.put("team", rs.getString("team"));
+                m.put("abteilung", rs.getString("abteilung"));
+                list.add(m);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return list;
+    }
+
+    // Hilfsmethode für Nullable-Vergleich
+    private static boolean equalsNullable(Object a, Object b) {
+        if (a == null && b == null) return true;
+        if (a == null || b == null) return false;
+        return a.equals(b);
     }
 }

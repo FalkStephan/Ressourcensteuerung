@@ -41,14 +41,12 @@ public class AddUserServlet extends HttpServlet {
 
         String username = req.getParameter("username");
         String password = req.getParameter("password");
-        
-        // KORRIGIERT: Liest jetzt beide neuen Rechte-Checkboxen aus
         boolean canManageUsers = "on".equals(req.getParameter("can_manage_users"));
         boolean canViewLogbook = "on".equals(req.getParameter("can_view_logbook"));
+        String abteilung = req.getParameter("abteilung");
 
         try {
-            // KORRIGIERT: Ruft die addUser-Methode mit den korrekten Parametern auf
-            DatabaseService.addUser(username, password, canManageUsers, canViewLogbook, actor);
+            DatabaseService.addUser(username, password, canManageUsers, canViewLogbook, abteilung, actor);
             resp.sendRedirect(req.getContextPath() + "/users");
         } catch (SQLException e) {
             req.setAttribute("error", "Fehler: Benutzername existiert bereits oder Eingabe ungültig.");

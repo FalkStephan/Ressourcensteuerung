@@ -35,6 +35,10 @@
                     </label>
                 </div>
                 <div>
+                    <label for="abteilung">Abteilung (optional):</label>
+                    <input type="text" id="abteilung" name="abteilung">
+                </div>
+                <div>
                     <button type="submit" class="button create">Speichern</button>
                     <a href="${pageContext.request.contextPath}/users" class="button delete">Abbrechen</a>
                 </div>

@@ -14,10 +14,10 @@
             <form action="${pageContext.request.contextPath}/users/edit" method="post">
                 <input type="hidden" name="id" value="${userToEdit.id}">
                 <c:if test="${not empty error}">
-                    <p style="color:red; font-weight:bold;"><c:out value="${error}"/></p>
+                    <p style="color:red;"><c:out value="${error}"/></p>
                 </c:if>
                 <div>
-                    <label for="username">Benutzername:</label>
+                    <label for="username">Benutzername<span class="required-star">*</span>:</label>
                     <input type="text" id="username" name="username" value="<c:out value='${userToEdit.username}'/>" required>
                 </div>
                 <div>
@@ -25,21 +25,21 @@
                     <input type="password" id="password" name="password">
                 </div>
                 <div>
-                    <label style="display: block; font-weight: bold; margin-bottom: 10px;">Rechte:</label>
-                    <label for="can_manage_users" style="display: inline-block; font-weight: normal;">
-                        <%-- Dieser Teil setzt den Haken, falls das Recht 'true' ist --%>
-                        <input type="checkbox" id="can_manage_users" name="can_manage_users" ${userToEdit.can_manage_users ? 'checked' : ''} style="width: auto;">
-                        Benutzerverwaltung
+                    <label style="display: block; margin-bottom: 10px;">Rechte:</label>
+                    <label for="can_manage_users">
+                        <input type="checkbox" id="can_manage_users" name="can_manage_users" ${userToEdit.can_manage_users ? 'checked' : ''}> Benutzerverwaltung
                     </label>
                 </div>
                 <div>
-                    <label for="can_view_logbook" style="display: inline-block; font-weight: normal;">
-                         <%-- Dieser Teil setzt den Haken, falls das Recht 'true' ist --%>
-                        <input type="checkbox" id="can_view_logbook" name="can_view_logbook" ${userToEdit.can_view_logbook ? 'checked' : ''} style="width: auto;">
-                        Logbuch
+                    <label for="can_view_logbook">
+                        <input type="checkbox" id="can_view_logbook" name="can_view_logbook" ${userToEdit.can_view_logbook ? 'checked' : ''}> Logbuch
                     </label>
                 </div>
                 <div>
+                    <label for="abteilung">Abteilung:</label>
+                    <input type="text" id="abteilung" name="abteilung" value="<c:out value='${userToEdit.abteilung}'/>">
+                </div>
+                <div class="modal-buttons">
                     <button type="submit" class="button create">Änderungen speichern</button>
                     <a href="${pageContext.request.contextPath}/users" class="button delete">Abbrechen</a>
                 </div>

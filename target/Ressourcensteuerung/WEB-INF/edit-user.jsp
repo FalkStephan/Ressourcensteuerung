@@ -40,6 +40,10 @@
                     </label>
                 </div>
                 <div>
+                    <label for="abteilung">Abteilung (optional):</label>
+                    <input type="text" id="abteilung" name="abteilung" value="<c:out value='${userToEdit.abteilung}'/>">
+                </div>
+                <div>
                     <button type="submit" class="button create">Änderungen speichern</button>
                     <a href="${pageContext.request.contextPath}/users" class="button delete">Abbrechen</a>
                 </div>

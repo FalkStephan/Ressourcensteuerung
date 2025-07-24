@@ -46,13 +46,12 @@ public class EditUserServlet extends HttpServlet {
         int id = Integer.parseInt(req.getParameter("id"));
         String username = req.getParameter("username");
         String password = req.getParameter("password");
-        
-        // Dieser Teil liest die Checkbox-Werte korrekt aus
         boolean canManageUsers = "on".equals(req.getParameter("can_manage_users"));
         boolean canViewLogbook = "on".equals(req.getParameter("can_view_logbook"));
+        String abteilung = req.getParameter("abteilung");
 
         try {
-            DatabaseService.updateUser(id, username, password, canManageUsers, canViewLogbook, actor);
+            DatabaseService.updateUser(id, username, password, canManageUsers, canViewLogbook, abteilung, actor);
             resp.sendRedirect(req.getContextPath() + "/users");
         } catch (SQLException e) {
             e.printStackTrace();
