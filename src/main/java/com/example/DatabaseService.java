@@ -13,6 +13,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.StringJoiner;
+import java.util.Objects;
 import org.mindrot.jbcrypt.BCrypt;
 
 public class DatabaseService {
@@ -36,11 +37,20 @@ public class DatabaseService {
                         " id INTEGER PRIMARY KEY AUTO_INCREMENT," +
                         " username VARCHAR(255) NOT NULL UNIQUE," +
                         " password_hash VARCHAR(255) NOT NULL," +
+                        " name VARCHAR(255) NOT NULL," +
+                        " vorname VARCHAR(255) NOT NULL," +
+                        " stelle VARCHAR(255)," +
+                        " team VARCHAR(255)," +
                         " can_manage_users BOOLEAN NOT NULL DEFAULT FALSE," +
                         " can_view_logbook BOOLEAN NOT NULL DEFAULT FALSE," +
                         " abteilung VARCHAR(255) NULL," +
-                        " active BOOLEAN NOT NULL DEFAULT TRUE);";
+                        " active BOOLEAN NOT NULL DEFAULT TRUE," +
+                        " is_user BOOLEAN NOT NULL DEFAULT TRUE);";
                 stmt.execute(userSql);
+                // Falls Spalte is_user fehlt, nachträglich hinzufügen
+                try {
+                    stmt.execute("ALTER TABLE users ADD COLUMN is_user BOOLEAN NOT NULL DEFAULT TRUE");
+                } catch (Exception e) { /* Spalte existiert evtl. schon */ }
 
                 // Neue Tabelle mitarbeiter
                 String mitarbeiterSql = "CREATE TABLE IF NOT EXISTS mitarbeiter (" +
@@ -156,40 +166,11 @@ public class DatabaseService {
         }
         return 0;
     }
-
-    public static void saveContact(String name, String email, String actor) throws SQLException {
-        String sql = "INSERT INTO kontakte(name, email) VALUES(?, ?)";
-        try (Connection conn = getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
-            pstmt.setString(1, name);
-            pstmt.setString(2, email);
-            pstmt.executeUpdate();
-            
-            String description = String.format("Kontakt angelegt. [name=%s, email=%s]", name, email);
-            logAction(actor, "Erstellen", description);
-        }
-    }
     
-    public static List<Map<String, String>> getContacts() {
-        List<Map<String, String>> contacts = new ArrayList<>();
-        String sql = "SELECT name, email FROM kontakte ORDER BY name";
-        try (Connection conn = getConnection();
-             Statement stmt = conn.createStatement();
-             ResultSet rs = stmt.executeQuery(sql)) {
-            while (rs.next()) {
-                Map<String, String> contact = new HashMap<>();
-                contact.put("name", rs.getString("name"));
-                contact.put("email", rs.getString("email"));
-                contacts.add(contact);
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        return contacts;
-    }
 
     public static Map<String, Object> findUser(String username, String password) {
         // GEÄNDERT: Liest die neuen Rechte-Spalten
-        String sql = "SELECT username, password_hash, can_manage_users, can_view_logbook, active FROM users WHERE username = ?";
+        String sql = "SELECT username, password_hash, name, vorname, stelle, team, can_manage_users, can_view_logbook, abteilung, active, is_user FROM users WHERE username = ?";
         try (Connection conn = getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setString(1, username);
             ResultSet rs = pstmt.executeQuery();
@@ -198,9 +179,15 @@ public class DatabaseService {
                 if (BCrypt.checkpw(password, hashedPassword)) {
                     Map<String, Object> user = new HashMap<>();
                     user.put("username", rs.getString("username"));
+                    user.put("name", rs.getString("name"));
+                    user.put("vorname", rs.getString("vorname"));
+                    user.put("stelle", rs.getString("stelle"));
+                    user.put("team", rs.getString("team"));
                     user.put("can_manage_users", rs.getBoolean("can_manage_users"));
                     user.put("can_view_logbook", rs.getBoolean("can_view_logbook"));
+                    user.put("abteilung", rs.getString("abteilung"));
                     user.put("active", rs.getBoolean("active"));
+                    user.put("is_user", rs.getBoolean("is_user"));
                     return user;
                 }
             }
@@ -213,7 +200,7 @@ public class DatabaseService {
     public static List<Map<String, Object>> getAllUsers() {
         // GEÄNDERT: Liest die neuen Rechte-Spalten und abteilung
         List<Map<String, Object>> users = new ArrayList<>();
-        String sql = "SELECT id, username, can_manage_users, can_view_logbook, abteilung, active FROM users ORDER BY username";
+        String sql = "SELECT id, username, name, vorname, stelle, team, can_manage_users, can_view_logbook, abteilung, active, is_user FROM users ORDER BY username";
         try (Connection conn = getConnection();
              Statement stmt = conn.createStatement();
              ResultSet rs = stmt.executeQuery(sql)) {
@@ -221,10 +208,15 @@ public class DatabaseService {
                 Map<String, Object> user = new HashMap<>();
                 user.put("id", rs.getInt("id"));
                 user.put("username", rs.getString("username"));
+                user.put("name", rs.getString("name"));
+                user.put("vorname", rs.getString("vorname"));
+                user.put("stelle", rs.getString("stelle"));
+                user.put("team", rs.getString("team"));
                 user.put("can_manage_users", rs.getBoolean("can_manage_users"));
                 user.put("can_view_logbook", rs.getBoolean("can_view_logbook"));
                 user.put("abteilung", rs.getString("abteilung"));
                 user.put("active", rs.getBoolean("active"));
+                user.put("is_user", rs.getBoolean("is_user"));
                 users.add(user);
             }
         } catch (Exception e) {
@@ -233,76 +225,86 @@ public class DatabaseService {
         return users;
     }
 
-    public static void addUser(String username, String password, boolean canManageUsers, boolean canViewLogbook, String abteilung, String actor, boolean active) throws SQLException {
+    public static void addUser(String username, String password, String name, String vorname, String stelle, String team, boolean canManageUsers, boolean canViewLogbook, String abteilung, String actor, boolean active, boolean isUser) throws SQLException {
         String hashedPassword = BCrypt.hashpw(password, BCrypt.gensalt());
-        String sql = "INSERT INTO users(username, password_hash, can_manage_users, can_view_logbook, abteilung, active) VALUES(?, ?, ?, ?, ?, ?)";
+        String sql = "INSERT INTO users(username, password_hash, name, vorname, stelle, team, can_manage_users, can_view_logbook, abteilung, active, is_user) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         try (Connection conn = getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setString(1, username);
             pstmt.setString(2, hashedPassword);
-            pstmt.setBoolean(3, canManageUsers);
-            pstmt.setBoolean(4, canViewLogbook);
-            pstmt.setString(5, abteilung);
-            pstmt.setBoolean(6, active);
+            pstmt.setString(3, name);
+            pstmt.setString(4, vorname);
+            pstmt.setString(5, stelle);
+            pstmt.setString(6, team);
+            pstmt.setBoolean(7, canManageUsers);
+            pstmt.setBoolean(8, canViewLogbook);
+            pstmt.setString(9, abteilung);
+            pstmt.setBoolean(10, active);
+            pstmt.setBoolean(11, isUser);
             pstmt.executeUpdate();
-            String description = String.format("Benutzer angelegt. [username=%s, benutzerverwaltung=%b, logbuch=%b, abteilung=%s, active=%b]", username, canManageUsers, canViewLogbook, abteilung, active);
+            String description = String.format("Benutzer angelegt. [username=%s, name=%s, vorname=%s, stelle=%s, team=%s, benutzerverwaltung=%b, logbuch=%b, abteilung=%s, active=%b, is_user=%b]", username, name, vorname, stelle, team, canManageUsers, canViewLogbook, abteilung, active, isUser);
             logAction(actor, "Erstellen", description);
         }
     }
 
-    public static void updateUser(int id, String username, String password, boolean canManageUsers, boolean canViewLogbook, String abteilung, String actor, boolean active) throws SQLException {
-    Map<String, Object> oldUser = getUserById(id);
-    if (oldUser == null) {
-        throw new SQLException("Benutzer mit ID " + id + " nicht gefunden.");
-    }
-    
-    String oldUsername = (String) oldUser.get("username");
-    boolean oldCanManageUsers = (Boolean) oldUser.get("can_manage_users");
-    boolean oldCanViewLogbook = (Boolean) oldUser.get("can_view_logbook");
-    String oldAbteilung = (String) oldUser.get("abteilung");
-    // boolean oldActive = oldUser.get("active") != null && (Boolean) oldUser.get("active");
-
-    StringJoiner changes = new StringJoiner(", ");
-    if (!oldUsername.equals(username)) {
-        changes.add(String.format("username: '%s' -> '%s'", oldUsername, username));
-    }
-    if (oldCanManageUsers != canManageUsers) {
-        changes.add(String.format("Benutzerverwaltung: '%b' -> '%b'", oldCanManageUsers, canManageUsers));
-    }
-    if (oldCanViewLogbook != canViewLogbook) {
-        changes.add(String.format("Logbuch: '%b' -> '%b'", oldCanViewLogbook, canViewLogbook));
-    }
-    if (oldAbteilung != null ? !oldAbteilung.equals(abteilung) : abteilung != null) {
-        changes.add(String.format("Abteilung: '%s' -> '%s'", oldAbteilung, abteilung));
-    }
-    StringBuilder sql = new StringBuilder("UPDATE users SET username = ?, can_manage_users = ?, can_view_logbook = ?, abteilung = ?, active = ?");
-    boolean passwordChanged = (password != null && !password.isEmpty());
-    if (passwordChanged) {
-        sql.append(", password_hash = ?");
-        changes.add("password: 'geändert'");
-    }
-    sql.append(" WHERE id = ?");
-
-    try (Connection conn = getConnection();
-         PreparedStatement pstmt = conn.prepareStatement(sql.toString())) {
-        pstmt.setString(1, username);
-        pstmt.setBoolean(2, canManageUsers);
-        pstmt.setBoolean(3, canViewLogbook);
-        pstmt.setString(4, abteilung);
-        pstmt.setBoolean(5, active);
-        int paramIndex = 6;
-        if (passwordChanged) {
-            String hashedPassword = BCrypt.hashpw(password, BCrypt.gensalt());
-            pstmt.setString(paramIndex++, hashedPassword);
+public static void updateUser(int id, String username, String password, String name, String vorname, String stelle, String team, boolean canManageUsers, boolean canViewLogbook, String abteilung, String actor, boolean active, boolean isUser) throws SQLException {
+        Map<String, Object> oldUser = getUserById(id);
+        if (oldUser == null) {
+            throw new SQLException("Benutzer mit ID " + id + " nicht gefunden.");
         }
-        pstmt.setInt(paramIndex, id);
-        pstmt.executeUpdate();
-        String description = (changes.length() > 0)
-            ? String.format("Benutzer '%s' (ID: %d) aktualisiert. Änderungen: [%s]", oldUsername, id, changes.toString())
-            : String.format("Benutzer '%s' (ID: %d) bearbeitet, keine Änderungen vorgenommen.", oldUsername, id);
-        logAction(actor, "Bearbeiten", description);
+        String oldUsername = (String) oldUser.get("username");
+        String oldName = (String) oldUser.get("name");
+        String oldVorname = (String) oldUser.get("vorname");
+        String oldStelle = (String) oldUser.get("stelle");
+        String oldTeam = (String) oldUser.get("team");
+        boolean oldCanManageUsers = (Boolean) oldUser.get("can_manage_users");
+        boolean oldCanViewLogbook = (Boolean) oldUser.get("can_view_logbook");
+        String oldAbteilung = (String) oldUser.get("abteilung");
+        boolean oldIsUser = oldUser.get("is_user") != null && (Boolean) oldUser.get("is_user");
+
+        StringJoiner changes = new StringJoiner(", ");
+        if (!Objects.equals(oldUsername, username)) changes.add(String.format("username: '%s' -> '%s'", oldUsername, username));
+        if (!Objects.equals(oldName, name)) changes.add(String.format("name: '%s' -> '%s'", oldName, name));
+        if (!Objects.equals(oldVorname, vorname)) changes.add(String.format("vorname: '%s' -> '%s'", oldVorname, vorname));
+        if (!Objects.equals(oldStelle, stelle)) changes.add(String.format("stelle: '%s' -> '%s'", oldStelle, stelle));
+        if (!Objects.equals(oldTeam, team)) changes.add(String.format("team: '%s' -> '%s'", oldTeam, team));
+        if (oldCanManageUsers != canManageUsers) changes.add(String.format("Benutzerverwaltung: '%b' -> '%b'", oldCanManageUsers, canManageUsers));
+        if (oldCanViewLogbook != canViewLogbook) changes.add(String.format("Logbuch: '%b' -> '%b'", oldCanViewLogbook, canViewLogbook));
+        if (oldAbteilung != null ? !oldAbteilung.equals(abteilung) : abteilung != null) changes.add(String.format("Abteilung: '%s' -> '%s'", oldAbteilung, abteilung));
+        if (oldIsUser != isUser) changes.add(String.format("isUser: '%b' -> '%b'", oldIsUser, isUser));
+        StringBuilder sql = new StringBuilder("UPDATE users SET username = ?, name = ?, vorname = ?, stelle = ?, team = ?, can_manage_users = ?, can_view_logbook = ?, abteilung = ?, active = ?, is_user = ?");
+        boolean passwordChanged = (password != null && !password.isEmpty());
+        if (passwordChanged) {
+            sql.append(", password_hash = ?");
+            changes.add("password: 'geändert'");
+        }
+        sql.append(" WHERE id = ?");
+
+        try (Connection conn = getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql.toString())) {
+            pstmt.setString(1, username);
+            pstmt.setString(2, name);
+            pstmt.setString(3, vorname);
+            pstmt.setString(4, stelle);
+            pstmt.setString(5, team);
+            pstmt.setBoolean(6, canManageUsers);
+            pstmt.setBoolean(7, canViewLogbook);
+            pstmt.setString(8, abteilung);
+            pstmt.setBoolean(9, active);
+            pstmt.setBoolean(10, isUser);
+            int paramIndex = 11;
+            if (passwordChanged) {
+                String hashedPassword = BCrypt.hashpw(password, BCrypt.gensalt());
+                pstmt.setString(paramIndex++, hashedPassword);
+            }
+            pstmt.setInt(paramIndex, id);
+            pstmt.executeUpdate();
+            String description = (changes.length() > 0)
+                ? String.format("Benutzer '%s' (ID: %d) aktualisiert. Änderungen: [%s]", oldUsername, id, changes.toString())
+                : String.format("Benutzer '%s' (ID: %d) bearbeitet, keine Änderungen vorgenommen.", oldUsername, id);
+            logAction(actor, "Bearbeiten", description);
+        }
     }
-}
     
     public static void deleteUser(int id, String actor) throws SQLException {
         String username = getUserById(id).get("username").toString();
@@ -317,7 +319,7 @@ public class DatabaseService {
 
     public static Map<String, Object> getUserById(int id) {
         // KORRIGIERT: Wählt jetzt die neuen Rechte-Spalten und abteilung aus
-        String sql = "SELECT id, username, can_manage_users, can_view_logbook, abteilung, active FROM users WHERE id = ?";
+        String sql = "SELECT id, username, name, vorname, stelle, team, can_manage_users, can_view_logbook, abteilung, active, is_user FROM users WHERE id = ?";
         try (Connection conn = getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setInt(1, id);
@@ -326,10 +328,15 @@ public class DatabaseService {
                 Map<String, Object> user = new HashMap<>();
                 user.put("id", rs.getInt("id"));
                 user.put("username", rs.getString("username"));
+                user.put("name", rs.getString("name"));
+                user.put("vorname", rs.getString("vorname"));
+                user.put("stelle", rs.getString("stelle"));
+                user.put("team", rs.getString("team"));
                 user.put("can_manage_users", rs.getBoolean("can_manage_users"));
                 user.put("can_view_logbook", rs.getBoolean("can_view_logbook"));
                 user.put("abteilung", rs.getString("abteilung"));
                 user.put("active", rs.getBoolean("active"));
+                user.put("is_user", rs.getBoolean("is_user"));
                 return user;
             }
         } catch (SQLException e) {

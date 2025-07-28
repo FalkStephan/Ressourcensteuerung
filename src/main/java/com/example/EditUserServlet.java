@@ -45,14 +45,19 @@ public class EditUserServlet extends HttpServlet {
         
         int id = Integer.parseInt(req.getParameter("id"));
         String username = req.getParameter("username");
+        String name = req.getParameter("name");
+        String vorname = req.getParameter("vorname");
+        String stelle = req.getParameter("stelle");
+        String team = req.getParameter("team");
         String password = req.getParameter("password");
         boolean canManageUsers = "on".equals(req.getParameter("can_manage_users"));
         boolean canViewLogbook = "on".equals(req.getParameter("can_view_logbook"));
         String abteilung = req.getParameter("abteilung");
-
         boolean active = req.getParameter("active") != null;
+        // NEU: is_user korrekt auswerten (Checkbox + hidden Feld)
+        boolean isUser = "on".equals(req.getParameter("is_user"));
         try {
-            DatabaseService.updateUser(id, username, password, canManageUsers, canViewLogbook, abteilung, actor, active);
+            DatabaseService.updateUser(id, username, password, name, vorname, stelle, team, canManageUsers, canViewLogbook, abteilung, actor, active, isUser);
             resp.sendRedirect(req.getContextPath() + "/users");
         } catch (SQLException e) {
             e.printStackTrace();

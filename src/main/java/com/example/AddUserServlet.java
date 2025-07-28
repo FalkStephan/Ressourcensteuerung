@@ -40,14 +40,18 @@ public class AddUserServlet extends HttpServlet {
         }
 
         String username = req.getParameter("username");
+        String name = req.getParameter("name");
+        String vorname = req.getParameter("vorname");
+        String stelle = req.getParameter("stelle");
+        String team = req.getParameter("team");
         String password = req.getParameter("password");
         boolean canManageUsers = "on".equals(req.getParameter("can_manage_users"));
         boolean canViewLogbook = "on".equals(req.getParameter("can_view_logbook"));
         String abteilung = req.getParameter("abteilung");
-
         boolean active = req.getParameter("active") != null;
+        boolean isUser = "on".equals(req.getParameter("is_user"));
         try {
-            DatabaseService.addUser(username, password, canManageUsers, canViewLogbook, abteilung, actor, active);
+            DatabaseService.addUser(username, password, name, vorname, stelle, team, canManageUsers, canViewLogbook, abteilung, actor, active, isUser);
             resp.sendRedirect(req.getContextPath() + "/users");
         } catch (SQLException e) {
             req.setAttribute("error", "Fehler: Benutzername existiert bereits oder Eingabe ungültig.");
