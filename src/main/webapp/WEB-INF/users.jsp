@@ -1,3 +1,26 @@
+    <style>
+    .user-status-pill {
+        display: inline-block;
+        min-width: 70px;
+        text-align: center;
+        padding: 2px 14px;
+        border-radius: 999px;
+        font-size: 0.95em;
+        font-weight: normal;
+        border: 2px solid transparent;
+        margin: 0 auto;
+    }
+    .user-status-aktiv {
+        background: #e6ffe6;
+        color: #218838;
+        border-color: #28a745;
+    }
+    .user-status-inaktiv {
+        background: #ffe6e6;
+        color: #c82333;
+        border-color: #dc3545;
+    }
+    </style>
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
 <%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
 <%@ taglib prefix="fn" uri="http://java.sun.com/jsp/jstl/functions" %>
@@ -23,10 +46,11 @@
                     <thead>
                         <tr>
                             <th class="sortable-header" onclick="sortTable(0, 'number')">ID</th>
-                            <th class="sortable-header" onclick="sortTable(1, 'string')">Benutzername</th>
+                            <th class="sortable-header" onclick="sortTable(1, 'string')">Anmeldename</th>
                             <th class="sortable-header" onclick="sortTable(2, 'string')">Benutzerverwaltung</th>
                             <th class="sortable-header" onclick="sortTable(3, 'string')">Logbuch</th>
                             <th class="sortable-header" onclick="sortTable(4, 'string')">Abteilung</th>
+                            <th class="sortable-header" onclick="sortTable(5, 'string')">Aktiv</th>
                             <th>Aktionen</th>
                         </tr>
                     </thead>
@@ -38,13 +62,19 @@
                                 <td>${u.can_manage_users ? 'Ja' : 'Nein'}</td>
                                 <td>${u.can_view_logbook ? 'Ja' : 'Nein'}</td>
                                 <td><c:out value="${u.abteilung}" /></td>
+                                <td style="text-align: center; vertical-align: middle;">
+                                    <span class="user-status-pill ${u.active ? 'user-status-aktiv' : 'user-status-inaktiv'}">
+                                        ${u.active ? 'Aktiv' : 'Inaktiv'}
+                                    </span>
+                                </td>
                                 <td>
                                     <button type="button" class="button small" onclick="showUserForm('edit', this)" 
                                         data-id="${u.id}"
                                         data-username="${u.username}"
                                         data-can_manage_users="${u.can_manage_users}"
                                         data-can_view_logbook="${u.can_view_logbook}"
-                                        data-abteilung="${u.abteilung}">
+                                        data-abteilung="${u.abteilung}"
+                                        data-active="${u.active}">
                                         Bearbeiten
                                     </button>
                                     <c:if test="${sessionScope.user.username != u.username}">
@@ -98,6 +128,11 @@
                 <div>
                     <label for="userFormAbteilung">Abteilung:</label>
                     <input type="text" id="userFormAbteilung" name="abteilung" />
+                </div>
+                <div>
+                    <label for="userFormActive">
+                        <input type="checkbox" id="userFormActive" name="active"> Aktiv
+                    </label>
                 </div>
                 <div class="modal-buttons">
                     <button type="submit" class="button create">Speichern</button>
@@ -158,6 +193,7 @@
                 document.getElementById('userFormCanManageUsers').checked = false;
                 document.getElementById('userFormCanViewLogbook').checked = false;
                 document.getElementById('userFormAbteilung').value = '';
+                document.getElementById('userFormActive').checked = true;
             } else if (mode === 'edit' && btn) {
                 form.action = "${pageContext.request.contextPath}/users/edit";
                 document.getElementById('userFormAction').value = 'edit';
@@ -167,6 +203,7 @@
                 document.getElementById('userFormCanManageUsers').checked = (btn.dataset.can_manage_users === 'true');
                 document.getElementById('userFormCanViewLogbook').checked = (btn.dataset.can_view_logbook === 'true');
                 document.getElementById('userFormAbteilung').value = btn.dataset.abteilung || '';
+                document.getElementById('userFormActive').checked = (btn.dataset.active === 'true');
             }
             modal.style.display = 'flex';
         }

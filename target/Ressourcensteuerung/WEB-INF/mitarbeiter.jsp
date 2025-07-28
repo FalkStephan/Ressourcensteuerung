@@ -43,12 +43,41 @@
                                         data-team="${fn:escapeXml(m.team)}"
                                         data-abteilung="${fn:escapeXml(m.abteilung)}"
                                     >Bearbeiten</button>
-                                    <form method="post" action="mitarbeiter" style="display:inline;" onsubmit="return confirm('Wirklich löschen?');">
-                                        <input type="hidden" name="action" value="delete" />
-                                        <input type="hidden" name="id" value="${m.id}" />
-                                        <button type="submit" class="button small delete">Löschen</button>
-                                    </form>
+                                    <button type="button" class="button small delete" onclick="showDeleteMitarbeiterModal(this)"
+                                        data-id="${m.id}"
+                                        data-name="${fn:escapeXml(m.name)}">
+                                        Löschen
+                                    </button>
                                 </td>
+    <!-- Modal für Löschen Mitarbeiter -->
+    <div id="deleteMitarbeiterModal" class="modal-overlay" style="display:none;">
+        <div class="modal-content">
+            <p><strong id="deleteMitarbeiterName"></strong></p>
+            <p id="deleteMitarbeiterText">Soll dieser Mitarbeiter wirklich gelöscht werden?</p>
+            <form id="deleteMitarbeiterForm" method="post" action="mitarbeiter">
+                <input type="hidden" name="action" value="delete" />
+                <input type="hidden" name="id" id="deleteMitarbeiterId" />
+                <div class="modal-buttons">
+                    <button type="submit" class="button delete">Ja, löschen</button>
+                    <button type="button" class="button" onclick="hideDeleteMitarbeiterModal()">Abbrechen</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    <script>
+        // --- Löschen-Modal Mitarbeiter ---
+        function showDeleteMitarbeiterModal(btn) {
+            const id = btn.getAttribute('data-id');
+            const name = btn.getAttribute('data-name');
+            document.getElementById('deleteMitarbeiterId').value = id;
+            document.getElementById('deleteMitarbeiterName').textContent = name;
+            document.getElementById('deleteMitarbeiterText').innerHTML = 'Soll dieser Mitarbeiter wirklich gelöscht werden?';
+            document.getElementById('deleteMitarbeiterModal').style.display = 'flex';
+        }
+        function hideDeleteMitarbeiterModal() {
+            document.getElementById('deleteMitarbeiterModal').style.display = 'none';
+        }
+    </script>
                             </tr>
                         </c:forEach>
                         <c:if test="${empty mitarbeiter}">
@@ -63,13 +92,13 @@
     </div>
 
     <!-- Modal für Neuanlage/Bearbeiten -->
-    <div id="mitarbeiterModal" class="modal-overlay">
+    <div id="mitarbeiterModal" class="modal-overlay" style="display:none;">
         <div class="modal-content">
             <form id="mitarbeiterForm" method="post" action="mitarbeiter">
                 <input type="hidden" name="action" id="formAction" value="add" />
                 <input type="hidden" name="id" id="formId" />
                 <div>
-                    <label for="formName">Name*:</label>
+                    <label for="formName">Name<span class="required-star">*</span>:</label>
                     <input type="text" name="name" id="formName" required />
                 </div>
                 <div>
@@ -81,7 +110,7 @@
                     <input type="text" name="team" id="formTeam" />
                 </div>
                 <div>
-                    <label for="formAbteilung">Abteilung*:</label>
+                    <label for="formAbteilung">Abteilung<span class="required-star">*</span>:</label>
                     <input type="text" name="abteilung" id="formAbteilung" required />
                 </div>
                 <div class="modal-buttons">
@@ -119,7 +148,7 @@
             document.getElementById('formStelle').value = '';
             document.getElementById('formTeam').value = '';
             document.getElementById('formAbteilung').value = '';
-            document.getElementById('mitarbeiterModal').style.display = 'block';
+            document.getElementById('mitarbeiterModal').style.display = 'flex';
         }
         function showEditForm(btn) {
             document.getElementById('formAction').value = 'edit';
@@ -128,7 +157,7 @@
             document.getElementById('formStelle').value = btn.dataset.stelle;
             document.getElementById('formTeam').value = btn.dataset.team;
             document.getElementById('formAbteilung').value = btn.dataset.abteilung;
-            document.getElementById('mitarbeiterModal').style.display = 'block';
+            document.getElementById('mitarbeiterModal').style.display = 'flex';
         }
         function hideModal() {
             document.getElementById('mitarbeiterModal').style.display = 'none';

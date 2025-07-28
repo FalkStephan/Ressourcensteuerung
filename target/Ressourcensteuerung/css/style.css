@@ -111,6 +111,7 @@ form label {
     display: block;
     margin-bottom: 5px;
     font-weight: bold;
+    text-align: left; /* Linksbuendig! */
 }
 
 form input[type="text"],
@@ -214,14 +215,14 @@ form input[type="password"] {
     position: fixed;
     top: 0;
     left: 0;
-    width: 100%;
-    height: 100%;
+    width: 100vw;
+    height: 100vh;
     background-color: rgba(0, 0, 0, 0.6);
     display: none;
-    display: flex;
     justify-content: center;
     align-items: center;
     z-index: 1000;
+    display: flex;
 }
 
 .modal-content {
@@ -229,16 +230,37 @@ form input[type="password"] {
     padding: 30px;
     border-radius: 8px;
     box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
-    text-align: center;
+    text-align: left;
     width: 90%;
     max-width: 400px;
+    margin: auto;
+    position: relative;
 }
 
-.modal-content p {
-    margin-top: 0;
-    font-size: 1.1em;
+/* Modal-Formular: Datenfelder und Überschriften linksbündig, Überschriften nicht fett */
+.modal-content label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: normal;
+    text-align: left;
 }
 
+/* Pflichtfeld-Stern */
+.required-star {
+    color: #e74c3c;
+    margin-left: 4px;
+    font-size: 1em;
+    vertical-align: middle;
+}
+
+/* Modal-Formular: Checkboxen linksbündig */
+.modal-content input[type="checkbox"] {
+    margin-left: 0;
+    margin-right: 8px;
+    vertical-align: middle;
+}
+
+/* Modal-Buttons horizontal mittig nebeneinander */
 .modal-buttons {
     margin-top: 20px;
     display: flex;

@@ -13,32 +13,38 @@
             <h2>Neuen Benutzer anlegen</h2>
             <form action="${pageContext.request.contextPath}/users/add" method="post">
                 <c:if test="${not empty error}">
-                    <p style="color:red; font-weight:bold;"><c:out value="${error}"/></p>
+                    <p style="color:red;"><c:out value="${error}"/></p>
                 </c:if>
                 <div>
-                    <label for="username">Benutzername:</label>
+                    <label for="username">Benutzername<span class="required-star">*</span>:</label>
                     <input type="text" id="username" name="username" required>
                 </div>
                 <div>
-                    <label for="password">Passwort:</label>
+                    <label for="password">Passwort<span class="required-star">*</span>:</label>
                     <input type="password" id="password" name="password" required>
                 </div>
                 <div>
-                    <label style="display: block; font-weight: bold; margin-bottom: 10px;">Rechte:</label>
-                    <label for="can_manage_users" style="display: inline-block; font-weight: normal;">
-                        <input type="checkbox" id="can_manage_users" name="can_manage_users" style="width: auto;"> Benutzerverwaltung
+                    <label style="display: block; margin-bottom: 10px;">Rechte:</label>
+                    <label for="can_manage_users">
+                        <input type="checkbox" id="can_manage_users" name="can_manage_users"> Benutzerverwaltung
                     </label>
                 </div>
                 <div>
-                    <label for="can_view_logbook" style="display: inline-block; font-weight: normal;">
-                        <input type="checkbox" id="can_view_logbook" name="can_view_logbook" style="width: auto;">Logbuch
+                    <label for="can_view_logbook">
+                        <input type="checkbox" id="can_view_logbook" name="can_view_logbook"> Logbuch
                     </label>
                 </div>
                 <div>
-                    <label for="abteilung">Abteilung (optional):</label>
+                    <label for="abteilung">Abteilung:</label>
                     <input type="text" id="abteilung" name="abteilung">
                 </div>
+                <div class="modal-buttons">
                 <div>
+                    <label for="active">
+                        <input type="checkbox" id="active" name="active" checked> Aktiv
+                    </label>
+                </div>
+                <div class="modal-buttons">
                     <button type="submit" class="button create">Speichern</button>
                     <a href="${pageContext.request.contextPath}/users" class="button delete">Abbrechen</a>
                 </div>

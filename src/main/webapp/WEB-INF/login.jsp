@@ -15,7 +15,7 @@
                     <p style="color: #e74c3c; font-weight: bold; text-align: center;"><c:out value="${error}"/></p>
                 </c:if>
                 <div>
-                    <label for="username">Benutzername:</label>
+                    <label for="username">Anmeldename:</label>
                     <input type="text" id="username" name="username" required>
                 </div>
                 <div>

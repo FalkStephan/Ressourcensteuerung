@@ -45,8 +45,9 @@ public class AddUserServlet extends HttpServlet {
         boolean canViewLogbook = "on".equals(req.getParameter("can_view_logbook"));
         String abteilung = req.getParameter("abteilung");
 
+        boolean active = req.getParameter("active") != null;
         try {
-            DatabaseService.addUser(username, password, canManageUsers, canViewLogbook, abteilung, actor);
+            DatabaseService.addUser(username, password, canManageUsers, canViewLogbook, abteilung, actor, active);
             resp.sendRedirect(req.getContextPath() + "/users");
         } catch (SQLException e) {
             req.setAttribute("error", "Fehler: Benutzername existiert bereits oder Eingabe ungültig.");

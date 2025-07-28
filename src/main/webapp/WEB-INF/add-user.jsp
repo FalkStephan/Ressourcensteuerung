@@ -16,7 +16,7 @@
                     <p style="color:red;"><c:out value="${error}"/></p>
                 </c:if>
                 <div>
-                    <label for="username">Benutzername<span class="required-star">*</span>:</label>
+                    <label for="username">Anmeldename<span class="required-star">*</span>:</label>
                     <input type="text" id="username" name="username" required>
                 </div>
                 <div>
@@ -37,6 +37,12 @@
                 <div>
                     <label for="abteilung">Abteilung:</label>
                     <input type="text" id="abteilung" name="abteilung">
+                </div>
+                <div class="modal-buttons">
+                <div>
+                    <label for="active">
+                        <input type="checkbox" id="active" name="active" checked> Aktiv
+                    </label>
                 </div>
                 <div class="modal-buttons">
                     <button type="submit" class="button create">Speichern</button>

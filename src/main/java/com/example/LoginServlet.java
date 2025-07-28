@@ -24,14 +24,20 @@ public class LoginServlet extends HttpServlet {
         Map<String, Object> user = DatabaseService.findUser(username, password);
 
         if (user != null) {
-            HttpSession session = req.getSession();
-            session.setAttribute("user", user);
-            try {
-                DatabaseService.logAction(username, "Login", "Benutzer hat sich erfolgreich angemeldet.");
-            } catch (SQLException e) {
-                e.printStackTrace(); // Fehler beim Loggen, aber Login trotzdem erlauben
+            Boolean isActive = (Boolean) user.get("active");
+            if (isActive != null && isActive) {
+                HttpSession session = req.getSession();
+                session.setAttribute("user", user);
+                try {
+                    DatabaseService.logAction(username, "Login", "Benutzer hat sich erfolgreich angemeldet.");
+                } catch (SQLException e) {
+                    e.printStackTrace(); // Fehler beim Loggen, aber Login trotzdem erlauben
+                }
+                resp.sendRedirect("index.jsp");
+            } else {
+                req.setAttribute("error", "Ihr Benutzerkonto ist inaktiv. Bitte wenden Sie sich an den Administrator.");
+                req.getRequestDispatcher("/WEB-INF/login.jsp").forward(req, resp);
             }
-            resp.sendRedirect("index.jsp");
         } else {
             req.setAttribute("error", "Ungültiger Benutzername oder Passwort.");
             req.getRequestDispatcher("/WEB-INF/login.jsp").forward(req, resp);
