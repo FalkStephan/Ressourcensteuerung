@@ -1,3 +1,5 @@
+// ...existing code...
+
 package com.example;
 
 import java.sql.Connection;
@@ -17,6 +19,32 @@ import java.util.Objects;
 import org.mindrot.jbcrypt.BCrypt;
 
 public class DatabaseService {
+
+    public static Map<String, Object> getUserByUsername(String username) {
+        String sql = "SELECT id, username, name, vorname, stelle, team, can_manage_users, can_view_logbook, abteilung, active, is_user FROM users WHERE username = ?";
+        try (Connection conn = getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, username);
+            ResultSet rs = pstmt.executeQuery();
+            if (rs.next()) {
+                Map<String, Object> user = new HashMap<>();
+                user.put("id", rs.getInt("id"));
+                user.put("username", rs.getString("username"));
+                user.put("name", rs.getString("name"));
+                user.put("vorname", rs.getString("vorname"));
+                user.put("stelle", rs.getString("stelle"));
+                user.put("team", rs.getString("team"));
+                user.put("can_manage_users", rs.getBoolean("can_manage_users"));
+                user.put("can_view_logbook", rs.getBoolean("can_view_logbook"));
+                user.put("abteilung", rs.getString("abteilung"));
+                user.put("active", rs.getBoolean("active"));
+                user.put("is_user", rs.getBoolean("is_user"));
+                return user;
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
 
     private static Connection getConnection() throws SQLException {
         return DriverManager.getConnection(
@@ -227,7 +255,7 @@ public class DatabaseService {
 
     public static void addUser(String username, String password, String name, String vorname, String stelle, String team, boolean canManageUsers, boolean canViewLogbook, String abteilung, String actor, boolean active, boolean isUser) throws SQLException {
         String hashedPassword = BCrypt.hashpw(password, BCrypt.gensalt());
-        String sql = "INSERT INTO users(username, password_hash, name, vorname, stelle, team, can_manage_users, can_view_logbook, abteilung, active, is_user) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        String sql = "INSERT INTO users(username, password_hash, name, vorname, stelle, team, can_manage_users, can_view_logbook, abteilung, active, is_user) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         try (Connection conn = getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setString(1, username);

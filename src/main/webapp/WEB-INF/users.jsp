@@ -36,7 +36,48 @@
         <main>
             <div class="container">
                 <h2>Benutzerverwaltung</h2>
+
                 <button type="button" class="button create" onclick="showUserForm('add')">Neuen Benutzer anlegen</button>
+<button type="button" class="button create" style="margin-left:1em;" onclick="showImportModal()">Benutzer importieren</button>
+        <!-- Modal für Benutzer-Import -->
+        <div id="importUserModal" class="modal-overlay" style="display:none;">
+            <div class="modal-content" style="max-width:400px;">
+                <h3>Benutzer importieren</h3>
+                <form id="importUserForm" method="post" action="${pageContext.request.contextPath}/users/import" enctype="multipart/form-data">
+                    <input type="file" name="importFile" id="importFile" accept=".csv,.xlsx,.xls,.txt" required style="margin-bottom:1em;" />
+                    <div style="margin-bottom:1em;">
+                        <label style="display:block; margin-bottom:0.5em;">
+                            <input type="checkbox" name="import_new" id="importNew" checked>
+                            neue Benutzer importieren
+                        </label>
+                        <label style="display:block; margin-bottom:0.5em;">
+                            <input type="checkbox" name="update_existing" id="updateExisting" checked>
+                            bestehende Benutzer aktualisieren
+                        </label>
+                        <label style="display:block;">
+                            <input type="checkbox" name="deactivate_missing" id="deactivateMissing">
+                            nicht enthaltene Benutzer deaktivieren
+                        </label>
+                    </div>
+                    <div class="modal-buttons" style="display:flex; gap:0.5em;">
+                        <a href="${pageContext.request.contextPath}/resources/Muster.xlsx" download class="button" style="background:#007bff; color:#fff;">Musterdatei herunterladen</a>
+                        <button type="submit" class="button create">Datei importieren</button>
+                        <button type="button" class="button delete" onclick="hideImportModal()">Abbrechen</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Modal für Import-Feedback -->
+        <div id="importFeedbackModal" class="modal-overlay" style="display:none;">
+            <div class="modal-content" style="max-width:400px;">
+                <h3>Import-Ergebnis</h3>
+                <div id="importFeedbackModalBody"></div>
+                <div class="modal-buttons" style="margin-top:1em;">
+                    <button type="button" class="button" onclick="hideImportFeedbackModal()">Schließen</button>
+                </div>
+            </div>
+        </div>
 
                 <div class="search-container">
                     <input type="text" id="userSearch" onkeyup="filterTable()" placeholder="Benutzer suchen...">
@@ -386,6 +427,46 @@
                 });
             });
             applyColPrefs();
+        });
+        // --- Import-Modal ---
+        function showImportModal() {
+            document.getElementById('importUserModal').style.display = 'flex';
+        }
+        function hideImportModal() {
+            document.getElementById('importUserModal').style.display = 'none';
+        }
+        // --- Import-Feedback-Modal ---
+        function showImportFeedbackModal() {
+            document.getElementById('importFeedbackModal').style.display = 'flex';
+        }
+        function hideImportFeedbackModal() {
+            document.getElementById('importFeedbackModal').style.display = 'none';
+        }
+
+        // --- AJAX-Upload für Import und Feedback-Anzeige ---
+        document.addEventListener('DOMContentLoaded', function() {
+            var importForm = document.getElementById('importUserForm');
+            if(importForm) {
+                importForm.addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    var formData = new FormData(importForm);
+                    fetch(importForm.action, {
+                        method: 'POST',
+                        body: formData
+                    })
+                    .then(response => response.text())
+                    .then(html => {
+                        document.getElementById('importFeedbackModalBody').innerHTML = html;
+                        hideImportModal();
+                        showImportFeedbackModal();
+                    })
+                    .catch(err => {
+                        document.getElementById('importFeedbackModalBody').innerHTML = '<div class="import-feedback-error">Fehler beim Upload</div>';
+                        hideImportModal();
+                        showImportFeedbackModal();
+                    });
+                });
+            }
         });
         // --- Felder ein-/ausblenden je nach "ist Benutzer" ---
         // (Logik für is_user entfernt)

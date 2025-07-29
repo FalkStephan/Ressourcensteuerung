@@ -11,7 +11,7 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 
-@WebServlet("/users")
+@WebServlet("/users/")
 public class UserServlet extends HttpServlet {
 
     @Override

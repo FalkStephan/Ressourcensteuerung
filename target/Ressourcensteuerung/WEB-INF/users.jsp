@@ -1,5 +1,6 @@
-    <style>
-<script>
+<style>
+    .user-status-pill {
+        display: inline-block;
         min-width: 70px;
         text-align: center;
         padding: 2px 14px;
@@ -19,7 +20,7 @@
         color: #c82333;
         border-color: #dc3545;
     }
-    </style>
+</style>
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
 <%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
 <%@ taglib prefix="fn" uri="http://java.sun.com/jsp/jstl/functions" %>
@@ -35,10 +36,61 @@
         <main>
             <div class="container">
                 <h2>Benutzerverwaltung</h2>
+
                 <button type="button" class="button create" onclick="showUserForm('add')">Neuen Benutzer anlegen</button>
+<button type="button" class="button create" style="margin-left:1em;" onclick="showImportModal()">Benutzer importieren</button>
+        <!-- Modal für Benutzer-Import -->
+        <div id="importUserModal" class="modal-overlay" style="display:none;">
+            <div class="modal-content" style="max-width:400px;">
+                <h3>Benutzer importieren</h3>
+                <form id="importUserForm" method="post" action="${pageContext.request.contextPath}/users/import" enctype="multipart/form-data">
+                    <input type="file" name="importFile" id="importFile" accept=".csv,.xlsx,.xls,.txt" required style="margin-bottom:1em;" />
+                    <div style="margin-bottom:1em;">
+                        <label style="display:block; margin-bottom:0.5em;">
+                            <input type="checkbox" name="import_new" id="importNew" checked>
+                            neue Benutzer importieren
+                        </label>
+                        <label style="display:block; margin-bottom:0.5em;">
+                            <input type="checkbox" name="update_existing" id="updateExisting" checked>
+                            bestehende Benutzer aktualisieren
+                        </label>
+                        <label style="display:block;">
+                            <input type="checkbox" name="deactivate_missing" id="deactivateMissing">
+                            nicht enthaltene Benutzer deaktivieren
+                        </label>
+                    </div>
+                    <div class="modal-buttons" style="display:flex; gap:0.5em;">
+                        <a href="${pageContext.request.contextPath}/resources/Muster.xlsx" download class="button" style="background:#007bff; color:#fff;">Musterdatei herunterladen</a>
+                        <button type="submit" class="button create">Datei importieren</button>
+                        <button type="button" class="button delete" onclick="hideImportModal()">Abbrechen</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Modal für Import-Feedback -->
+        <div id="importFeedbackModal" class="modal-overlay" style="display:none;">
+            <div class="modal-content" style="max-width:400px;">
+                <h3>Import-Ergebnis</h3>
+                <div id="importFeedbackModalBody"></div>
+                <div class="modal-buttons" style="margin-top:1em;">
+                    <button type="button" class="button" onclick="hideImportFeedbackModal()">Schließen</button>
+                </div>
+            </div>
+        </div>
 
                 <div class="search-container">
-                <button type="button" class="button small" style="margin-bottom:0.5em;" onclick="showColModal()">Spalten wählen</button>
+                    <input type="text" id="userSearch" onkeyup="filterTable()" placeholder="Benutzer suchen...">
+                    <select id="statusFilter" onchange="filterTable()" style="margin-left:1em;">
+                        <option value="all">Alle</option>
+                        <option value="active">Nur aktive</option>
+                        <option value="inactive">Nur inaktive</option>
+                    </select>
+                    <select id="typeFilter" onchange="filterTable()" style="margin-left:1em;">
+                        <option value="all">Alle</option>
+                        <option value="user">Nur Benutzer</option>
+                    </select>
+                    <button type="button" class="button small" style="margin-bottom:0.5em;" onclick="showColModal()">Spalten wählen</button>
                     <!-- Modal für Spaltenauswahl (außerhalb von .search-container platzieren) -->
                     <div id="colModal" class="modal-overlay" style="display:none;">
                         <div class="modal-content" style="max-width:420px;">
@@ -59,16 +111,6 @@
                             </div>
                         </div>
                     </div>
-                    <input type="text" id="userSearch" onkeyup="filterTable()" placeholder="Benutzer suchen...">
-                    <select id="statusFilter" onchange="filterTable()" style="margin-left:1em;">
-                        <option value="all">Alle</option>
-                        <option value="active">Nur aktive</option>
-                        <option value="inactive">Nur inaktive</option>
-                    </select>
-                    <select id="typeFilter" onchange="filterTable()" style="margin-left:1em;">
-                        <option value="all">Alle</option>
-                        <option value="user">Nur Benutzer</option>
-                    </select>
                 </div>
 
                 <table id="userTable">
@@ -241,5 +283,205 @@
                 </form>
             </div>
         </div>
-</body>
-</html>
+
+<script>
+        // --- Live-Suche ---
+        function filterTable() {
+            const input = document.getElementById('userSearch');
+            const filter = input.value.toLowerCase();
+            const table = document.getElementById('userTable');
+            const tr = table.getElementsByTagName('tr');
+            for (let i = 1; i < tr.length; i++) {
+                const tdUsername = tr[i].getElementsByTagName('td')[1];
+                if (tdUsername) {
+                    const txtValue = tdUsername.textContent || tdUsername.innerText;
+                    if (txtValue.toLowerCase().indexOf(filter) > -1) {
+                        tr[i].style.display = "";
+                    } else {
+                        tr[i].style.display = "none";
+                    }
+                }
+            }
+        }
+
+        // --- Benutzer-Modal ---
+        function showUserForm(mode, btn) {
+            const modal = document.getElementById('userModal');
+            const form = document.getElementById('userForm');
+            document.getElementById('userFormPassword').required = (mode === 'add');
+            if (mode === 'add') {
+                form.action = "${pageContext.request.contextPath}/users/add";
+                document.getElementById('userFormAction').value = 'add';
+                document.getElementById('userFormId').value = '';
+                document.getElementById('userFormUsername').value = '';
+                document.getElementById('userFormName').value = '';
+                document.getElementById('userFormVorname').value = '';
+                document.getElementById('userFormStelle').value = '';
+                document.getElementById('userFormTeam').value = '';
+                document.getElementById('userFormPassword').value = '';
+                document.getElementById('userFormCanManageUsers').checked = false;
+                document.getElementById('userFormCanViewLogbook').checked = false;
+                document.getElementById('userFormAbteilung').value = '';
+                document.getElementById('userFormActive').checked = true;
+                document.getElementById('userFormIsUser').checked = true;
+                toggleUserFields();
+            } else if (mode === 'edit' && btn) {
+                form.action = "${pageContext.request.contextPath}/users/edit";
+                document.getElementById('userFormAction').value = 'edit';
+                document.getElementById('userFormId').value = btn.dataset.id;
+                document.getElementById('userFormUsername').value = btn.dataset.username;
+                document.getElementById('userFormName').value = btn.dataset.name || '';
+                document.getElementById('userFormVorname').value = btn.dataset.vorname || '';
+                document.getElementById('userFormStelle').value = btn.dataset.stelle || '';
+                document.getElementById('userFormTeam').value = btn.dataset.team || '';
+                document.getElementById('userFormPassword').value = '';
+                document.getElementById('userFormCanManageUsers').checked = (btn.dataset.can_manage_users === 'true');
+                document.getElementById('userFormCanViewLogbook').checked = (btn.dataset.can_view_logbook === 'true');
+                document.getElementById('userFormAbteilung').value = btn.dataset.abteilung || '';
+                document.getElementById('userFormActive').checked = (btn.dataset.active === 'true');
+                const isUserVal = btn.dataset.is_user;
+                document.getElementById('userFormIsUser').checked = (isUserVal === 'true' || isUserVal === true || isUserVal === 1 || isUserVal === '1');
+                toggleUserFields();
+            }
+            modal.style.display = 'flex';
+        }
+        function hideUserModal() {
+            document.getElementById('userModal').style.display = 'none';
+        }
+
+        // --- Löschen-Modal ---
+        function showDeleteModal(btn) {
+            const id = btn.getAttribute('data-id');
+            const username = btn.getAttribute('data-username');
+            document.getElementById('deleteUserId').value = id;
+            document.getElementById('deleteUserName').textContent = username;
+            document.getElementById('deleteUserText').innerHTML = 'Soll dieser Benutzer wirklich gelöscht werden?';
+            document.getElementById('deleteUserModal').style.display = 'flex';
+        }
+        function hideDeleteModal() {
+            document.getElementById('deleteUserModal').style.display = 'none';
+        }
+
+        // --- Tabellen-Sortierung ---
+        let currentSortColumn = -1;
+        let currentSortDir = 'asc';
+        function sortTable(columnIndex, type) {
+            const table = document.getElementById('userTable');
+            const tbody = table.querySelector('tbody');
+            const rows = Array.from(tbody.querySelectorAll('tr'));
+            const headers = table.querySelectorAll('.sortable-header');
+            const sortDir = (columnIndex === currentSortColumn && currentSortDir === 'asc') ? 'desc' : 'asc';
+            rows.sort((a, b) => {
+                const cellA = a.querySelectorAll('td')[columnIndex].innerText.toLowerCase();
+                const cellB = b.querySelectorAll('td')[columnIndex].innerText.toLowerCase();
+                let valA = cellA;
+                let valB = cellB;
+                if (type === 'number') {
+                    valA = parseInt(valA, 10) || 0;
+                    valB = parseInt(valB, 10) || 0;
+                }
+                if (valA < valB) {
+                    return sortDir === 'asc' ? -1 : 1;
+                }
+                if (valA > valB) {
+                    return sortDir === 'asc' ? 1 : -1;
+                }
+                return 0;
+            });
+            headers.forEach(header => header.classList.remove('asc', 'desc'));
+            headers[columnIndex].classList.add(sortDir);
+            tbody.innerHTML = '';
+            rows.forEach(row => tbody.appendChild(row));
+            currentSortColumn = columnIndex;
+            currentSortDir = sortDir;
+        }
+        // --- Spaltenauswahl-Modal ---
+        function showColModal() {
+            document.getElementById('colModal').style.display = 'flex';
+        }
+        function hideColModal() {
+            document.getElementById('colModal').style.display = 'none';
+        }
+        // --- Spaltenauswahl anwenden ---
+        function applyColPrefs() {
+            const colChecks = document.querySelectorAll('.col-toggle');
+            const table = document.getElementById('userTable');
+            if (!table) return;
+            const ths = table.querySelectorAll('thead th');
+            colChecks.forEach((cb, idx) => {
+                if (ths[idx]) ths[idx].style.display = cb.checked ? '' : 'none';
+            });
+            const trs = table.querySelectorAll('tbody tr');
+            trs.forEach(tr => {
+                const tds = tr.querySelectorAll('td');
+                colChecks.forEach((cb, idx) => {
+                    if (tds[idx]) tds[idx].style.display = cb.checked ? '' : 'none';
+                });
+            });
+        }
+        // Eventlistener für Spaltenauswahl
+        document.addEventListener('DOMContentLoaded', function() {
+            document.querySelectorAll('.col-toggle').forEach(cb => {
+                cb.addEventListener('change', function() {
+                    applyColPrefs();
+                });
+            });
+            applyColPrefs();
+        });
+        // --- Import-Modal ---
+        function showImportModal() {
+            document.getElementById('importUserModal').style.display = 'flex';
+        }
+        function hideImportModal() {
+            document.getElementById('importUserModal').style.display = 'none';
+        }
+        // --- Import-Feedback-Modal ---
+        function showImportFeedbackModal() {
+            document.getElementById('importFeedbackModal').style.display = 'flex';
+        }
+        function hideImportFeedbackModal() {
+            document.getElementById('importFeedbackModal').style.display = 'none';
+        }
+
+        // --- AJAX-Upload für Import und Feedback-Anzeige ---
+        document.addEventListener('DOMContentLoaded', function() {
+            var importForm = document.getElementById('importUserForm');
+            if(importForm) {
+                importForm.addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    var formData = new FormData(importForm);
+                    fetch(importForm.action, {
+                        method: 'POST',
+                        body: formData
+                    })
+                    .then(response => response.text())
+                    .then(html => {
+                        document.getElementById('importFeedbackModalBody').innerHTML = html;
+                        hideImportModal();
+                        showImportFeedbackModal();
+                    })
+                    .catch(err => {
+                        document.getElementById('importFeedbackModalBody').innerHTML = '<div class="import-feedback-error">Fehler beim Upload</div>';
+                        hideImportModal();
+                        showImportFeedbackModal();
+                    });
+                });
+            }
+        });
+        // --- Felder ein-/ausblenden je nach "ist Benutzer" ---
+        // (Logik für is_user entfernt)
+        function toggleUserFields() {
+            const isUser = document.getElementById('userFormIsUser').checked;
+            document.getElementById('passwordFieldWrapper').style.display = isUser ? '' : 'none';
+            document.getElementById('rechteFieldWrapper').style.display = isUser ? '' : 'none';
+            document.getElementById('userFormPassword').required = isUser;
+        }
+        // Initial beim Öffnen Modal setzen:
+        document.addEventListener('DOMContentLoaded', function() {
+            if (document.getElementById('userFormIsUser')) {
+                toggleUserFields();
+            }
+        });
+        // Auch beim Öffnen Modal setzen:
+        // (Diese zweite Definition wird entfernt, die Logik ist bereits in der ersten showUserForm enthalten)
+    </script>

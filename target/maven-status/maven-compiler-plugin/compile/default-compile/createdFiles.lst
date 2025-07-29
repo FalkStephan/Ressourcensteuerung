@@ -10,4 +10,5 @@ com/example/AddUserServlet.class
 com/example/AuthFilter.class
 com/example/LogoutServlet.class
 com/example/DeleteUserServlet.class
+com/example/ImportUserServlet.class
 com/example/AppContextListener.class

@@ -1,0 +1,4 @@
+Mitarbeiterkennung;Name;Vorname;Abteilung;Team;Stelle;aktiv;ist Benutzer;Benutzerverwaltung;Logbuch
+musteruser1;Mustermann;Max;IT;Support;Admin;1;1;1;1
+musteruser2;Beispiel;Erika;HR;Personal;Sachbearbeiter;1;1;0;1
+musteruser3;Test;Theo;IT;Entwicklung;Entwickler;0;0;0;0
