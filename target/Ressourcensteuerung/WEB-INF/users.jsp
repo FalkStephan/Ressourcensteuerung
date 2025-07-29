@@ -1,6 +1,5 @@
     <style>
-    .user-status-pill {
-        display: inline-block;
+<script>
         min-width: 70px;
         text-align: center;
         padding: 2px 14px;
@@ -39,7 +38,37 @@
                 <button type="button" class="button create" onclick="showUserForm('add')">Neuen Benutzer anlegen</button>
 
                 <div class="search-container">
+                <button type="button" class="button small" style="margin-bottom:0.5em;" onclick="showColModal()">Spalten wählen</button>
+                    <!-- Modal für Spaltenauswahl (außerhalb von .search-container platzieren) -->
+                    <div id="colModal" class="modal-overlay" style="display:none;">
+                        <div class="modal-content" style="max-width:420px;">
+                            <h3>Spalten ein-/ausblenden</h3>
+                            <div id="columnSelector" style="margin-bottom: 1em;">
+                                <label><input type="checkbox" class="col-toggle" data-col="0" checked> ID</label>
+                                <label><input type="checkbox" class="col-toggle" data-col="1" checked> Mitarbeiterkennung</label>
+                                <label><input type="checkbox" class="col-toggle" data-col="2" checked> Name</label>
+                                <label><input type="checkbox" class="col-toggle" data-col="3" checked> Vorname</label>
+                                <label><input type="checkbox" class="col-toggle" data-col="4" checked> Stelle</label>
+                                <label><input type="checkbox" class="col-toggle" data-col="5" checked> Team</label>
+                                <label><input type="checkbox" class="col-toggle" data-col="6" checked> Benutzerverwaltung</label>
+                                <label><input type="checkbox" class="col-toggle" data-col="7" checked> Logbuch</label>
+                                <label><input type="checkbox" class="col-toggle" data-col="8" checked> Abteilung</label>
+                            </div>
+                            <div class="modal-buttons">
+                                <button type="button" class="button create" onclick="hideColModal()">OK</button>
+                            </div>
+                        </div>
+                    </div>
                     <input type="text" id="userSearch" onkeyup="filterTable()" placeholder="Benutzer suchen...">
+                    <select id="statusFilter" onchange="filterTable()" style="margin-left:1em;">
+                        <option value="all">Alle</option>
+                        <option value="active">Nur aktive</option>
+                        <option value="inactive">Nur inaktive</option>
+                    </select>
+                    <select id="typeFilter" onchange="filterTable()" style="margin-left:1em;">
+                        <option value="all">Alle</option>
+                        <option value="user">Nur Benutzer</option>
+                    </select>
                 </div>
 
                 <table id="userTable">
@@ -120,228 +149,97 @@
             </div>
         </main>
 
-    <!-- Modal für Benutzer anlegen/bearbeiten -->
-    <div id="userModal" class="modal-overlay" style="display:none;">
-        <div class="modal-content">
-            <form id="userForm" method="post">
-                <input type="hidden" name="id" id="userFormId" />
-                <input type="hidden" name="action" id="userFormAction" value="add" />
-                <!-- 1. Zeile: Mitarbeiterkennung -->
-                <div>
-                    <label for="userFormUsername">Mitarbeiterkennung<span class="required-star">*</span>:</label>
-                    <input type="text" id="userFormUsername" name="username" required />
-                </div>
-                <!-- 2. Zeile: Vorname, Name -->
-                <div style="display: flex; gap: 1em;">
-                    <div style="flex:1;">
-                        <label for="userFormVorname">Vorname<span class="required-star">*</span>:</label>
-                        <input type="text" id="userFormVorname" name="vorname" required />
+        <!-- Modal für Benutzer anlegen/bearbeiten -->
+        <div id="userModal" class="modal-overlay" style="display:none;">
+            <div class="modal-content">
+                <form id="userForm" method="post">
+                    <input type="hidden" name="id" id="userFormId" />
+                    <input type="hidden" name="action" id="userFormAction" value="add" />
+                    <!-- 1. Zeile: Mitarbeiterkennung -->
+                    <div>
+                        <label for="userFormUsername">Mitarbeiterkennung<span class="required-star">*</span>:</label>
+                        <input type="text" id="userFormUsername" name="username" required />
                     </div>
-                    <div style="flex:1;">
-                        <label for="userFormName">Name<span class="required-star">*</span>:</label>
-                        <input type="text" id="userFormName" name="name" required />
+                    <!-- 2. Zeile: Vorname, Name -->
+                    <div style="display: flex; gap: 1em;">
+                        <div style="flex:1;">
+                            <label for="userFormVorname">Vorname<span class="required-star">*</span>:</label>
+                            <input type="text" id="userFormVorname" name="vorname" required />
+                        </div>
+                        <div style="flex:1;">
+                            <label for="userFormName">Name<span class="required-star">*</span>:</label>
+                            <input type="text" id="userFormName" name="name" required />
+                        </div>
                     </div>
-                </div>
-                <!-- 3. Zeile: Abteilung, Team -->
-                <div style="display: flex; gap: 1em;">
-                    <div style="flex:1;">
-                        <label for="userFormAbteilung">Abteilung:</label>
-                        <input type="text" id="userFormAbteilung" name="abteilung" />
+                    <!-- 3. Zeile: Abteilung, Team -->
+                    <div style="display: flex; gap: 1em;">
+                        <div style="flex:1;">
+                            <label for="userFormAbteilung">Abteilung:</label>
+                            <input type="text" id="userFormAbteilung" name="abteilung" />
+                        </div>
+                        <div style="flex:1;">
+                            <label for="userFormTeam">Team:</label>
+                            <input type="text" id="userFormTeam" name="team" />
+                        </div>
                     </div>
-                    <div style="flex:1;">
-                        <label for="userFormTeam">Team:</label>
-                        <input type="text" id="userFormTeam" name="team" />
+                    <!-- 4. Zeile: Stelle, Aktiv -->
+                    <div style="display: flex; gap: 1em; align-items: center;">
+                        <div style="flex:1;">
+                            <label for="userFormStelle">Stelle:</label>
+                            <input type="text" id="userFormStelle" name="stelle" />
+                        </div>
+                        <div style="flex:1; margin-top: 2em;">
+                            <label for="userFormActive">
+                                <input type="checkbox" id="userFormActive" name="active"> Aktiv
+                            </label>
+                        </div>
                     </div>
-                </div>
-                <!-- 4. Zeile: Stelle, Aktiv -->
-                <div style="display: flex; gap: 1em; align-items: center;">
-                    <div style="flex:1;">
-                        <label for="userFormStelle">Stelle:</label>
-                        <input type="text" id="userFormStelle" name="stelle" />
+                    <!-- 5. Zeile: ist Benutzer, Passwort (nur wenn ist Benutzer aktiv) -->
+                    <div style="display: flex; gap: 1em; align-items: center;">
+                        <div style="flex:1;">
+                            <!-- Hidden field, damit beim Deaktivieren der Checkbox der Wert immer gesendet wird 
+                            <input type="hidden" name="is_user" value="off" /> 
+                            -->
+                            <label for="userFormIsUser">
+                                <input type="checkbox" id="userFormIsUser" name="is_user" value="on" checked onchange="toggleUserFields()"> ist Benutzer
+                            </label>
+                        </div>
+                        <div style="flex:1;" id="passwordFieldWrapper">
+                            <label for="userFormPassword">Passwort<span class="required-star">*</span>:</label>
+                            <input type="password" id="userFormPassword" name="password" required />
+                        </div>
                     </div>
-                    <div style="flex:1; margin-top: 2em;">
-                        <label for="userFormActive">
-                            <input type="checkbox" id="userFormActive" name="active"> Aktiv
+                    <!-- 6. Zeile: Rechte (nur wenn ist Benutzer aktiv) -->
+                    <div style="margin-top: 1em;" id="rechteFieldWrapper">
+                        <label style="display: block; margin-bottom: 10px;">Rechte:</label>
+                        <label for="userFormCanManageUsers">
+                            <input type="checkbox" id="userFormCanManageUsers" name="can_manage_users"> Benutzerverwaltung
+                        </label>
+                        <label for="userFormCanViewLogbook" style="margin-left: 2em;">
+                            <input type="checkbox" id="userFormCanViewLogbook" name="can_view_logbook"> Logbuch
                         </label>
                     </div>
-                </div>
-                <!-- 5. Zeile: ist Benutzer, Passwort (nur wenn ist Benutzer aktiv) -->
-                <div style="display: flex; gap: 1em; align-items: center;">
-                    <div style="flex:1;">
-                        <!-- Hidden field, damit beim Deaktivieren der Checkbox der Wert immer gesendet wird 
-                         <input type="hidden" name="is_user" value="off" /> 
-                         -->
-                        <label for="userFormIsUser">
-                            <input type="checkbox" id="userFormIsUser" name="is_user" value="on" checked onchange="toggleUserFields()"> ist Benutzer
-                        </label>
+                    <div class="modal-buttons" style="margin-top: 2em;">
+                        <button type="submit" class="button create">Speichern</button>
+                        <button type="button" class="button delete" onclick="hideUserModal()">Abbrechen</button>
                     </div>
-                    <div style="flex:1;" id="passwordFieldWrapper">
-                        <label for="userFormPassword">Passwort<span class="required-star">*</span>:</label>
-                        <input type="password" id="userFormPassword" name="password" required />
+                </form>
+            </div>
+        </div>
+
+        <!-- Modal für Löschen -->
+        <div id="deleteUserModal" class="modal-overlay" style="display:none;">
+            <div class="modal-content">
+                <p><strong id="deleteUserName"></strong></p>
+                <p id="deleteUserText">Soll dieser Benutzer wirklich gelöscht werden?</p>
+                <form id="deleteUserForm" method="post" action="${pageContext.request.contextPath}/users/delete">
+                    <input type="hidden" name="id" id="deleteUserId" />
+                    <div class="modal-buttons">
+                        <button type="submit" class="button delete">Ja, löschen</button>
+                        <button type="button" class="button" onclick="hideDeleteModal()">Abbrechen</button>
                     </div>
-                </div>
-                <!-- 6. Zeile: Rechte (nur wenn ist Benutzer aktiv) -->
-                <div style="margin-top: 1em;" id="rechteFieldWrapper">
-                    <label style="display: block; margin-bottom: 10px;">Rechte:</label>
-                    <label for="userFormCanManageUsers">
-                        <input type="checkbox" id="userFormCanManageUsers" name="can_manage_users"> Benutzerverwaltung
-                    </label>
-                    <label for="userFormCanViewLogbook" style="margin-left: 2em;">
-                        <input type="checkbox" id="userFormCanViewLogbook" name="can_view_logbook"> Logbuch
-                    </label>
-                </div>
-                <div class="modal-buttons" style="margin-top: 2em;">
-                    <button type="submit" class="button create">Speichern</button>
-                    <button type="button" class="button delete" onclick="hideUserModal()">Abbrechen</button>
-                </div>
-            </form>
+                </form>
+            </div>
         </div>
-    </div>
-
-    <!-- Modal für Löschen -->
-    <div id="deleteUserModal" class="modal-overlay" style="display:none;">
-        <div class="modal-content">
-            <p><strong id="deleteUserName"></strong></p>
-            <p id="deleteUserText">Soll dieser Benutzer wirklich gelöscht werden?</p>
-            <form id="deleteUserForm" method="post" action="${pageContext.request.contextPath}/users/delete">
-                <input type="hidden" name="id" id="deleteUserId" />
-                <div class="modal-buttons">
-                    <button type="submit" class="button delete">Ja, löschen</button>
-                    <button type="button" class="button" onclick="hideDeleteModal()">Abbrechen</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-
-
-    <script>
-        // --- Live-Suche ---
-        function filterTable() {
-            const input = document.getElementById('userSearch');
-            const filter = input.value.toLowerCase();
-            const table = document.getElementById('userTable');
-            const tr = table.getElementsByTagName('tr');
-            for (let i = 1; i < tr.length; i++) {
-                const tdUsername = tr[i].getElementsByTagName('td')[1];
-                if (tdUsername) {
-                    const txtValue = tdUsername.textContent || tdUsername.innerText;
-                    if (txtValue.toLowerCase().indexOf(filter) > -1) {
-                        tr[i].style.display = "";
-                    } else {
-                        tr[i].style.display = "none";
-                    }
-                }
-            }
-        }
-
-        // --- Benutzer-Modal ---
-        function showUserForm(mode, btn) {
-            const modal = document.getElementById('userModal');
-            const form = document.getElementById('userForm');
-            document.getElementById('userFormPassword').required = (mode === 'add');
-            if (mode === 'add') {
-                form.action = "${pageContext.request.contextPath}/users/add";
-                document.getElementById('userFormAction').value = 'add';
-                document.getElementById('userFormId').value = '';
-                document.getElementById('userFormUsername').value = '';
-                document.getElementById('userFormName').value = '';
-                document.getElementById('userFormVorname').value = '';
-                document.getElementById('userFormStelle').value = '';
-                document.getElementById('userFormTeam').value = '';
-                document.getElementById('userFormPassword').value = '';
-                document.getElementById('userFormCanManageUsers').checked = false;
-                document.getElementById('userFormCanViewLogbook').checked = false;
-                document.getElementById('userFormAbteilung').value = '';
-                document.getElementById('userFormActive').checked = true;
-                document.getElementById('userFormIsUser').checked = true;
-                toggleUserFields();
-            } else if (mode === 'edit' && btn) {
-                form.action = "${pageContext.request.contextPath}/users/edit";
-                document.getElementById('userFormAction').value = 'edit';
-                document.getElementById('userFormId').value = btn.dataset.id;
-                document.getElementById('userFormUsername').value = btn.dataset.username;
-                document.getElementById('userFormName').value = btn.dataset.name || '';
-                document.getElementById('userFormVorname').value = btn.dataset.vorname || '';
-                document.getElementById('userFormStelle').value = btn.dataset.stelle || '';
-                document.getElementById('userFormTeam').value = btn.dataset.team || '';
-                document.getElementById('userFormPassword').value = '';
-                document.getElementById('userFormCanManageUsers').checked = (btn.dataset.can_manage_users === 'true');
-                document.getElementById('userFormCanViewLogbook').checked = (btn.dataset.can_view_logbook === 'true');
-                document.getElementById('userFormAbteilung').value = btn.dataset.abteilung || '';
-                document.getElementById('userFormActive').checked = (btn.dataset.active === 'true');
-                const isUserVal = btn.dataset.is_user;
-                document.getElementById('userFormIsUser').checked = (isUserVal === 'true' || isUserVal === true || isUserVal === 1 || isUserVal === '1');
-                toggleUserFields();
-            }
-            modal.style.display = 'flex';
-        }
-        function hideUserModal() {
-            document.getElementById('userModal').style.display = 'none';
-        }
-
-        // --- Löschen-Modal ---
-        function showDeleteModal(btn) {
-            const id = btn.getAttribute('data-id');
-            const username = btn.getAttribute('data-username');
-            document.getElementById('deleteUserId').value = id;
-            document.getElementById('deleteUserName').textContent = username;
-            document.getElementById('deleteUserText').innerHTML = 'Soll dieser Benutzer wirklich gelöscht werden?';
-            document.getElementById('deleteUserModal').style.display = 'flex';
-        }
-        function hideDeleteModal() {
-            document.getElementById('deleteUserModal').style.display = 'none';
-        }
-
-        // --- Tabellen-Sortierung ---
-        let currentSortColumn = -1;
-        let currentSortDir = 'asc';
-        function sortTable(columnIndex, type) {
-            const table = document.getElementById('userTable');
-            const tbody = table.querySelector('tbody');
-            const rows = Array.from(tbody.querySelectorAll('tr'));
-            const headers = table.querySelectorAll('.sortable-header');
-            const sortDir = (columnIndex === currentSortColumn && currentSortDir === 'asc') ? 'desc' : 'asc';
-            rows.sort((a, b) => {
-                const cellA = a.querySelectorAll('td')[columnIndex].innerText.toLowerCase();
-                const cellB = b.querySelectorAll('td')[columnIndex].innerText.toLowerCase();
-                let valA = cellA;
-                let valB = cellB;
-                if (type === 'number') {
-                    valA = parseInt(valA, 10) || 0;
-                    valB = parseInt(valB, 10) || 0;
-                }
-                if (valA < valB) {
-                    return sortDir === 'asc' ? -1 : 1;
-                }
-                if (valA > valB) {
-                    return sortDir === 'asc' ? 1 : -1;
-                }
-                return 0;
-            });
-            headers.forEach(header => header.classList.remove('asc', 'desc'));
-            headers[columnIndex].classList.add(sortDir);
-            tbody.innerHTML = '';
-            rows.forEach(row => tbody.appendChild(row));
-            currentSortColumn = columnIndex;
-            currentSortDir = sortDir;
-        }
-        // --- Felder ein-/ausblenden je nach "ist Benutzer" ---
-        // (Logik für is_user entfernt)
-        function toggleUserFields() {
-            const isUser = document.getElementById('userFormIsUser').checked;
-            document.getElementById('passwordFieldWrapper').style.display = isUser ? '' : 'none';
-            document.getElementById('rechteFieldWrapper').style.display = isUser ? '' : 'none';
-            document.getElementById('userFormPassword').required = isUser;
-        }
-        // Initial beim Öffnen Modal setzen:
-        document.addEventListener('DOMContentLoaded', function() {
-            if (document.getElementById('userFormIsUser')) {
-                toggleUserFields();
-            }
-        });
-        // Auch beim Öffnen Modal setzen:
-        // (Diese zweite Definition wird entfernt, die Logik ist bereits in der ersten showUserForm enthalten)
-    </script>
 </body>
 </html>

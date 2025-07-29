@@ -1,4 +1,4 @@
-    <style>
+<style>
     .user-status-pill {
         display: inline-block;
         min-width: 70px;
@@ -20,7 +20,7 @@
         color: #c82333;
         border-color: #dc3545;
     }
-    </style>
+</style>
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
 <%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
 <%@ taglib prefix="fn" uri="http://java.sun.com/jsp/jstl/functions" %>
@@ -40,6 +40,36 @@
 
                 <div class="search-container">
                     <input type="text" id="userSearch" onkeyup="filterTable()" placeholder="Benutzer suchen...">
+                    <select id="statusFilter" onchange="filterTable()" style="margin-left:1em;">
+                        <option value="all">Alle</option>
+                        <option value="active">Nur aktive</option>
+                        <option value="inactive">Nur inaktive</option>
+                    </select>
+                    <select id="typeFilter" onchange="filterTable()" style="margin-left:1em;">
+                        <option value="all">Alle</option>
+                        <option value="user">Nur Benutzer</option>
+                    </select>
+                    <button type="button" class="button small" style="margin-bottom:0.5em;" onclick="showColModal()">Spalten wählen</button>
+                    <!-- Modal für Spaltenauswahl (außerhalb von .search-container platzieren) -->
+                    <div id="colModal" class="modal-overlay" style="display:none;">
+                        <div class="modal-content" style="max-width:420px;">
+                            <h3>Spalten ein-/ausblenden</h3>
+                            <div id="columnSelector" style="margin-bottom: 1em;">
+                                <label><input type="checkbox" class="col-toggle" data-col="0" checked> ID</label>
+                                <label><input type="checkbox" class="col-toggle" data-col="1" checked> Mitarbeiterkennung</label>
+                                <label><input type="checkbox" class="col-toggle" data-col="2" checked> Name</label>
+                                <label><input type="checkbox" class="col-toggle" data-col="3" checked> Vorname</label>
+                                <label><input type="checkbox" class="col-toggle" data-col="4" checked> Stelle</label>
+                                <label><input type="checkbox" class="col-toggle" data-col="5" checked> Team</label>
+                                <label><input type="checkbox" class="col-toggle" data-col="6" checked> Benutzerverwaltung</label>
+                                <label><input type="checkbox" class="col-toggle" data-col="7" checked> Logbuch</label>
+                                <label><input type="checkbox" class="col-toggle" data-col="8" checked> Abteilung</label>
+                            </div>
+                            <div class="modal-buttons">
+                                <button type="button" class="button create" onclick="hideColModal()">OK</button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <table id="userTable">
@@ -120,102 +150,100 @@
             </div>
         </main>
 
-    <!-- Modal für Benutzer anlegen/bearbeiten -->
-    <div id="userModal" class="modal-overlay" style="display:none;">
-        <div class="modal-content">
-            <form id="userForm" method="post">
-                <input type="hidden" name="id" id="userFormId" />
-                <input type="hidden" name="action" id="userFormAction" value="add" />
-                <!-- 1. Zeile: Mitarbeiterkennung -->
-                <div>
-                    <label for="userFormUsername">Mitarbeiterkennung<span class="required-star">*</span>:</label>
-                    <input type="text" id="userFormUsername" name="username" required />
-                </div>
-                <!-- 2. Zeile: Vorname, Name -->
-                <div style="display: flex; gap: 1em;">
-                    <div style="flex:1;">
-                        <label for="userFormVorname">Vorname<span class="required-star">*</span>:</label>
-                        <input type="text" id="userFormVorname" name="vorname" required />
+        <!-- Modal für Benutzer anlegen/bearbeiten -->
+        <div id="userModal" class="modal-overlay" style="display:none;">
+            <div class="modal-content">
+                <form id="userForm" method="post">
+                    <input type="hidden" name="id" id="userFormId" />
+                    <input type="hidden" name="action" id="userFormAction" value="add" />
+                    <!-- 1. Zeile: Mitarbeiterkennung -->
+                    <div>
+                        <label for="userFormUsername">Mitarbeiterkennung<span class="required-star">*</span>:</label>
+                        <input type="text" id="userFormUsername" name="username" required />
                     </div>
-                    <div style="flex:1;">
-                        <label for="userFormName">Name<span class="required-star">*</span>:</label>
-                        <input type="text" id="userFormName" name="name" required />
+                    <!-- 2. Zeile: Vorname, Name -->
+                    <div style="display: flex; gap: 1em;">
+                        <div style="flex:1;">
+                            <label for="userFormVorname">Vorname<span class="required-star">*</span>:</label>
+                            <input type="text" id="userFormVorname" name="vorname" required />
+                        </div>
+                        <div style="flex:1;">
+                            <label for="userFormName">Name<span class="required-star">*</span>:</label>
+                            <input type="text" id="userFormName" name="name" required />
+                        </div>
                     </div>
-                </div>
-                <!-- 3. Zeile: Abteilung, Team -->
-                <div style="display: flex; gap: 1em;">
-                    <div style="flex:1;">
-                        <label for="userFormAbteilung">Abteilung:</label>
-                        <input type="text" id="userFormAbteilung" name="abteilung" />
+                    <!-- 3. Zeile: Abteilung, Team -->
+                    <div style="display: flex; gap: 1em;">
+                        <div style="flex:1;">
+                            <label for="userFormAbteilung">Abteilung:</label>
+                            <input type="text" id="userFormAbteilung" name="abteilung" />
+                        </div>
+                        <div style="flex:1;">
+                            <label for="userFormTeam">Team:</label>
+                            <input type="text" id="userFormTeam" name="team" />
+                        </div>
                     </div>
-                    <div style="flex:1;">
-                        <label for="userFormTeam">Team:</label>
-                        <input type="text" id="userFormTeam" name="team" />
+                    <!-- 4. Zeile: Stelle, Aktiv -->
+                    <div style="display: flex; gap: 1em; align-items: center;">
+                        <div style="flex:1;">
+                            <label for="userFormStelle">Stelle:</label>
+                            <input type="text" id="userFormStelle" name="stelle" />
+                        </div>
+                        <div style="flex:1; margin-top: 2em;">
+                            <label for="userFormActive">
+                                <input type="checkbox" id="userFormActive" name="active"> Aktiv
+                            </label>
+                        </div>
                     </div>
-                </div>
-                <!-- 4. Zeile: Stelle, Aktiv -->
-                <div style="display: flex; gap: 1em; align-items: center;">
-                    <div style="flex:1;">
-                        <label for="userFormStelle">Stelle:</label>
-                        <input type="text" id="userFormStelle" name="stelle" />
+                    <!-- 5. Zeile: ist Benutzer, Passwort (nur wenn ist Benutzer aktiv) -->
+                    <div style="display: flex; gap: 1em; align-items: center;">
+                        <div style="flex:1;">
+                            <!-- Hidden field, damit beim Deaktivieren der Checkbox der Wert immer gesendet wird 
+                            <input type="hidden" name="is_user" value="off" /> 
+                            -->
+                            <label for="userFormIsUser">
+                                <input type="checkbox" id="userFormIsUser" name="is_user" value="on" checked onchange="toggleUserFields()"> ist Benutzer
+                            </label>
+                        </div>
+                        <div style="flex:1;" id="passwordFieldWrapper">
+                            <label for="userFormPassword">Passwort<span class="required-star">*</span>:</label>
+                            <input type="password" id="userFormPassword" name="password" required />
+                        </div>
                     </div>
-                    <div style="flex:1; margin-top: 2em;">
-                        <label for="userFormActive">
-                            <input type="checkbox" id="userFormActive" name="active"> Aktiv
+                    <!-- 6. Zeile: Rechte (nur wenn ist Benutzer aktiv) -->
+                    <div style="margin-top: 1em;" id="rechteFieldWrapper">
+                        <label style="display: block; margin-bottom: 10px;">Rechte:</label>
+                        <label for="userFormCanManageUsers">
+                            <input type="checkbox" id="userFormCanManageUsers" name="can_manage_users"> Benutzerverwaltung
+                        </label>
+                        <label for="userFormCanViewLogbook" style="margin-left: 2em;">
+                            <input type="checkbox" id="userFormCanViewLogbook" name="can_view_logbook"> Logbuch
                         </label>
                     </div>
-                </div>
-                <!-- 5. Zeile: ist Benutzer, Passwort (nur wenn ist Benutzer aktiv) -->
-                <div style="display: flex; gap: 1em; align-items: center;">
-                    <div style="flex:1;">
-                        <!-- Hidden field, damit beim Deaktivieren der Checkbox der Wert immer gesendet wird 
-                         <input type="hidden" name="is_user" value="off" /> 
-                         -->
-                        <label for="userFormIsUser">
-                            <input type="checkbox" id="userFormIsUser" name="is_user" value="on" checked onchange="toggleUserFields()"> ist Benutzer
-                        </label>
+                    <div class="modal-buttons" style="margin-top: 2em;">
+                        <button type="submit" class="button create">Speichern</button>
+                        <button type="button" class="button delete" onclick="hideUserModal()">Abbrechen</button>
                     </div>
-                    <div style="flex:1;" id="passwordFieldWrapper">
-                        <label for="userFormPassword">Passwort<span class="required-star">*</span>:</label>
-                        <input type="password" id="userFormPassword" name="password" required />
+                </form>
+            </div>
+        </div>
+
+        <!-- Modal für Löschen -->
+        <div id="deleteUserModal" class="modal-overlay" style="display:none;">
+            <div class="modal-content">
+                <p><strong id="deleteUserName"></strong></p>
+                <p id="deleteUserText">Soll dieser Benutzer wirklich gelöscht werden?</p>
+                <form id="deleteUserForm" method="post" action="${pageContext.request.contextPath}/users/delete">
+                    <input type="hidden" name="id" id="deleteUserId" />
+                    <div class="modal-buttons">
+                        <button type="submit" class="button delete">Ja, löschen</button>
+                        <button type="button" class="button" onclick="hideDeleteModal()">Abbrechen</button>
                     </div>
-                </div>
-                <!-- 6. Zeile: Rechte (nur wenn ist Benutzer aktiv) -->
-                <div style="margin-top: 1em;" id="rechteFieldWrapper">
-                    <label style="display: block; margin-bottom: 10px;">Rechte:</label>
-                    <label for="userFormCanManageUsers">
-                        <input type="checkbox" id="userFormCanManageUsers" name="can_manage_users"> Benutzerverwaltung
-                    </label>
-                    <label for="userFormCanViewLogbook" style="margin-left: 2em;">
-                        <input type="checkbox" id="userFormCanViewLogbook" name="can_view_logbook"> Logbuch
-                    </label>
-                </div>
-                <div class="modal-buttons" style="margin-top: 2em;">
-                    <button type="submit" class="button create">Speichern</button>
-                    <button type="button" class="button delete" onclick="hideUserModal()">Abbrechen</button>
-                </div>
-            </form>
+                </form>
+            </div>
         </div>
-    </div>
 
-    <!-- Modal für Löschen -->
-    <div id="deleteUserModal" class="modal-overlay" style="display:none;">
-        <div class="modal-content">
-            <p><strong id="deleteUserName"></strong></p>
-            <p id="deleteUserText">Soll dieser Benutzer wirklich gelöscht werden?</p>
-            <form id="deleteUserForm" method="post" action="${pageContext.request.contextPath}/users/delete">
-                <input type="hidden" name="id" id="deleteUserId" />
-                <div class="modal-buttons">
-                    <button type="submit" class="button delete">Ja, löschen</button>
-                    <button type="button" class="button" onclick="hideDeleteModal()">Abbrechen</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-
-
-    <script>
+<script>
         // --- Live-Suche ---
         function filterTable() {
             const input = document.getElementById('userSearch');
@@ -326,6 +354,39 @@
             currentSortColumn = columnIndex;
             currentSortDir = sortDir;
         }
+        // --- Spaltenauswahl-Modal ---
+        function showColModal() {
+            document.getElementById('colModal').style.display = 'flex';
+        }
+        function hideColModal() {
+            document.getElementById('colModal').style.display = 'none';
+        }
+        // --- Spaltenauswahl anwenden ---
+        function applyColPrefs() {
+            const colChecks = document.querySelectorAll('.col-toggle');
+            const table = document.getElementById('userTable');
+            if (!table) return;
+            const ths = table.querySelectorAll('thead th');
+            colChecks.forEach((cb, idx) => {
+                if (ths[idx]) ths[idx].style.display = cb.checked ? '' : 'none';
+            });
+            const trs = table.querySelectorAll('tbody tr');
+            trs.forEach(tr => {
+                const tds = tr.querySelectorAll('td');
+                colChecks.forEach((cb, idx) => {
+                    if (tds[idx]) tds[idx].style.display = cb.checked ? '' : 'none';
+                });
+            });
+        }
+        // Eventlistener für Spaltenauswahl
+        document.addEventListener('DOMContentLoaded', function() {
+            document.querySelectorAll('.col-toggle').forEach(cb => {
+                cb.addEventListener('change', function() {
+                    applyColPrefs();
+                });
+            });
+            applyColPrefs();
+        });
         // --- Felder ein-/ausblenden je nach "ist Benutzer" ---
         // (Logik für is_user entfernt)
         function toggleUserFields() {
@@ -343,5 +404,3 @@
         // Auch beim Öffnen Modal setzen:
         // (Diese zweite Definition wird entfernt, die Logik ist bereits in der ersten showUserForm enthalten)
     </script>
-</body>
-</html>
