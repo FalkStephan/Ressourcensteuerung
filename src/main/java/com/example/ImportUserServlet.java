@@ -8,6 +8,7 @@ import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.sql.SQLException;
 
 import jakarta.servlet.ServletException;
@@ -27,6 +28,8 @@ public class ImportUserServlet extends HttpServlet {
         resp.setContentType("text/html;charset=UTF-8");
         java.io.PrintWriter out = resp.getWriter();
         StringBuilder html = new StringBuilder();
+        boolean updateExisting = req.getParameter("update_existing") != null;
+        boolean importNew = req.getParameter("import_new") != null;
         try {
             jakarta.servlet.http.Part filePart = req.getPart("importFile");
             if (filePart == null) {
@@ -37,9 +40,9 @@ public class ImportUserServlet extends HttpServlet {
                 List<String> errors = new ArrayList<>();
                 int imported = 0;
                 if (fileName.endsWith(".xlsx") || fileName.endsWith(".xls")) {
-                    imported = importFromExcel(fileContent, errors);
+                    imported = importFromExcel(fileContent, errors, updateExisting, importNew);
                 } else if (fileName.endsWith(".csv") || fileName.endsWith(".txt")) {
-                    imported = importFromCsv(fileContent, errors);
+                    imported = importFromCsv(fileContent, errors, updateExisting, importNew);
                 } else {
                     errors.add("Dateiformat nicht unterstützt.");
                 }
@@ -58,7 +61,7 @@ public class ImportUserServlet extends HttpServlet {
         out.print(html.toString());
     }
 
-    private int importFromExcel(InputStream input, List<String> errors) throws IOException, SQLException {
+    private int importFromExcel(InputStream input, List<String> errors, boolean updateExisting, boolean importNew) throws IOException, SQLException {
         int count = 0;
         Workbook workbook = new XSSFWorkbook(input);
         Sheet sheet = workbook.getSheetAt(0);
@@ -76,7 +79,16 @@ public class ImportUserServlet extends HttpServlet {
             boolean canViewLogbook = "1".equals(getCellString(row, 9)); // Logbuch
             String password = username; // Passwort = Mitarbeiterkennung
             try {
-                DatabaseService.addUser(username, password, name, vorname, stelle, team, canManageUsers, canViewLogbook, abteilung, "import", active, isUser);
+                Map<String, Object> existing = DatabaseService.getUserByUsername(username);
+                if (updateExisting && existing != null) {
+                    int id = (int) existing.get("id");
+                    DatabaseService.updateUser(id, username, password, name, vorname, stelle, team, canManageUsers, canViewLogbook, abteilung, "import", active, isUser);
+                } else if (existing == null && importNew) {
+                    DatabaseService.addUser(username, password, name, vorname, stelle, team, canManageUsers, canViewLogbook, abteilung, "import", active, isUser);
+                } else if (existing != null && !updateExisting) {
+                    errors.add("Benutzer '" + username + "' existiert bereits und 'aktualisieren' ist nicht gesetzt.");
+                    continue;
+                }
                 count++;
             } catch (Exception e) {
                 errors.add("Fehler bei Benutzer '" + username + "': " + e.getMessage());
@@ -86,7 +98,7 @@ public class ImportUserServlet extends HttpServlet {
         return count;
     }
 
-    private int importFromCsv(InputStream input, List<String> errors) throws IOException, SQLException {
+    private int importFromCsv(InputStream input, List<String> errors, boolean updateExisting, boolean importNew) throws IOException, SQLException {
         int count = 0;
         BufferedReader reader = new BufferedReader(new InputStreamReader(input, "UTF-8"));
         String line;
@@ -107,7 +119,16 @@ public class ImportUserServlet extends HttpServlet {
             boolean canViewLogbook = parts.length > 9 && "1".equals(parts[9]); // Logbuch
             String password = username; // Passwort = Mitarbeiterkennung
             try {
-                DatabaseService.addUser(username, password, name, vorname, stelle, team, canManageUsers, canViewLogbook, abteilung, "import", active, isUser);
+                Map<String, Object> existing = DatabaseService.getUserByUsername(username);
+                if (updateExisting && existing != null) {
+                    int id = (int) existing.get("id");
+                    DatabaseService.updateUser(id, username, password, name, vorname, stelle, team, canManageUsers, canViewLogbook, abteilung, "import", active, isUser);
+                } else if (existing == null && importNew) {
+                    DatabaseService.addUser(username, password, name, vorname, stelle, team, canManageUsers, canViewLogbook, abteilung, "import", active, isUser);
+                } else if (existing != null && !updateExisting) {
+                    errors.add("Benutzer '" + username + "' existiert bereits und 'aktualisieren' ist nicht gesetzt.");
+                    continue;
+                }
                 count++;
             } catch (Exception e) {
                 errors.add("Fehler bei Benutzer '" + username + "': " + e.getMessage());
