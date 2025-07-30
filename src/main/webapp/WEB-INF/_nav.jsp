@@ -5,7 +5,7 @@
     <ul>
         <li><a href="${pageContext.request.contextPath}/index.jsp">Start</a></li>
         
-        <li><a href="${pageContext.request.contextPath}/mitarbeiter">Mitarbeiter</a></li>
+        <!-- <li><a href="${pageContext.request.contextPath}/mitarbeiter">Mitarbeiter</a></li> -->
 
         <c:if test="${sessionScope.user.can_manage_users}">
             <li><a href="${pageContext.request.contextPath}/users/">Benutzer</a></li>

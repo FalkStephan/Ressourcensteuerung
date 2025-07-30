@@ -32,6 +32,8 @@ public class ImportUserServlet extends HttpServlet {
         boolean importNew = req.getParameter("import_new") != null;
         try {
             jakarta.servlet.http.Part filePart = req.getPart("importFile");
+            boolean deactivateMissing = req.getParameter("deactivate_missing") != null;
+            List<String> importedUsernames = new ArrayList<>();
             if (filePart == null) {
                 html.append("<div class='import-feedback-error'>Keine Datei hochgeladen.</div>");
             } else {
@@ -40,11 +42,15 @@ public class ImportUserServlet extends HttpServlet {
                 List<String> errors = new ArrayList<>();
                 int imported = 0;
                 if (fileName.endsWith(".xlsx") || fileName.endsWith(".xls")) {
-                    imported = importFromExcel(fileContent, errors, updateExisting, importNew);
+                    imported = importFromExcel(fileContent, errors, updateExisting, importNew, importedUsernames);
                 } else if (fileName.endsWith(".csv") || fileName.endsWith(".txt")) {
-                    imported = importFromCsv(fileContent, errors, updateExisting, importNew);
+                    imported = importFromCsv(fileContent, errors, updateExisting, importNew, importedUsernames);
                 } else {
                     errors.add("Dateiformat nicht unterstützt.");
+                }
+                if (deactivateMissing && !importedUsernames.isEmpty()) {
+                    int deactivated = DatabaseService.deactivateUsersNotIn(importedUsernames);
+                    html.append("<div class='import-feedback-info'>" + deactivated + " Benutzer wurden deaktiviert, da sie nicht in der Importdatei enthalten waren.</div>");
                 }
                 html.append("<div class='import-feedback-success'><h3>Import abgeschlossen</h3>");
                 html.append("<p>Importierte Benutzer: " + imported + "</p>");
@@ -61,7 +67,7 @@ public class ImportUserServlet extends HttpServlet {
         out.print(html.toString());
     }
 
-    private int importFromExcel(InputStream input, List<String> errors, boolean updateExisting, boolean importNew) throws IOException, SQLException {
+    private int importFromExcel(InputStream input, List<String> errors, boolean updateExisting, boolean importNew, List<String> importedUsernames) throws IOException, SQLException {
         int count = 0;
         Workbook workbook = new XSSFWorkbook(input);
         Sheet sheet = workbook.getSheetAt(0);
@@ -78,6 +84,7 @@ public class ImportUserServlet extends HttpServlet {
             boolean canManageUsers = "1".equals(getCellString(row, 8)); // Benutzerverwaltung
             boolean canViewLogbook = "1".equals(getCellString(row, 9)); // Logbuch
             String password = username; // Passwort = Mitarbeiterkennung
+            if (!username.isEmpty()) importedUsernames.add(username);
             try {
                 Map<String, Object> existing = DatabaseService.getUserByUsername(username);
                 if (updateExisting && existing != null) {
@@ -98,7 +105,7 @@ public class ImportUserServlet extends HttpServlet {
         return count;
     }
 
-    private int importFromCsv(InputStream input, List<String> errors, boolean updateExisting, boolean importNew) throws IOException, SQLException {
+    private int importFromCsv(InputStream input, List<String> errors, boolean updateExisting, boolean importNew, List<String> importedUsernames) throws IOException, SQLException {
         int count = 0;
         BufferedReader reader = new BufferedReader(new InputStreamReader(input, "UTF-8"));
         String line;
@@ -118,6 +125,7 @@ public class ImportUserServlet extends HttpServlet {
             boolean canManageUsers = parts.length > 8 && "1".equals(parts[8]); // Benutzerverwaltung
             boolean canViewLogbook = parts.length > 9 && "1".equals(parts[9]); // Logbuch
             String password = username; // Passwort = Mitarbeiterkennung
+            if (!username.isEmpty()) importedUsernames.add(username);
             try {
                 Map<String, Object> existing = DatabaseService.getUserByUsername(username);
                 if (updateExisting && existing != null) {

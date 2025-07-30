@@ -37,248 +37,306 @@
             <div class="container">
                 <h2>Benutzerverwaltung</h2>
 
-                <button type="button" class="button create" onclick="showUserForm('add')">Neuen Benutzer anlegen</button>
-<button type="button" class="button create" style="margin-left:1em;" onclick="showImportModal()">Benutzer importieren</button>
-        <!-- Modal für Benutzer-Import -->
+                <button type="button" class="button create" 
+onclick="showUserForm('add')">Neuen Benutzer anlegen</button>
+                <button type="button" class="button create" style="margin-left:1em;"
+onclick="showImportModal()">Benutzer importieren</button>
+                <a href="${pageContext.request.contextPath}/users/export" class="button" style="background:#007bff; color:#fff; margin-left:1em;">Benutzer exportieren</a>
         <div id="importUserModal" class="modal-overlay" style="display:none;">
             <div class="modal-content" style="max-width:400px;">
                 <h3>Benutzer importieren</h3>
                 <form id="importUserForm" method="post" action="${pageContext.request.contextPath}/users/import" enctype="multipart/form-data">
-                    <input type="file" name="importFile" id="importFile" accept=".csv,.xlsx,.xls,.txt" required style="margin-bottom:1em;" />
+   
+                 <input type="file" name="importFile" id="importFile" accept=".csv,.xlsx,.xls,.txt" required style="margin-bottom:1em;"
+/>
                     <div style="margin-bottom:1em;">
                         <label style="display:block; margin-bottom:0.5em;">
                             <input type="checkbox" name="import_new" id="importNew" checked>
-                            neue Benutzer importieren
+                     
+        neue Benutzer importieren
                         </label>
                         <label style="display:block; margin-bottom:0.5em;">
                             <input type="checkbox" name="update_existing" id="updateExisting" checked>
-                            bestehende Benutzer aktualisieren
+         
+                    bestehende Benutzer aktualisieren
                         </label>
                         <label style="display:block;">
-                            <input type="checkbox" name="deactivate_missing" id="deactivateMissing">
+                            <input type="checkbox" 
+name="deactivate_missing" id="deactivateMissing">
                             nicht enthaltene Benutzer deaktivieren
                         </label>
                     </div>
                     <div class="modal-buttons" style="display:flex; gap:0.5em;">
-                        <a href="${pageContext.request.contextPath}/resources/Muster.xlsx" download class="button" style="background:#007bff; color:#fff;">Musterdatei herunterladen</a>
+ 
+                        <a href="${pageContext.request.contextPath}/resources/Muster.xlsx" download class="button" style="background:#007bff;
+ color:#fff;">Musterdatei herunterladen</a>
                         <button type="submit" class="button create">Datei importieren</button>
                         <button type="button" class="button delete" onclick="hideImportModal()">Abbrechen</button>
                     </div>
                 </form>
-            </div>
+       
+     </div>
         </div>
 
-        <!-- Modal für Import-Feedback -->
         <div id="importFeedbackModal" class="modal-overlay" style="display:none;">
             <div class="modal-content" style="max-width:400px;">
                 <h3>Import-Ergebnis</h3>
                 <div id="importFeedbackModalBody"></div>
-                <div class="modal-buttons" style="margin-top:1em;">
+                <div 
+ class="modal-buttons" style="margin-top:1em;">
                     <button type="button" class="button" onclick="hideImportFeedbackModal()">Schließen</button>
                 </div>
             </div>
         </div>
 
                 <div class="search-container">
-                    <input type="text" id="userSearch" onkeyup="filterTable()" placeholder="Benutzer suchen...">
+                    <input type="text" id="userSearch" 
+ onkeyup="filterTable()" placeholder="Benutzer suchen...">
                     <select id="statusFilter" onchange="filterTable()" style="margin-left:1em;">
                         <option value="all">Alle</option>
-                        <option value="active">Nur aktive</option>
-                        <option value="inactive">Nur inaktive</option>
+                        <option value="active" selected>Nur aktive</option>
+                        
+ <option value="inactive">Nur inaktive</option>
                     </select>
                     <select id="typeFilter" onchange="filterTable()" style="margin-left:1em;">
                         <option value="all">Alle</option>
                         <option value="user">Nur Benutzer</option>
-                    </select>
+    
+                 </select>
                     <button type="button" class="button small" style="margin-bottom:0.5em;" onclick="showColModal()">Spalten wählen</button>
-                    <!-- Modal für Spaltenauswahl (außerhalb von .search-container platzieren) -->
                     <div id="colModal" class="modal-overlay" style="display:none;">
-                        <div class="modal-content" style="max-width:420px;">
+       
+                  <div class="modal-content" style="max-width:420px;">
                             <h3>Spalten ein-/ausblenden</h3>
                             <div id="columnSelector" style="margin-bottom: 1em;">
-                                <label><input type="checkbox" class="col-toggle" data-col="0" checked> ID</label>
+                     
+             <label><input type="checkbox" class="col-toggle" data-col="0" checked> ID</label>
                                 <label><input type="checkbox" class="col-toggle" data-col="1" checked> Mitarbeiterkennung</label>
                                 <label><input type="checkbox" class="col-toggle" data-col="2" checked> Name</label>
-                                <label><input type="checkbox" class="col-toggle" data-col="3" checked> Vorname</label>
+          
+                       <label><input type="checkbox" class="col-toggle" data-col="3" checked> Vorname</label>
                                 <label><input type="checkbox" class="col-toggle" data-col="4" checked> Stelle</label>
-                                <label><input type="checkbox" class="col-toggle" data-col="5" checked> Team</label>
+                                <label><input type="checkbox" class="col-toggle" data-col="5" 
+ checked> Team</label>
                                 <label><input type="checkbox" class="col-toggle" data-col="6" checked> Benutzerverwaltung</label>
                                 <label><input type="checkbox" class="col-toggle" data-col="7" checked> Logbuch</label>
-                                <label><input type="checkbox" class="col-toggle" data-col="8" checked> Abteilung</label>
+                         
+        <label><input type="checkbox" class="col-toggle" data-col="8" checked> Abteilung</label>
                             </div>
                             <div class="modal-buttons">
-                                <button type="button" class="button create" onclick="hideColModal()">OK</button>
+                               
+  <button type="button" class="button create" onclick="hideColModal()">OK</button>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <table id="userTable">
+       
+         <table id="userTable">
                     <thead>
                         <tr>
                             <th class="sortable-header" onclick="sortTable(0, 'number')">ID</th>
-                            <th class="sortable-header" onclick="sortTable(1, 'string')">Mitarbeiterkennung</th>
+               
+             <th class="sortable-header" onclick="sortTable(1, 'string')">Mitarbeiterkennung</th>
                             <th class="sortable-header" onclick="sortTable(2, 'string')">Name</th>
                             <th class="sortable-header" onclick="sortTable(3, 'string')">Vorname</th>
-                            <th class="sortable-header" onclick="sortTable(4, 'string')">Stelle</th>
+                      
+       <th class="sortable-header" onclick="sortTable(4, 'string')">Stelle</th>
                             <th class="sortable-header" onclick="sortTable(5, 'string')">Team</th>
                             <th class="sortable-header" onclick="sortTable(6, 'string')">Benutzerverwaltung</th>
-                            <th class="sortable-header" onclick="sortTable(7, 'string')">Logbuch</th>
+                            <th 
+ class="sortable-header" onclick="sortTable(7, 'string')">Logbuch</th>
                             <th class="sortable-header" onclick="sortTable(8, 'string')">Abteilung</th>
                             <th class="sortable-header" onclick="sortTable(9, 'string')">Status</th>
                             <th>Aktionen</th>
-                        </tr>
+        
+                 </tr>
                     </thead>
                     <tbody>
                         <c:forEach var="u" items="${users}">
-                            <tr>
+                  
+           <tr>
                                 <td>${u.id}</td>
                                 <td>
-                                    <c:out value="${u.username}" />
+                          
+           <c:out value="${u.username}" />
                                 </td>
                                 <td><c:out value="${u.name}" /></td>
-                                <td><c:out value="${u.vorname}" /></td>
+                      
+           <td><c:out value="${u.vorname}" /></td>
                                 <td><c:out value="${u.stelle}" /></td>
                                 <td><c:out value="${u.team}" /></td>
-                                <td>${u.can_manage_users ? 'Ja' : 'Nein'}</td>
-                                <td>${u.can_view_logbook ? 'Ja' : 'Nein'}</td>
+                    
+             <td>${u.can_manage_users ?
+ 'Ja' : 'Nein'}</td>
+                                <td>${u.can_view_logbook ?
+ 'Ja' : 'Nein'}</td>
                                 <td><c:out value="${u.abteilung}" /></td>
                                 <td style="text-align: center; vertical-align: middle;">
-                            <c:if test="${u.is_user}">
+                            
+ <c:if test="${u.is_user}">
                                 <span title="Benutzerkonto" style="margin-right:4px; color:#007bff; vertical-align:middle;">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;"><path d="M20 21v-2a4 4 0 0 0-3-3.87"/><path d="M4 21v-2a4 4 0 0 1 3-3.87"/><circle cx="12" cy="7" r="4"/></svg>
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;"><path d="M20 21v-2a4 4 0 0 0-3-3.87"/><path d="M4 21v-2a4 4 0 0 1 3-3.87"/><circle 
+ cx="12" cy="7" r="4"/></svg>
                                 </span>
                             </c:if>
                             <span class="user-status-pill ${u.active ? 'user-status-aktiv' : 'user-status-inaktiv'}">
-                                ${u.active ? 'Aktiv' : 'Inaktiv'}
+    
+                             ${u.active ?
+ 'Aktiv' : 'Inaktiv'}
                             </span>
                                 </td>
                                 <td>
-                                    <button type="button" class="button small" onclick="showUserForm('edit', this)" 
+      
+                               <button type="button" class="button small" onclick="showUserForm('edit', this)" 
                                         data-id="${u.id}"
-                                        data-username="${u.username}"
+                        
+                 data-username="${u.username}"
                                         data-name="${u.name}"
                                         data-vorname="${u.vorname}"
-                                        data-stelle="${u.stelle}"
+    
+                                     data-stelle="${u.stelle}"
                                         data-team="${u.team}"
-                                        data-can_manage_users="${u.can_manage_users}"
+                        
+                 data-can_manage_users="${u.can_manage_users}"
                                         data-can_view_logbook="${u.can_view_logbook}"
                                         data-abteilung="${u.abteilung}"
-                                        data-active="${u.active}"
+    
+                                     data-active="${u.active}"
                                         data-is_user="${u.is_user}">
-                                        Bearbeiten
+                        
+                 Bearbeiten
                                     </button>
                                     <c:if test="${sessionScope.user.username != u.username}">
-                                        <form action="${pageContext.request.contextPath}/users/delete" method="post" style="display:inline;" class="delete-form">
+         
+                                <form action="${pageContext.request.contextPath}/users/delete" method="post" style="display:inline;"
+ class="delete-form">
                                             <input type="hidden" name="id" value="${u.id}">
                                             <button type="button" class="button small delete" onclick="showDeleteModal(this)"
-                                                data-id="${u.id}" 
+    
+                                             data-id="${u.id}" 
                                                 data-username="${fn:escapeXml(u.username)}">
-                                                Löschen
+       
+                                          Löschen
                                             </button>
-                                        </form>
+               
+                         </form>
                                     </c:if>
                                 </td>
-                            </tr>
+       
+                     </tr>
                         </c:forEach>
                         <c:if test="${empty users}">
                             <tr>
+ 
                                 <td colspan="6" style="text-align: center;">Keine Benutzer gefunden.</td>
                             </tr>
                         </c:if>
-                    </tbody>
+            
+         </tbody>
                 </table>
             </div>
         </main>
 
-        <!-- Modal für Benutzer anlegen/bearbeiten -->
         <div id="userModal" class="modal-overlay" style="display:none;">
             <div class="modal-content">
                 <form id="userForm" method="post">
-                    <input type="hidden" name="id" id="userFormId" />
+ 
+                   <input type="hidden" name="id" id="userFormId" />
                     <input type="hidden" name="action" id="userFormAction" value="add" />
-                    <!-- 1. Zeile: Mitarbeiterkennung -->
                     <div>
-                        <label for="userFormUsername">Mitarbeiterkennung<span class="required-star">*</span>:</label>
+        
+                 <label for="userFormUsername">Mitarbeiterkennung<span class="required-star">*</span>:</label>
                         <input type="text" id="userFormUsername" name="username" required />
                     </div>
-                    <!-- 2. Zeile: Vorname, Name -->
-                    <div style="display: flex; gap: 1em;">
+                    <div style="display: flex;
+ gap: 1em;">
                         <div style="flex:1;">
                             <label for="userFormVorname">Vorname<span class="required-star">*</span>:</label>
                             <input type="text" id="userFormVorname" name="vorname" required />
-                        </div>
+           
+             </div>
                         <div style="flex:1;">
                             <label for="userFormName">Name<span class="required-star">*</span>:</label>
-                            <input type="text" id="userFormName" name="name" required />
+                            <input type="text" id="userFormName" name="name" 
+ required />
                         </div>
                     </div>
-                    <!-- 3. Zeile: Abteilung, Team -->
-                    <div style="display: flex; gap: 1em;">
+                    <div style="display: flex;
+ gap: 1em;">
                         <div style="flex:1;">
                             <label for="userFormAbteilung">Abteilung:</label>
                             <input type="text" id="userFormAbteilung" name="abteilung" />
-                        </div>
+             
+            </div>
                         <div style="flex:1;">
                             <label for="userFormTeam">Team:</label>
                             <input type="text" id="userFormTeam" name="team" />
-                        </div>
+   
+                     </div>
                     </div>
-                    <!-- 4. Zeile: Stelle, Aktiv -->
-                    <div style="display: flex; gap: 1em; align-items: center;">
+                    <div style="display: flex;
+ gap: 1em; align-items: center;">
                         <div style="flex:1;">
                             <label for="userFormStelle">Stelle:</label>
                             <input type="text" id="userFormStelle" name="stelle" />
-                        </div>
-                        <div style="flex:1; margin-top: 2em;">
+           
+             </div>
+                        <div style="flex:1;
+ margin-top: 2em;">
                             <label for="userFormActive">
                                 <input type="checkbox" id="userFormActive" name="active"> Aktiv
                             </label>
-                        </div>
+      
+                   </div>
                     </div>
-                    <!-- 5. Zeile: ist Benutzer, Passwort (nur wenn ist Benutzer aktiv) -->
-                    <div style="display: flex; gap: 1em; align-items: center;">
+                    <div style="display: flex;
+ gap: 1em; align-items: center;">
                         <div style="flex:1;">
-                            <!-- Hidden field, damit beim Deaktivieren der Checkbox der Wert immer gesendet wird 
-                            <input type="hidden" name="is_user" value="off" /> 
-                            -->
                             <label for="userFormIsUser">
                                 <input type="checkbox" id="userFormIsUser" name="is_user" value="on" checked onchange="toggleUserFields()"> ist Benutzer
+ 
                             </label>
                         </div>
                         <div style="flex:1;" id="passwordFieldWrapper">
-                            <label for="userFormPassword">Passwort<span class="required-star">*</span>:</label>
+                       
+     <label for="userFormPassword">Passwort<span class="required-star">*</span>:</label>
                             <input type="password" id="userFormPassword" name="password" required />
                         </div>
                     </div>
-                    <!-- 6. Zeile: Rechte (nur wenn ist Benutzer aktiv) -->
-                    <div style="margin-top: 1em;" id="rechteFieldWrapper">
-                        <label style="display: block; margin-bottom: 10px;">Rechte:</label>
+                
+     <div style="margin-top: 1em;" id="rechteFieldWrapper">
+                        <label style="display: block;
+ margin-bottom: 10px;">Rechte:</label>
                         <label for="userFormCanManageUsers">
                             <input type="checkbox" id="userFormCanManageUsers" name="can_manage_users"> Benutzerverwaltung
                         </label>
-                        <label for="userFormCanViewLogbook" style="margin-left: 2em;">
+                  
+       <label for="userFormCanViewLogbook" style="margin-left: 2em;">
                             <input type="checkbox" id="userFormCanViewLogbook" name="can_view_logbook"> Logbuch
                         </label>
                     </div>
-                    <div class="modal-buttons" style="margin-top: 2em;">
+               
+     <div class="modal-buttons" style="margin-top: 2em;">
                         <button type="submit" class="button create">Speichern</button>
                         <button type="button" class="button delete" onclick="hideUserModal()">Abbrechen</button>
                     </div>
                 </form>
+ 
             </div>
         </div>
 
-        <!-- Modal für Löschen -->
         <div id="deleteUserModal" class="modal-overlay" style="display:none;">
             <div class="modal-content">
                 <p><strong id="deleteUserName"></strong></p>
                 <p id="deleteUserText">Soll dieser Benutzer wirklich gelöscht werden?</p>
-                <form id="deleteUserForm" method="post" action="${pageContext.request.contextPath}/users/delete">
+      
+           <form id="deleteUserForm" method="post" action="${pageContext.request.contextPath}/users/delete">
                     <input type="hidden" name="id" id="deleteUserId" />
                     <div class="modal-buttons">
                         <button type="submit" class="button delete">Ja, löschen</button>
-                        <button type="button" class="button" onclick="hideDeleteModal()">Abbrechen</button>
+              
+           <button type="button" class="button" onclick="hideDeleteModal()">Abbrechen</button>
                     </div>
                 </form>
             </div>
@@ -287,15 +345,42 @@
 <script>
         // --- Live-Suche ---
         function filterTable() {
-            const input = document.getElementById('userSearch');
-            const filter = input.value.toLowerCase();
+            const searchInput = document.getElementById('userSearch');
+            const statusFilter = document.getElementById('statusFilter');
+            const typeFilter = document.getElementById('typeFilter');
+
+            const filter = searchInput.value.toLowerCase();
+            const status = statusFilter.value;
+            const type = typeFilter.value;
+
             const table = document.getElementById('userTable');
             const tr = table.getElementsByTagName('tr');
-            for (let i = 1; i < tr.length; i++) {
-                const tdUsername = tr[i].getElementsByTagName('td')[1];
-                if (tdUsername) {
-                    const txtValue = tdUsername.textContent || tdUsername.innerText;
-                    if (txtValue.toLowerCase().indexOf(filter) > -1) {
+
+            for (let i = 1; i < tr.length; i++) { // Start bei 1, um den Header zu überspringen
+                const tds = tr[i].getElementsByTagName('td');
+                const usernameTd = tds[1];
+                const statusTd = tds[9];
+                
+                if (usernameTd && statusTd) {
+                    const username = usernameTd.textContent || usernameTd.innerText;
+                    
+                    // Text-Filter
+                    const textMatch = username.toLowerCase().indexOf(filter) > -1;
+
+                    // Status-Filter
+                    let statusMatch = true;
+                    if (status !== 'all') {
+                        const isActive = statusTd.querySelector('.user-status-aktiv') !== null;
+                        statusMatch = (status === 'active' && isActive) || (status === 'inactive' && !isActive);
+                    }
+                    
+                    // Typ-Filter
+                    let typeMatch = true;
+                    if (type === 'user') {
+                        typeMatch = statusTd.querySelector('svg') !== null;
+                    }
+                    
+                    if (textMatch && statusMatch && typeMatch) {
                         tr[i].style.display = "";
                     } else {
                         tr[i].style.display = "none";
@@ -303,14 +388,24 @@
                 }
             }
         }
+        
+        // Initialer Aufruf, um die Standardeinstellung "Nur aktive" anzuwenden
+        document.addEventListener('DOMContentLoaded', function() {
+            filterTable();
+        });
 
-        // --- Benutzer-Modal ---
+
+// --- Benutzer-Modal ---
         function showUserForm(mode, btn) {
             const modal = document.getElementById('userModal');
             const form = document.getElementById('userForm');
+            
+            // GEÄNDERT: Das Formular wird immer an den UserServlet gesendet
+            form.action = "${pageContext.request.contextPath}/users";
+            
             document.getElementById('userFormPassword').required = (mode === 'add');
+
             if (mode === 'add') {
-                form.action = "${pageContext.request.contextPath}/users/add";
                 document.getElementById('userFormAction').value = 'add';
                 document.getElementById('userFormId').value = '';
                 document.getElementById('userFormUsername').value = '';
@@ -326,7 +421,6 @@
                 document.getElementById('userFormIsUser').checked = true;
                 toggleUserFields();
             } else if (mode === 'edit' && btn) {
-                form.action = "${pageContext.request.contextPath}/users/edit";
                 document.getElementById('userFormAction').value = 'edit';
                 document.getElementById('userFormId').value = btn.dataset.id;
                 document.getElementById('userFormUsername').value = btn.dataset.username;
@@ -347,77 +441,81 @@
         }
         function hideUserModal() {
             document.getElementById('userModal').style.display = 'none';
-        }
+ }
 
         // --- Löschen-Modal ---
         function showDeleteModal(btn) {
             const id = btn.getAttribute('data-id');
-            const username = btn.getAttribute('data-username');
+ const username = btn.getAttribute('data-username');
             document.getElementById('deleteUserId').value = id;
             document.getElementById('deleteUserName').textContent = username;
             document.getElementById('deleteUserText').innerHTML = 'Soll dieser Benutzer wirklich gelöscht werden?';
-            document.getElementById('deleteUserModal').style.display = 'flex';
+ document.getElementById('deleteUserModal').style.display = 'flex';
         }
         function hideDeleteModal() {
             document.getElementById('deleteUserModal').style.display = 'none';
-        }
+ }
 
         // --- Tabellen-Sortierung ---
         let currentSortColumn = -1;
-        let currentSortDir = 'asc';
+ let currentSortDir = 'asc';
         function sortTable(columnIndex, type) {
             const table = document.getElementById('userTable');
-            const tbody = table.querySelector('tbody');
+ const tbody = table.querySelector('tbody');
             const rows = Array.from(tbody.querySelectorAll('tr'));
             const headers = table.querySelectorAll('.sortable-header');
-            const sortDir = (columnIndex === currentSortColumn && currentSortDir === 'asc') ? 'desc' : 'asc';
-            rows.sort((a, b) => {
+ const sortDir = (columnIndex === currentSortColumn && currentSortDir === 'asc') ? 'desc' : 'asc';
+ rows.sort((a, b) => {
                 const cellA = a.querySelectorAll('td')[columnIndex].innerText.toLowerCase();
                 const cellB = b.querySelectorAll('td')[columnIndex].innerText.toLowerCase();
                 let valA = cellA;
                 let valB = cellB;
                 if (type === 'number') {
+ 
                     valA = parseInt(valA, 10) || 0;
                     valB = parseInt(valB, 10) || 0;
                 }
                 if (valA < valB) {
-                    return sortDir === 'asc' ? -1 : 1;
+               
+     return sortDir === 'asc' ? -1 : 1;
                 }
                 if (valA > valB) {
                     return sortDir === 'asc' ? 1 : -1;
                 }
-                return 0;
+         
+        return 0;
             });
-            headers.forEach(header => header.classList.remove('asc', 'desc'));
+ headers.forEach(header => header.classList.remove('asc', 'desc'));
             headers[columnIndex].classList.add(sortDir);
             tbody.innerHTML = '';
             rows.forEach(row => tbody.appendChild(row));
             currentSortColumn = columnIndex;
             currentSortDir = sortDir;
-        }
+ }
         // --- Spaltenauswahl-Modal ---
         function showColModal() {
             document.getElementById('colModal').style.display = 'flex';
-        }
+ }
         function hideColModal() {
             document.getElementById('colModal').style.display = 'none';
-        }
+ }
         // --- Spaltenauswahl anwenden ---
         function applyColPrefs() {
             const colChecks = document.querySelectorAll('.col-toggle');
-            const table = document.getElementById('userTable');
+ const table = document.getElementById('userTable');
             if (!table) return;
             const ths = table.querySelectorAll('thead th');
-            colChecks.forEach((cb, idx) => {
+ colChecks.forEach((cb, idx) => {
                 if (ths[idx]) ths[idx].style.display = cb.checked ? '' : 'none';
             });
-            const trs = table.querySelectorAll('tbody tr');
+ const trs = table.querySelectorAll('tbody tr');
             trs.forEach(tr => {
                 const tds = tr.querySelectorAll('td');
                 colChecks.forEach((cb, idx) => {
                     if (tds[idx]) tds[idx].style.display = cb.checked ? '' : 'none';
                 });
-            });
+           
+  });
         }
         // Eventlistener für Spaltenauswahl
         document.addEventListener('DOMContentLoaded', function() {
@@ -425,23 +523,24 @@
                 cb.addEventListener('change', function() {
                     applyColPrefs();
                 });
-            });
+         
+    });
             applyColPrefs();
         });
-        // --- Import-Modal ---
+ // --- Import-Modal ---
         function showImportModal() {
             document.getElementById('importUserModal').style.display = 'flex';
-        }
+ }
         function hideImportModal() {
             document.getElementById('importUserModal').style.display = 'none';
-        }
+ }
         // --- Import-Feedback-Modal ---
         function showImportFeedbackModal() {
             document.getElementById('importFeedbackModal').style.display = 'flex';
-        }
+ }
         function hideImportFeedbackModal() {
             document.getElementById('importFeedbackModal').style.display = 'none';
-        }
+ }
 
         // --- AJAX-Upload für Import und Feedback-Anzeige ---
         document.addEventListener('DOMContentLoaded', function() {
@@ -449,39 +548,44 @@
             if(importForm) {
                 importForm.addEventListener('submit', function(e) {
                     e.preventDefault();
-                    var formData = new FormData(importForm);
+         
+           var formData = new FormData(importForm);
                     fetch(importForm.action, {
                         method: 'POST',
                         body: formData
-                    })
+              
+       })
                     .then(response => response.text())
                     .then(html => {
                         document.getElementById('importFeedbackModalBody').innerHTML = html;
-                        hideImportModal();
+                        
+ hideImportModal();
                         showImportFeedbackModal();
                     })
                     .catch(err => {
                         document.getElementById('importFeedbackModalBody').innerHTML = '<div class="import-feedback-error">Fehler beim Upload</div>';
-                        hideImportModal();
+ hideImportModal();
                         showImportFeedbackModal();
                     });
                 });
             }
         });
-        // --- Felder ein-/ausblenden je nach "ist Benutzer" ---
+ // --- Felder ein-/ausblenden je nach "ist Benutzer" ---
         // (Logik für is_user entfernt)
         function toggleUserFields() {
             const isUser = document.getElementById('userFormIsUser').checked;
-            document.getElementById('passwordFieldWrapper').style.display = isUser ? '' : 'none';
+ document.getElementById('passwordFieldWrapper').style.display = isUser ? '' : 'none';
             document.getElementById('rechteFieldWrapper').style.display = isUser ? '' : 'none';
             document.getElementById('userFormPassword').required = isUser;
-        }
+ }
         // Initial beim Öffnen Modal setzen:
         document.addEventListener('DOMContentLoaded', function() {
             if (document.getElementById('userFormIsUser')) {
                 toggleUserFields();
             }
         });
-        // Auch beim Öffnen Modal setzen:
+ // Auch beim Öffnen Modal setzen:
         // (Diese zweite Definition wird entfernt, die Logik ist bereits in der ersten showUserForm enthalten)
     </script>
+</body>
+</html>

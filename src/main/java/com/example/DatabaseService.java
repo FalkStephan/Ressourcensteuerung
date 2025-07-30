@@ -1,5 +1,3 @@
-// ...existing code...
-
 package com.example;
 
 import java.sql.Connection;
@@ -486,6 +484,27 @@ public static void updateUser(int id, String username, String password, String n
             e.printStackTrace();
         }
         return list;
+    }
+
+    /**
+     * Setzt alle Benutzer, deren username nicht in der Liste enthalten ist und die aktuell aktiv sind, auf active = false.
+     * Gibt die Anzahl der deaktivierten Benutzer zurück.
+     */
+    public static int deactivateUsersNotIn(List<String> usernames) throws SQLException {
+        if (usernames == null || usernames.isEmpty()) return 0;
+        StringBuilder sql = new StringBuilder("UPDATE users SET active = false WHERE active = true AND username NOT IN (");
+        for (int i = 0; i < usernames.size(); i++) {
+            if (i > 0) sql.append(",");
+            sql.append("?");
+        }
+        sql.append(")");
+        try (Connection conn = getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql.toString())) {
+            for (int i = 0; i < usernames.size(); i++) {
+                pstmt.setString(i + 1, usernames.get(i));
+            }
+            return pstmt.executeUpdate();
+        }
     }
 
     // Hilfsmethode für Nullable-Vergleich

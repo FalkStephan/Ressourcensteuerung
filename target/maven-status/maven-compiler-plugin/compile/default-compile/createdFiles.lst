@@ -6,6 +6,7 @@ com/example/LogbookServlet.class
 com/example/ConfigService.class
 com/example/MitarbeiterServlet.class
 com/example/EditUserServlet.class
+com/example/ExportUserServlet.class
 com/example/AddUserServlet.class
 com/example/AuthFilter.class
 com/example/LogoutServlet.class
