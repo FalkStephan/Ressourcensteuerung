@@ -49,14 +49,16 @@ public class DatabaseService {
                         " can_view_logbook BOOLEAN NOT NULL DEFAULT FALSE," +
                         " can_manage_feiertage BOOLEAN NOT NULL DEFAULT FALSE," +
                         " see_all_users BOOLEAN NOT NULL DEFAULT FALSE," +
-                        " can_manage_calendar BOOLEAN NOT NULL DEFAULT FALSE);";
+                        " can_manage_calendar BOOLEAN NOT NULL DEFAULT FALSE," +
+                        " can_manage_capacities BOOLEAN NOT NULL DEFAULT FALSE);";
                 stmt.execute(userSql);
 
                 // Spalten für bestehende Installationen hinzufügen (sicherstellen, dass alle vorhanden sind)
                 try { stmt.execute("ALTER TABLE users ADD COLUMN can_manage_feiertage BOOLEAN NOT NULL DEFAULT FALSE"); } catch (Exception e) { /* Spalte existiert evtl. schon */ }
                 try { stmt.execute("ALTER TABLE users ADD COLUMN see_all_users BOOLEAN NOT NULL DEFAULT FALSE"); } catch (Exception e) { /* Spalte existiert evtl. schon */ }
                 try { stmt.execute("ALTER TABLE users ADD COLUMN can_manage_calendar BOOLEAN NOT NULL DEFAULT FALSE"); } catch (Exception e) { /* Spalte existiert evtl. schon */ }
-
+                try { stmt.execute("ALTER TABLE users ADD COLUMN can_manage_capacities BOOLEAN NOT NULL DEFAULT FALSE"); } catch (Exception e) { /* Spalte existiert evtl. schon */ }
+                
                 String mitarbeiterSql = "CREATE TABLE IF NOT EXISTS mitarbeiter (" +
                         " id INTEGER PRIMARY KEY AUTO_INCREMENT," +
                         " name VARCHAR(255) NOT NULL," +
@@ -79,6 +81,14 @@ public class DatabaseService {
                         " reason VARCHAR(255)," +
                         " FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE);";
                 stmt.execute(absenceSql);
+
+                String capacitiySql = "CREATE TABLE IF NOT EXISTS user_capacities (" +
+                        " id INTEGER PRIMARY KEY AUTO_INCREMENT," +
+                        " user_id INTEGER NOT NULL," +
+                        " start_date DATE NOT NULL," +
+                        " capacity_percent INTEGER NOT NULL," +
+                        " FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE);";
+                stmt.execute(capacitiySql);
 
                 createAdminIfNotExists(conn);
             }
@@ -130,6 +140,7 @@ public class DatabaseService {
         user.put("can_manage_feiertage", rs.getBoolean("can_manage_feiertage"));
         user.put("see_all_users", rs.getBoolean("see_all_users"));
         user.put("can_manage_calendar", rs.getBoolean("can_manage_calendar"));
+        user.put("can_manage_capacities", rs.getBoolean("can_manage_capacities"));
         return user;
     }
 
@@ -193,59 +204,64 @@ public static List<Map<String, Object>> getAllUsers(Map<String, Object> currentU
         return users;
     }
     
-    public static void addUser(String username, String password, String name, String vorname, String stelle, String team, String abteilung, boolean active, boolean isUser, boolean canManageUsers, boolean canViewLogbook, boolean canManageFeiertage, boolean seeAllUsers, boolean canManageCalendar, String actor) throws SQLException {
-    String sql = "INSERT INTO users(username, password_hash, name, vorname, stelle, team, abteilung, active, is_user, can_manage_users, can_view_logbook, can_manage_feiertage, see_all_users, can_manage_calendar) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+    public static void addUser(String username, String password, String name, String vorname, String stelle, String team, String abteilung, boolean active, boolean isUser, boolean canManageUsers, boolean canViewLogbook, boolean canManageFeiertage, boolean seeAllUsers, boolean canManageCalendar, boolean canManageCapacities, String actor) throws SQLException {
+    // KORREKTUR: Alle Spaltennamen sind jetzt in snake_case
+    String sql = "INSERT INTO users(username, password_hash, name, vorname, stelle, team, abteilung, active, is_user, can_manage_users, can_view_logbook, can_manage_feiertage, see_all_users, can_manage_calendar, can_manage_capacities) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
     try (Connection conn = getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
-            pstmt.setString(1, username);
-            pstmt.setString(2, BCrypt.hashpw(password, BCrypt.gensalt()));
-            pstmt.setString(3, name);
-            pstmt.setString(4, vorname);
-            pstmt.setString(5, stelle);
-            pstmt.setString(6, team);
-            pstmt.setString(7, abteilung);
-            pstmt.setBoolean(8, active);
-            pstmt.setBoolean(9, isUser);
-            pstmt.setBoolean(10, canManageUsers);
-            pstmt.setBoolean(11, canViewLogbook);
-            pstmt.setBoolean(12, canManageFeiertage);
-            pstmt.setBoolean(13, seeAllUsers);
-            pstmt.setBoolean(14, canManageCalendar);
-            pstmt.executeUpdate();
-            logAction(actor, "Erstellen", "Benutzer '" + username + "' angelegt.");
-        }
+        int i = 1;
+        pstmt.setString(i++, username);
+        pstmt.setString(i++, BCrypt.hashpw(password, BCrypt.gensalt()));
+        pstmt.setString(i++, name);
+        pstmt.setString(i++, vorname);
+        pstmt.setString(i++, stelle);
+        pstmt.setString(i++, team);
+        pstmt.setString(i++, abteilung);
+        pstmt.setBoolean(i++, active);
+        pstmt.setBoolean(i++, isUser);
+        pstmt.setBoolean(i++, canManageUsers);
+        pstmt.setBoolean(i++, canViewLogbook);
+        pstmt.setBoolean(i++, canManageFeiertage);
+        pstmt.setBoolean(i++, seeAllUsers);
+        pstmt.setBoolean(i++, canManageCalendar);
+        pstmt.setBoolean(i++, canManageCapacities);
+        pstmt.executeUpdate();
+        logAction(actor, "Erstellen", "Benutzer '" + username + "' angelegt.");
     }
+}
 
-    public static void updateUser(int id, String username, String password, String name, String vorname, String stelle, String team, String abteilung, boolean active, boolean isUser, boolean canManageUsers, boolean canViewLogbook, boolean canManageFeiertage, boolean seeAllUsers, boolean canManageCalendar, String actor) throws SQLException {
-        // KORREKTUR: Alle Spaltennamen in snake_case
-        StringBuilder sql = new StringBuilder("UPDATE users SET username=?, name=?, vorname=?, stelle=?, team=?, abteilung=?, active=?, is_user=?, can_manage_users=?, can_view_logbook=?, can_manage_feiertage=?, see_all_users=?, can_manage_calendar=?");
+// Ersetzen Sie die bestehende updateUser-Methode
+public static void updateUser(int id, String username, String password, String name, String vorname, String stelle, String team, String abteilung, boolean active, boolean isUser, boolean canManageUsers, boolean canViewLogbook, boolean canManageFeiertage, boolean seeAllUsers, boolean canManageCalendar, boolean canManageCapacities, String actor) throws SQLException {
+    // KORREKTUR: Alle Spaltennamen sind jetzt in snake_case
+    StringBuilder sql = new StringBuilder("UPDATE users SET username=?, name=?, vorname=?, stelle=?, team=?, abteilung=?, active=?, is_user=?, can_manage_users=?, can_view_logbook=?, can_manage_feiertage=?, see_all_users=?, can_manage_calendar=?, can_manage_capacities=?");
+    if (password != null && !password.isEmpty()) {
+        sql.append(", password_hash=?");
+    }
+    sql.append(" WHERE id=?");
+
+    try (Connection conn = getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql.toString())) {
+        int i = 1;
+        pstmt.setString(i++, username);
+        pstmt.setString(i++, name);
+        pstmt.setString(i++, vorname);
+        pstmt.setString(i++, stelle);
+        pstmt.setString(i++, team);
+        pstmt.setString(i++, abteilung);
+        pstmt.setBoolean(i++, active);
+        pstmt.setBoolean(i++, isUser);
+        pstmt.setBoolean(i++, canManageUsers);
+        pstmt.setBoolean(i++, canViewLogbook);
+        pstmt.setBoolean(i++, canManageFeiertage);
+        pstmt.setBoolean(i++, seeAllUsers);
+        pstmt.setBoolean(i++, canManageCalendar);
+        pstmt.setBoolean(i++, canManageCapacities);
         if (password != null && !password.isEmpty()) {
-            sql.append(", password_hash=?");
+            pstmt.setString(i++, BCrypt.hashpw(password, BCrypt.gensalt()));
         }
-        sql.append(" WHERE id=?");
-
-        try (Connection conn = getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql.toString())) {
-            int i = 1;
-            pstmt.setString(i++, username);
-            pstmt.setString(i++, name);
-            pstmt.setString(i++, vorname);
-            pstmt.setString(i++, stelle);
-            pstmt.setString(i++, team);
-            pstmt.setString(i++, abteilung);
-            pstmt.setBoolean(i++, active);
-            pstmt.setBoolean(i++, isUser);
-            pstmt.setBoolean(i++, canManageUsers);
-            pstmt.setBoolean(i++, canViewLogbook);
-            pstmt.setBoolean(i++, canManageFeiertage);
-            pstmt.setBoolean(i++, seeAllUsers);
-            pstmt.setBoolean(i++, canManageCalendar); // Der Übeltäter war wahrscheinlich hier
-            if (password != null && !password.isEmpty()) {
-                pstmt.setString(i++, BCrypt.hashpw(password, BCrypt.gensalt()));
-            }
-            pstmt.setInt(i, id);
-            pstmt.executeUpdate();
-            logAction(actor, "Bearbeiten", "Benutzer '" + username + "' (ID: " + id + ") aktualisiert.");
-        }
+        pstmt.setInt(i, id);
+        pstmt.executeUpdate();
+        logAction(actor, "Bearbeiten", "Benutzer '" + username + "' (ID: " + id + ") aktualisiert.");
     }
+}
 
     public static void deleteUser(int id, String actor) throws SQLException {
         String username = getUserById(id).get("username").toString();
@@ -623,6 +639,41 @@ public static List<Map<String, Object>> getAllUsers(Map<String, Object> currentU
         return absences;
     }
     
+    // ####################
+    // Kapazitäten
+    // ####################
+
+    public static void addCapacity(int userId, LocalDate startDate, int capacity, String actor) throws SQLException {
+        String sql = "INSERT INTO user_capacities(user_id, start_date, capacity_percent) VALUES (?, ?, ?)";
+        try (Connection conn = getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setInt(1, userId);
+            pstmt.setDate(2, Date.valueOf(startDate));
+            pstmt.setInt(3, capacity);
+            pstmt.executeUpdate();
+            Map<String, Object> user = getUserById(userId);
+            logAction(actor, "Erstellen", "Kapazität für " + user.get("username") + " ab " + startDate + " auf " + capacity + "% gesetzt.");
+        }
+    }
+
+    public static List<Map<String, Object>> getCapacitiesForUser(int userId) {
+        List<Map<String, Object>> capacities = new ArrayList<>();
+        String sql = "SELECT * FROM user_capacities WHERE user_id = ? ORDER BY start_date ASC";
+        try (Connection conn = getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setInt(1, userId);
+            ResultSet rs = pstmt.executeQuery();
+            while (rs.next()) {
+                Map<String, Object> capacity = new HashMap<>();
+                capacity.put("id", rs.getInt("id"));
+                capacity.put("start_date", rs.getObject("start_date", LocalDate.class));
+                capacity.put("capacity_percent", rs.getInt("capacity_percent"));
+                capacities.add(capacity);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return capacities;
+    }
+
 
     // Hilfsmethode für Nullable-Vergleich
     private static boolean equalsNullable(Object a, Object b) {

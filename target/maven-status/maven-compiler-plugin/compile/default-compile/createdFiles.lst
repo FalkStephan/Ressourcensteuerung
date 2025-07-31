@@ -9,6 +9,7 @@ com/example/LogbookServlet.class
 com/example/ConfigService.class
 com/example/MitarbeiterServlet.class
 com/example/ExportUserServlet.class
+com/example/CapacityServlet.class
 com/example/AuthFilter.class
 com/example/LogoutServlet.class
 com/example/DeleteUserServlet.class

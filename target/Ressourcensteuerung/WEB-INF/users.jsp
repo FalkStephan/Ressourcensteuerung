@@ -142,7 +142,8 @@
                                         data-can-view-logbook="${u.can_view_logbook}"
                                         data-can-manage-feiertage="${u.can_manage_feiertage}"
                                         data-see-all-users="${u.see_all_users}"
-                                        data-can-manage-calendar="${u.can_manage_calendar}">
+                                        data-can-manage-calendar="${u.can_manage_calendar}"
+                                        data-can-manage-calendar="${u.can_manage_capacities}">
                                         Bearbeiten
                                     </button>
                                     <c:if test="${sessionScope.user.username != u.username}">
@@ -227,6 +228,7 @@
                         <div><label><input type="checkbox" id="userFormCanManageFeiertage" name="can_manage_feiertage"> Feiertage verwalten</label></div>
                         <div><label><input type="checkbox" id="userFormSeeAllUsers" name="see_all_users"> Alle Benutzer sehen</label></div>
                         <div><label><input type="checkbox" id="userFormCanManageCalendar" name="can_manage_calendar"> Kalender verwalten</label></div>
+                        <div><label><input type="checkbox" id="userFormCanManageCapacities" name="can_manage_capacities"> Kapazitäten verwalten</label></div>
                     </div>
                
                     <div class="modal-buttons" style="margin-top: 2em;">
@@ -338,6 +340,7 @@
             document.getElementById('userFormCanManageFeiertage').checked = (btn.dataset.canManageFeiertage === 'true');
             document.getElementById('userFormSeeAllUsers').checked = (btn.dataset.seeAllUsers === 'true');
             document.getElementById('userFormCanManageCalendar').checked = (btn.dataset.canManageCalendar === 'true');
+            document.getElementById('userFormCanManageCapacities').checked = (btn.dataset.canManageCapacities === 'true');
         }
         toggleUserFields(); // Diese Funktion steuert jetzt die Passwort-Anforderung
             document.getElementById('userModal').style.display = 'flex';
