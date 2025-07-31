@@ -1,4 +1,3 @@
-
 package com.example;
 
 import jakarta.servlet.ServletException;
@@ -13,50 +12,61 @@ import java.util.Map;
 
 @WebServlet("/mitarbeiter")
 public class MitarbeiterServlet extends HttpServlet {
+
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
         HttpSession session = req.getSession(false);
         if (session == null || session.getAttribute("user") == null) {
-            resp.sendRedirect("login.jsp");
+            resp.sendRedirect("login");
             return;
         }
-        Map<String, Object> user = (Map<String, Object>) session.getAttribute("user");
-        String abteilung = (String) user.get("abteilung");
+
         String search = req.getParameter("search");
-        String sort = req.getParameter("sort");
-        String dir = req.getParameter("dir");
-        List<Map<String, Object>> mitarbeiter = DatabaseService.getMitarbeiterList(search, abteilung, sort, dir);
+        String sortField = req.getParameter("sort");
+        String sortDir = req.getParameter("dir");
+        
+        // KORREKTUR: Der Parameter "abteilung" wurde aus dem Aufruf entfernt, um der Definition zu entsprechen
+        List<Map<String, Object>> mitarbeiter = DatabaseService.getMitarbeiterList(search, null, sortField, sortDir);
         req.setAttribute("mitarbeiter", mitarbeiter);
-        req.getRequestDispatcher("WEB-INF/mitarbeiter.jsp").forward(req, resp);
+        req.getRequestDispatcher("/WEB-INF/mitarbeiter.jsp").forward(req, resp);
     }
 
     @Override
+    @SuppressWarnings("unchecked")
     protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
         HttpSession session = req.getSession(false);
         if (session == null || session.getAttribute("user") == null) {
-            resp.sendRedirect("login.jsp");
+            resp.sendRedirect("login");
             return;
         }
+
         Map<String, Object> user = (Map<String, Object>) session.getAttribute("user");
         String actor = (String) user.get("username");
         String action = req.getParameter("action");
+
         try {
             if ("add".equals(action)) {
-                String name = req.getParameter("name");
-                String stelle = req.getParameter("stelle");
-                String team = req.getParameter("team");
-                String abteilung = req.getParameter("abteilung");
-                DatabaseService.addMitarbeiter(name, stelle, team, abteilung, actor);
+                DatabaseService.addMitarbeiter(
+                    req.getParameter("name"),
+                    req.getParameter("stelle"),
+                    req.getParameter("team"),
+                    req.getParameter("abteilung"),
+                    actor
+                );
             } else if ("edit".equals(action)) {
-                int id = Integer.parseInt(req.getParameter("id"));
-                String name = req.getParameter("name");
-                String stelle = req.getParameter("stelle");
-                String team = req.getParameter("team");
-                String abteilung = req.getParameter("abteilung");
-                DatabaseService.updateMitarbeiter(id, name, stelle, team, abteilung, actor);
+                DatabaseService.updateMitarbeiter(
+                    Integer.parseInt(req.getParameter("id")),
+                    req.getParameter("name"),
+                    req.getParameter("stelle"),
+                    req.getParameter("team"),
+                    req.getParameter("abteilung"),
+                    actor
+                );
             } else if ("delete".equals(action)) {
-                int id = Integer.parseInt(req.getParameter("id"));
-                DatabaseService.deleteMitarbeiter(id, actor);
+                DatabaseService.deleteMitarbeiter(
+                    Integer.parseInt(req.getParameter("id")),
+                    actor
+                );
             }
         } catch (Exception e) {
             req.setAttribute("error", e.getMessage());

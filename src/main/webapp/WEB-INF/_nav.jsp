@@ -7,6 +7,10 @@
         
         <!-- <li><a href="${pageContext.request.contextPath}/mitarbeiter">Mitarbeiter</a></li> -->
 
+        <c:if test="${sessionScope.user.can_manage_feiertage}">
+            <li><a href="${pageContext.request.contextPath}/feiertage">Feiertage</a></li>
+        </c:if>
+
         <c:if test="${sessionScope.user.can_manage_users}">
             <li><a href="${pageContext.request.contextPath}/users/">Benutzer</a></li>
         </c:if>

@@ -18,7 +18,7 @@ public class ExportUserServlet extends HttpServlet {
         resp.setHeader("Content-Disposition", "attachment; filename=benutzer_export.csv");
         PrintWriter out = resp.getWriter();
         // Header wie Importdatei
-        out.println("Mitarbeiterkennung;Name;Vorname;Abteilung;Team;Stelle;aktiv;ist Benutzer;Benutzerverwaltung;Logbuch");
+        out.println("Mitarbeiterkennung;Name;Vorname;Abteilung;Team;Stelle;aktiv;ist Benutzer;Benutzerverwaltung;Feiertage verwalten;Logbuch");
         try {
             List<Map<String, Object>> users = DatabaseService.getAllUsers();
             for (Map<String, Object> u : users) {
@@ -32,6 +32,7 @@ public class ExportUserServlet extends HttpServlet {
                     boolToCsv(u.get("active")),
                     boolToCsv(u.get("is_user")),
                     boolToCsv(u.get("can_manage_users")),
+                    boolToCsv(u.get("can_manage_feiertage")),
                     boolToCsv(u.get("can_view_logbook"))
                 );
                 out.println(line);

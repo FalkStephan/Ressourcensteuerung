@@ -44,51 +44,33 @@ public class UserServlet extends HttpServlet {
             return;
         }
         
-        // Der Parameter 'action' entscheidet, ob hinzugefügt oder bearbeitet wird
         String action = req.getParameter("action");
-        if (action == null) {
-            resp.sendRedirect(req.getContextPath() + "/users");
-            return;
-        }
 
         try {
-            if ("add".equals(action)) {
-                // Logik aus dem AddUserServlet
-                String username = req.getParameter("username");
-                String name = req.getParameter("name");
-                String vorname = req.getParameter("vorname");
-                String stelle = req.getParameter("stelle");
-                String team = req.getParameter("team");
-                String password = req.getParameter("password");
-                boolean canManageUsers = "on".equals(req.getParameter("can_manage_users"));
-                boolean canViewLogbook = "on".equals(req.getParameter("can_view_logbook"));
-                String abteilung = req.getParameter("abteilung");
-                boolean active = req.getParameter("active") != null;
-                boolean isUser = "on".equals(req.getParameter("is_user"));
-                DatabaseService.addUser(username, password, name, vorname, stelle, team, canManageUsers, canViewLogbook, abteilung, actor, active, isUser);
+            String username = req.getParameter("username");
+            String name = req.getParameter("name");
+            String vorname = req.getParameter("vorname");
+            String stelle = req.getParameter("stelle");
+            String team = req.getParameter("team");
+            String password = req.getParameter("password");
+            String abteilung = req.getParameter("abteilung");
+            boolean canManageUsers = "on".equals(req.getParameter("can_manage_users"));
+            boolean canViewLogbook = "on".equals(req.getParameter("can_view_logbook"));
+            boolean canManageFeiertage = "on".equals(req.getParameter("can_manage_feiertage")); // NEU
+            boolean active = "on".equals(req.getParameter("active"));
+            boolean isUser = "on".equals(req.getParameter("is_user"));
 
+            if ("add".equals(action)) {
+                DatabaseService.addUser(username, password, name, vorname, stelle, team, canManageUsers, canViewLogbook, canManageFeiertage, abteilung, actor, active, isUser);
             } else if ("edit".equals(action)) {
-                // Logik aus dem EditUserServlet
                 int id = Integer.parseInt(req.getParameter("id"));
-                String username = req.getParameter("username");
-                String name = req.getParameter("name");
-                String vorname = req.getParameter("vorname");
-                String stelle = req.getParameter("stelle");
-                String team = req.getParameter("team");
-                String password = req.getParameter("password");
-                boolean canManageUsers = "on".equals(req.getParameter("can_manage_users"));
-                boolean canViewLogbook = "on".equals(req.getParameter("can_view_logbook"));
-                String abteilung = req.getParameter("abteilung");
-                boolean active = req.getParameter("active") != null;
-                boolean isUser = "on".equals(req.getParameter("is_user"));
-                DatabaseService.updateUser(id, username, password, name, vorname, stelle, team, canManageUsers, canViewLogbook, abteilung, actor, active, isUser);
+                DatabaseService.updateUser(id, username, password, name, vorname, stelle, team, canManageUsers, canViewLogbook, canManageFeiertage, abteilung, actor, active, isUser);
             }
             resp.sendRedirect(req.getContextPath() + "/users");
 
         } catch (SQLException | NumberFormatException e) {
             e.printStackTrace();
             req.setAttribute("error", "Fehler beim Speichern des Benutzers: " + e.getMessage());
-            // Leite zur Liste zurück, um die Seite neu zu laden und den Fehler anzuzeigen
             doGet(req, resp);
         }
     }

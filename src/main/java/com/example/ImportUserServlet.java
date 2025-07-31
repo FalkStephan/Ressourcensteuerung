@@ -1,4 +1,3 @@
-
 package com.example;
 
 import org.apache.poi.ss.usermodel.*;
@@ -19,138 +18,164 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 
-
-@WebServlet(urlPatterns = {"/users/import", "/users/import/"})
+@WebServlet("/users/import")
 @MultipartConfig
 public class ImportUserServlet extends HttpServlet {
+
     @Override
     protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
         resp.setContentType("text/html;charset=UTF-8");
         java.io.PrintWriter out = resp.getWriter();
         StringBuilder html = new StringBuilder();
+
+        // Parameter aus der Anfrage lesen
         boolean updateExisting = req.getParameter("update_existing") != null;
         boolean importNew = req.getParameter("import_new") != null;
+        boolean deactivateMissing = req.getParameter("deactivate_missing") != null;
+        
+        List<String> importedUsernames = new ArrayList<>();
+
         try {
             jakarta.servlet.http.Part filePart = req.getPart("importFile");
-            boolean deactivateMissing = req.getParameter("deactivate_missing") != null;
-            List<String> importedUsernames = new ArrayList<>();
             if (filePart == null) {
                 html.append("<div class='import-feedback-error'>Keine Datei hochgeladen.</div>");
             } else {
                 String fileName = filePart.getSubmittedFileName();
                 InputStream fileContent = filePart.getInputStream();
                 List<String> errors = new ArrayList<>();
-                int imported = 0;
-                if (fileName.endsWith(".xlsx") || fileName.endsWith(".xls")) {
-                    imported = importFromExcel(fileContent, errors, updateExisting, importNew, importedUsernames);
-                } else if (fileName.endsWith(".csv") || fileName.endsWith(".txt")) {
-                    imported = importFromCsv(fileContent, errors, updateExisting, importNew, importedUsernames);
+                int importedCount = 0;
+
+                if (fileName.toLowerCase().endsWith(".xlsx") || fileName.toLowerCase().endsWith(".xls")) {
+                    importedCount = importFromExcel(fileContent, errors, updateExisting, importNew, importedUsernames);
+                } else if (fileName.toLowerCase().endsWith(".csv") || fileName.toLowerCase().endsWith(".txt")) {
+                    importedCount = importFromCsv(fileContent, errors, updateExisting, importNew, importedUsernames);
                 } else {
                     errors.add("Dateiformat nicht unterstützt.");
                 }
+
                 if (deactivateMissing && !importedUsernames.isEmpty()) {
-                    int deactivated = DatabaseService.deactivateUsersNotIn(importedUsernames);
-                    html.append("<div class='import-feedback-info'>" + deactivated + " Benutzer wurden deaktiviert, da sie nicht in der Importdatei enthalten waren.</div>");
+                    int deactivatedCount = DatabaseService.deactivateUsersNotIn(importedUsernames);
+                    html.append("<div class='import-feedback-info'>").append(deactivatedCount).append(" Benutzer wurden deaktiviert.</div>");
                 }
+
                 html.append("<div class='import-feedback-success'><h3>Import abgeschlossen</h3>");
-                html.append("<p>Importierte Benutzer: " + imported + "</p>");
+                html.append("<p>Importierte/Aktualisierte Benutzer: ").append(importedCount).append("</p>");
                 if (!errors.isEmpty()) {
                     html.append("<ul style='color:red;'>");
-                    for (String err : errors) html.append("<li>" + err + "</li>");
+                    for (String err : errors) {
+                        html.append("<li>").append(err).append("</li>");
+                    }
                     html.append("</ul>");
                 }
                 html.append("</div>");
             }
         } catch (Exception e) {
-            html.append("<div class='import-feedback-error'>Fehler beim Import: " + e.getMessage() + "</div>");
+            html.append("<div class='import-feedback-error'>Fehler beim Import: ").append(e.getMessage()).append("</div>");
+            e.printStackTrace();
         }
         out.print(html.toString());
     }
 
-    private int importFromExcel(InputStream input, List<String> errors, boolean updateExisting, boolean importNew, List<String> importedUsernames) throws IOException, SQLException {
+    private int importFromExcel(InputStream input, List<String> errors, boolean updateExisting, boolean importNew, List<String> importedUsernames) throws IOException {
         int count = 0;
-        Workbook workbook = new XSSFWorkbook(input);
-        Sheet sheet = workbook.getSheetAt(0);
-        for (Row row : sheet) {
-            if (row.getRowNum() == 0) continue; // Header überspringen
-            String username = getCellString(row, 0); // Mitarbeiterkennung *
-            String name = getCellString(row, 1);     // Name *
-            String vorname = getCellString(row, 2);  // Vorname *
-            String abteilung = getCellString(row, 3);// Abteilung
-            String team = getCellString(row, 4);     // Team
-            String stelle = getCellString(row, 5);   // Stelle
-            boolean active = "1".equals(getCellString(row, 6)); // aktiv
-            boolean isUser = "1".equals(getCellString(row, 7)); // ist Benutzer
-            boolean canManageUsers = "1".equals(getCellString(row, 8)); // Benutzerverwaltung
-            boolean canViewLogbook = "1".equals(getCellString(row, 9)); // Logbuch
-            String password = username; // Passwort = Mitarbeiterkennung
-            if (!username.isEmpty()) importedUsernames.add(username);
-            try {
-                Map<String, Object> existing = DatabaseService.getUserByUsername(username);
-                if (updateExisting && existing != null) {
-                    int id = (int) existing.get("id");
-                    DatabaseService.updateUser(id, username, password, name, vorname, stelle, team, canManageUsers, canViewLogbook, abteilung, "import", active, isUser);
-                } else if (existing == null && importNew) {
-                    DatabaseService.addUser(username, password, name, vorname, stelle, team, canManageUsers, canViewLogbook, abteilung, "import", active, isUser);
-                } else if (existing != null && !updateExisting) {
-                    errors.add("Benutzer '" + username + "' existiert bereits und 'aktualisieren' ist nicht gesetzt.");
-                    continue;
+        try (Workbook workbook = new XSSFWorkbook(input)) {
+            Sheet sheet = workbook.getSheetAt(0);
+            for (Row row : sheet) {
+                if (row.getRowNum() == 0) continue;
+
+                try {
+                    String username = getCellString(row, 0);
+                    if (username.isEmpty()) continue;
+
+                    String name = getCellString(row, 1);
+                    String vorname = getCellString(row, 2);
+                    String abteilung = getCellString(row, 3);
+                    String team = getCellString(row, 4);
+                    String stelle = getCellString(row, 5);
+                    boolean active = "1".equals(getCellString(row, 6));
+                    boolean isUser = "1".equals(getCellString(row, 7));
+                    boolean canManageUsers = "1".equals(getCellString(row, 8));
+                    boolean canViewLogbook = "1".equals(getCellString(row, 9));
+                    boolean canManageFeiertage = "1".equals(getCellString(row, 10)); // NEU
+                    String password = username;
+                    
+                    importedUsernames.add(username);
+
+                    Map<String, Object> existing = DatabaseService.getUserByUsername(username);
+                    if (existing != null) {
+                        if (updateExisting) {
+                            int id = (int) existing.get("id");
+                            DatabaseService.updateUser(id, username, password, name, vorname, stelle, team, canManageUsers, canViewLogbook, canManageFeiertage, abteilung, "import", active, isUser);
+                            count++;
+                        }
+                    } else {
+                        if (importNew) {
+                            DatabaseService.addUser(username, password, name, vorname, stelle, team, canManageUsers, canViewLogbook, canManageFeiertage, abteilung, "import", active, isUser);
+                            count++;
+                        }
+                    }
+                } catch (Exception e) {
+                    errors.add("Fehler in Zeile " + (row.getRowNum() + 1) + ": " + e.getMessage());
                 }
-                count++;
-            } catch (Exception e) {
-                errors.add("Fehler bei Benutzer '" + username + "': " + e.getMessage());
             }
         }
-        workbook.close();
         return count;
     }
 
-    private int importFromCsv(InputStream input, List<String> errors, boolean updateExisting, boolean importNew, List<String> importedUsernames) throws IOException, SQLException {
+    private int importFromCsv(InputStream input, List<String> errors, boolean updateExisting, boolean importNew, List<String> importedUsernames) throws IOException {
         int count = 0;
-        BufferedReader reader = new BufferedReader(new InputStreamReader(input, "UTF-8"));
-        String line;
-        boolean first = true;
-        while ((line = reader.readLine()) != null) {
-            if (first) { first = false; continue; }
-            String[] parts = line.split(";");
-            if (parts.length < 3) continue;
-            String username = parts.length > 0 ? parts[0] : "";      // Mitarbeiterkennung *
-            String name = parts.length > 1 ? parts[1] : "";           // Name *
-            String vorname = parts.length > 2 ? parts[2] : "";        // Vorname *
-            String abteilung = parts.length > 3 ? parts[3] : "";      // Abteilung
-            String team = parts.length > 4 ? parts[4] : "";           // Team
-            String stelle = parts.length > 5 ? parts[5] : "";         // Stelle
-            boolean active = parts.length > 6 && "1".equals(parts[6]); // aktiv
-            boolean isUser = parts.length > 7 && "1".equals(parts[7]); // ist Benutzer
-            boolean canManageUsers = parts.length > 8 && "1".equals(parts[8]); // Benutzerverwaltung
-            boolean canViewLogbook = parts.length > 9 && "1".equals(parts[9]); // Logbuch
-            String password = username; // Passwort = Mitarbeiterkennung
-            if (!username.isEmpty()) importedUsernames.add(username);
-            try {
-                Map<String, Object> existing = DatabaseService.getUserByUsername(username);
-                if (updateExisting && existing != null) {
-                    int id = (int) existing.get("id");
-                    DatabaseService.updateUser(id, username, password, name, vorname, stelle, team, canManageUsers, canViewLogbook, abteilung, "import", active, isUser);
-                } else if (existing == null && importNew) {
-                    DatabaseService.addUser(username, password, name, vorname, stelle, team, canManageUsers, canViewLogbook, abteilung, "import", active, isUser);
-                } else if (existing != null && !updateExisting) {
-                    errors.add("Benutzer '" + username + "' existiert bereits und 'aktualisieren' ist nicht gesetzt.");
-                    continue;
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(input, "UTF-8"))) {
+            String line;
+            int lineNum = 0;
+            while ((line = reader.readLine()) != null) {
+                lineNum++;
+                if (lineNum == 1) continue;
+
+                String[] parts = line.split(";", -1);
+                if (parts.length < 11) continue;
+
+                try {
+                    String username = parts[0].trim();
+                    if (username.isEmpty()) continue;
+
+                    String name = parts[1].trim();
+                    String vorname = parts[2].trim();
+                    String abteilung = parts[3].trim();
+                    String team = parts[4].trim();
+                    String stelle = parts[5].trim();
+                    boolean active = "1".equals(parts[6].trim());
+                    boolean isUser = "1".equals(parts[7].trim());
+                    boolean canManageUsers = "1".equals(parts[8].trim());
+                    boolean canViewLogbook = "1".equals(parts[9].trim());
+                    boolean canManageFeiertage = "1".equals(parts[10].trim()); // NEU
+                    String password = username;
+                    
+                    importedUsernames.add(username);
+
+                    Map<String, Object> existing = DatabaseService.getUserByUsername(username);
+                     if (existing != null) {
+                        if (updateExisting) {
+                            int id = (int) existing.get("id");
+                            DatabaseService.updateUser(id, username, password, name, vorname, stelle, team, canManageUsers, canViewLogbook, canManageFeiertage, abteilung, "import", active, isUser);
+                            count++;
+                        }
+                    } else {
+                        if (importNew) {
+                            DatabaseService.addUser(username, password, name, vorname, stelle, team, canManageUsers, canViewLogbook, canManageFeiertage, abteilung, "import", active, isUser);
+                            count++;
+                        }
+                    }
+                } catch (Exception e) {
+                    errors.add("Fehler in Zeile " + lineNum + ": " + e.getMessage());
                 }
-                count++;
-            } catch (Exception e) {
-                errors.add("Fehler bei Benutzer '" + username + "': " + e.getMessage());
             }
         }
         return count;
     }
 
     private String getCellString(Row row, int idx) {
-        Cell cell = row.getCell(idx);
+        Cell cell = row.getCell(idx, Row.MissingCellPolicy.RETURN_BLANK_AS_NULL);
         if (cell == null) return "";
-        if (cell.getCellType() == CellType.NUMERIC) {
-            return String.valueOf((int)cell.getNumericCellValue());
-        }
-        return cell.toString();
+        return new DataFormatter().formatCellValue(cell).trim();
     }
 }

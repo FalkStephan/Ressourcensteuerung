@@ -108,13 +108,12 @@ name="deactivate_missing" id="deactivateMissing">
        
                   <div class="modal-content" style="max-width:420px;">
                             <h3>Spalten ein-/ausblenden</h3>
-                            <div id="columnSelector" style="margin-bottom: 1em;">
+                            <div id="columnSelector" style="margin-left: 2em;">
                      
-             <label><input type="checkbox" class="col-toggle" data-col="0" checked> ID</label>
+                                <label><input type="checkbox" class="col-toggle" data-col="0" checked> ID</label>
                                 <label><input type="checkbox" class="col-toggle" data-col="1" checked> Mitarbeiterkennung</label>
                                 <label><input type="checkbox" class="col-toggle" data-col="2" checked> Name</label>
-          
-                       <label><input type="checkbox" class="col-toggle" data-col="3" checked> Vorname</label>
+                                <label><input type="checkbox" class="col-toggle" data-col="3" checked> Vorname</label>
                                 <label><input type="checkbox" class="col-toggle" data-col="4" checked> Stelle</label>
                                 <label><input type="checkbox" class="col-toggle" data-col="5" 
  checked> Team</label>
@@ -190,19 +189,16 @@ name="deactivate_missing" id="deactivateMissing">
       
                                <button type="button" class="button small" onclick="showUserForm('edit', this)" 
                                         data-id="${u.id}"
-                        
-                 data-username="${u.username}"
+                                        data-username="${u.username}"
                                         data-name="${u.name}"
                                         data-vorname="${u.vorname}"
-    
-                                     data-stelle="${u.stelle}"
+                                        data-stelle="${u.stelle}"
                                         data-team="${u.team}"
-                        
-                 data-can_manage_users="${u.can_manage_users}"
+                                        data-can_manage_users="${u.can_manage_users}"
+                                        data-can_manage_feiertage="${u.can_manage_feiertage}"
                                         data-can_view_logbook="${u.can_view_logbook}"
                                         data-abteilung="${u.abteilung}"
-    
-                                     data-active="${u.active}"
+                                        data-active="${u.active}"
                                         data-is_user="${u.is_user}">
                         
                  Bearbeiten
@@ -306,18 +302,21 @@ name="deactivate_missing" id="deactivateMissing">
                     </div>
                 
      <div style="margin-top: 1em;" id="rechteFieldWrapper">
-                        <label style="display: block;
- margin-bottom: 10px;">Rechte:</label>
-                        <label for="userFormCanManageUsers">
+                        <label style="display: block; margin-bottom: 10px;">Rechte:</label>
+                        <label for="userFormCanManageUsers" style="margin-left: 2em;">
                             <input type="checkbox" id="userFormCanManageUsers" name="can_manage_users"> Benutzerverwaltung
                         </label>
                   
-       <label for="userFormCanViewLogbook" style="margin-left: 2em;">
+                        <label for="userFormCanViewLogbook" style="margin-left: 2em;">
                             <input type="checkbox" id="userFormCanViewLogbook" name="can_view_logbook"> Logbuch
+                        </label>
+
+                        <label for="userFormCanManageFeiertage" style="margin-left: 2em;">
+                            <input type="checkbox" id="userFormCanManageFeiertage" name="can_manage_feiertage"> Feiertage verwalten
                         </label>
                     </div>
                
-     <div class="modal-buttons" style="margin-top: 2em;">
+                    <div class="modal-buttons" style="margin-top: 2em;">
                         <button type="submit" class="button create">Speichern</button>
                         <button type="button" class="button delete" onclick="hideUserModal()">Abbrechen</button>
                     </div>
@@ -415,6 +414,7 @@ name="deactivate_missing" id="deactivateMissing">
                 document.getElementById('userFormTeam').value = '';
                 document.getElementById('userFormPassword').value = '';
                 document.getElementById('userFormCanManageUsers').checked = false;
+                document.getElementById('userFormCanManageFeiertage').checked = false;
                 document.getElementById('userFormCanViewLogbook').checked = false;
                 document.getElementById('userFormAbteilung').value = '';
                 document.getElementById('userFormActive').checked = true;
@@ -430,6 +430,7 @@ name="deactivate_missing" id="deactivateMissing">
                 document.getElementById('userFormTeam').value = btn.dataset.team || '';
                 document.getElementById('userFormPassword').value = '';
                 document.getElementById('userFormCanManageUsers').checked = (btn.dataset.can_manage_users === 'true');
+                document.getElementById('userFormCanManageFeiertage').checked = (btn.dataset.can_manage_feiertage === 'true');
                 document.getElementById('userFormCanViewLogbook').checked = (btn.dataset.can_view_logbook === 'true');
                 document.getElementById('userFormAbteilung').value = btn.dataset.abteilung || '';
                 document.getElementById('userFormActive').checked = (btn.dataset.active === 'true');
