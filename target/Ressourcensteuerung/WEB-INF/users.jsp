@@ -1,25 +1,10 @@
 <style>
     .user-status-pill {
-        display: inline-block;
-        min-width: 70px;
-        text-align: center;
-        padding: 2px 14px;
-        border-radius: 999px;
-        font-size: 0.95em;
-        font-weight: normal;
-        border: 2px solid transparent;
-        margin: 0 auto;
+        display: inline-block; min-width: 70px; text-align: center; padding: 2px 14px;
+        border-radius: 999px; font-size: 0.95em; border: 2px solid transparent; margin: 0 auto;
     }
-    .user-status-aktiv {
-        background: #e6ffe6;
-        color: #218838;
-        border-color: #28a745;
-    }
-    .user-status-inaktiv {
-        background: #ffe6e6;
-        color: #c82333;
-        border-color: #dc3545;
-    }
+    .user-status-aktiv { background: #e6ffe6; color: #218838; border-color: #28a745; }
+    .user-status-inaktiv { background: #ffe6e6; color: #c82333; border-color: #dc3545; }
 </style>
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
 <%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
@@ -36,196 +21,149 @@
         <main>
             <div class="container">
                 <h2>Benutzerverwaltung</h2>
-
-                <button type="button" class="button create" 
-onclick="showUserForm('add')">Neuen Benutzer anlegen</button>
-                <button type="button" class="button create" style="margin-left:1em;"
-onclick="showImportModal()">Benutzer importieren</button>
+                <button type="button" class="button create" onclick="showUserForm('add')">Neuen Benutzer anlegen</button>
+                <button type="button" class="button create" style="margin-left:1em;"onclick="showImportModal()">Benutzer importieren</button>
                 <a href="${pageContext.request.contextPath}/users/export" class="button" style="background:#007bff; color:#fff; margin-left:1em;">Benutzer exportieren</a>
-        <div id="importUserModal" class="modal-overlay" style="display:none;">
-            <div class="modal-content" style="max-width:400px;">
-                <h3>Benutzer importieren</h3>
-                <form id="importUserForm" method="post" action="${pageContext.request.contextPath}/users/import" enctype="multipart/form-data">
-   
-                 <input type="file" name="importFile" id="importFile" accept=".csv,.xlsx,.xls,.txt" required style="margin-bottom:1em;"
-/>
-                    <div style="margin-bottom:1em;">
-                        <label style="display:block; margin-bottom:0.5em;">
-                            <input type="checkbox" name="import_new" id="importNew" checked>
-                     
-        neue Benutzer importieren
-                        </label>
-                        <label style="display:block; margin-bottom:0.5em;">
-                            <input type="checkbox" name="update_existing" id="updateExisting" checked>
-         
-                    bestehende Benutzer aktualisieren
-                        </label>
-                        <label style="display:block;">
-                            <input type="checkbox" 
-name="deactivate_missing" id="deactivateMissing">
-                            nicht enthaltene Benutzer deaktivieren
-                        </label>
+                <div id="importUserModal" class="modal-overlay" style="display:none;">
+                    <div class="modal-content" style="max-width:400px;">
+                        <h3>Benutzer importieren</h3>
+                        <form id="importUserForm" method="post" action="${pageContext.request.contextPath}/users/import" enctype="multipart/form-data">
+                            <input type="file" name="importFile" id="importFile" accept=".csv,.xlsx,.xls,.txt" required style="margin-bottom:1em;"/>
+                        <div style="margin-bottom:1em;">
+                            <label style="display:block; margin-bottom:0.5em;">
+                                <input type="checkbox" name="import_new" id="importNew" checked>neue Benutzer importieren
+                            </label>
+                            <label style="display:block; margin-bottom:0.5em;">
+                                <input type="checkbox" name="update_existing" id="updateExisting" checked>bestehende Benutzer aktualisieren
+                            </label>
+                            <label style="display:block;">
+                                <input type="checkbox" name="deactivate_missing" id="deactivateMissing">nicht enthaltene Benutzer deaktivieren
+                            </label>
+                        </div>
+                        <div class="modal-buttons" style="display:flex; gap:0.5em;">
+                            <a href="${pageContext.request.contextPath}/resources/Muster.xlsx" download class="button" style="background:#007bff; color:#fff;">Musterdatei herunterladen</a>
+                            <button type="submit" class="button create">Datei importieren</button>
+                            <button type="button" class="button delete" onclick="hideImportModal()">Abbrechen</button>
+                        </div>
+                        </form>
                     </div>
-                    <div class="modal-buttons" style="display:flex; gap:0.5em;">
- 
-                        <a href="${pageContext.request.contextPath}/resources/Muster.xlsx" download class="button" style="background:#007bff;
- color:#fff;">Musterdatei herunterladen</a>
-                        <button type="submit" class="button create">Datei importieren</button>
-                        <button type="button" class="button delete" onclick="hideImportModal()">Abbrechen</button>
-                    </div>
-                </form>
-       
-     </div>
-        </div>
-
-        <div id="importFeedbackModal" class="modal-overlay" style="display:none;">
-            <div class="modal-content" style="max-width:400px;">
-                <h3>Import-Ergebnis</h3>
-                <div id="importFeedbackModalBody"></div>
-                <div 
- class="modal-buttons" style="margin-top:1em;">
-                    <button type="button" class="button" onclick="hideImportFeedbackModal()">Schließen</button>
                 </div>
-            </div>
-        </div>
+                <div id="importFeedbackModal" class="modal-overlay" style="display:none;">
+                    <div class="modal-content" style="max-width:400px;">
+                        <h3>Import-Ergebnis</h3>
+                        <div id="importFeedbackModalBody"></div>
+                        <div  class="modal-buttons" style="margin-top:1em;">
+                            <button type="button" class="button" onclick="hideImportFeedbackModal()">Schließen</button>
+                        </div>
+                    </div>
+                </div>
 
                 <div class="search-container">
-                    <input type="text" id="userSearch" 
- onkeyup="filterTable()" placeholder="Benutzer suchen...">
+                    <input type="text" id="userSearch"  onkeyup="filterTable()" placeholder="Benutzer suchen...">
                     <select id="statusFilter" onchange="filterTable()" style="margin-left:1em;">
                         <option value="all">Alle</option>
                         <option value="active" selected>Nur aktive</option>
-                        
- <option value="inactive">Nur inaktive</option>
+                        <option value="inactive">Nur inaktive</option>
                     </select>
                     <select id="typeFilter" onchange="filterTable()" style="margin-left:1em;">
                         <option value="all">Alle</option>
                         <option value="user">Nur Benutzer</option>
-    
-                 </select>
+                    </select>
                     <button type="button" class="button small" style="margin-bottom:0.5em;" onclick="showColModal()">Spalten wählen</button>
                     <div id="colModal" class="modal-overlay" style="display:none;">
-       
-                  <div class="modal-content" style="max-width:420px;">
+                        <div class="modal-content" style="max-width:420px;">
                             <h3>Spalten ein-/ausblenden</h3>
                             <div id="columnSelector" style="margin-left: 2em;">
-                     
                                 <label><input type="checkbox" class="col-toggle" data-col="0" checked> ID</label>
                                 <label><input type="checkbox" class="col-toggle" data-col="1" checked> Mitarbeiterkennung</label>
                                 <label><input type="checkbox" class="col-toggle" data-col="2" checked> Name</label>
                                 <label><input type="checkbox" class="col-toggle" data-col="3" checked> Vorname</label>
                                 <label><input type="checkbox" class="col-toggle" data-col="4" checked> Stelle</label>
-                                <label><input type="checkbox" class="col-toggle" data-col="5" 
- checked> Team</label>
+                                <label><input type="checkbox" class="col-toggle" data-col="5" checked> Team</label>
                                 <label><input type="checkbox" class="col-toggle" data-col="6" checked> Benutzerverwaltung</label>
                                 <label><input type="checkbox" class="col-toggle" data-col="7" checked> Logbuch</label>
-                         
-        <label><input type="checkbox" class="col-toggle" data-col="8" checked> Abteilung</label>
+                                <label><input type="checkbox" class="col-toggle" data-col="8" checked> Abteilung</label>
                             </div>
-                            <div class="modal-buttons">
-                               
-  <button type="button" class="button create" onclick="hideColModal()">OK</button>
+                            <div class="modal-buttons"> 
+                                <button type="button" class="button create" onclick="hideColModal()">OK</button>
                             </div>
                         </div>
                     </div>
                 </div>
 
-       
-         <table id="userTable">
+                <table id="userTable">
                     <thead>
                         <tr>
                             <th class="sortable-header" onclick="sortTable(0, 'number')">ID</th>
-               
-             <th class="sortable-header" onclick="sortTable(1, 'string')">Mitarbeiterkennung</th>
+                            <th class="sortable-header" onclick="sortTable(1, 'string')">Mitarbeiterkennung</th>
                             <th class="sortable-header" onclick="sortTable(2, 'string')">Name</th>
                             <th class="sortable-header" onclick="sortTable(3, 'string')">Vorname</th>
-                      
-       <th class="sortable-header" onclick="sortTable(4, 'string')">Stelle</th>
+                            <th class="sortable-header" onclick="sortTable(4, 'string')">Stelle</th>
                             <th class="sortable-header" onclick="sortTable(5, 'string')">Team</th>
                             <th class="sortable-header" onclick="sortTable(6, 'string')">Benutzerverwaltung</th>
-                            <th 
- class="sortable-header" onclick="sortTable(7, 'string')">Logbuch</th>
+                            <th class="sortable-header" onclick="sortTable(7, 'string')">Logbuch</th>
                             <th class="sortable-header" onclick="sortTable(8, 'string')">Abteilung</th>
                             <th class="sortable-header" onclick="sortTable(9, 'string')">Status</th>
                             <th>Aktionen</th>
-        
-                 </tr>
+                        </tr>
                     </thead>
                     <tbody>
                         <c:forEach var="u" items="${users}">
-                  
-           <tr>
+                            <tr>
                                 <td>${u.id}</td>
-                                <td>
-                          
-           <c:out value="${u.username}" />
-                                </td>
+                                <td> <c:out value="${u.username}" /></td>
                                 <td><c:out value="${u.name}" /></td>
-                      
-           <td><c:out value="${u.vorname}" /></td>
-                                <td><c:out value="${u.stelle}" /></td>
-                                <td><c:out value="${u.team}" /></td>
-                    
-             <td>${u.can_manage_users ? 'Ja' : 'Nein'}</td>
-                                <td>${u.can_view_logbook ? 'Ja' : 'Nein'}</td>
+                                <td><c:out value="${u.vorname}" /></td>
                                 <td><c:out value="${u.abteilung}" /></td>
-                                <td style="text-align: center; vertical-align: middle;">
-                            
-                <c:if test="${u.is_user}">
-                                <span title="Benutzerkonto" style="margin-right:4px; color:${u.see_all_users ? '#e74c3c' : '#007bff'}; vertical-align:middle;">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;"><path d="M20 21v-2a4 4 0 0 0-3-3.87"/><path d="M4 21v-2a4 4 0 0 1 3-3.87"/><circle cx="12" cy="7" r="4"/></svg>
-                                </span>
-                            </c:if>
-                            <span class="user-status-pill ${u.active ? 'user-status-aktiv' : 'user-status-inaktiv'}">
-                                ${u.active ? 'Aktiv' : 'Inaktiv'}
-                            </span>
+                                <td><c:out value="${u.team}" /></td>
+                                <td><c:out value="${u.stelle}" /></td>
+                                <td>${u.can_manage_users ? 'Ja' : 'Nein'}</td>
+                                <td>${u.can_view_logbook ? 'Ja' : 'Nein'}</td>
+                                <td style="text-align: center; vertical-align: middle;"> 
+                                    <c:if test="${u.is_user}">
+                                        <span title="Benutzerkonto" style="margin-right:4px; color:${u.see_all_users ? '#e74c3c' : '#007bff'}; vertical-align:middle;">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;"><path d="M20 21v-2a4 4 0 0 0-3-3.87"/><path d="M4 21v-2a4 4 0 0 1 3-3.87"/><circle cx="12" cy="7" r="4"/></svg>
+                                        </span>
+                                    </c:if>
+                                    <span class="user-status-pill ${u.active ? 'user-status-aktiv' : 'user-status-inaktiv'}">${u.active ? 'Aktiv' : 'Inaktiv'}</span>
                                 </td>
                                 <td>
-      
-                               <button type="button" class="button small" onclick="showUserForm('edit', this)" 
+                                    <button type="button" class="button small" onclick="showUserForm('edit', this)"
                                         data-id="${u.id}"
                                         data-username="${u.username}"
                                         data-name="${u.name}"
                                         data-vorname="${u.vorname}"
                                         data-stelle="${u.stelle}"
                                         data-team="${u.team}"
-                                        data-can_manage_users="${u.can_manage_users}"
-                                        data-see_all_users="${u.see_all_users}"
-                                        data-can_manage_feiertage="${u.can_manage_feiertage}"
-                                        data-can_view_logbook="${u.can_view_logbook}"
                                         data-abteilung="${u.abteilung}"
                                         data-active="${u.active}"
-                                        data-is_user="${u.is_user}">
-                        
-                 Bearbeiten
+                                        data-is-user="${u.is_user}"
+                                        data-can-manage-users="${u.can_manage_users}"
+                                        data-can-view-logbook="${u.can_view_logbook}"
+                                        data-can-manage-feiertage="${u.can_manage_feiertage}"
+                                        data-see-all-users="${u.see_all_users}"
+                                        data-can-manage-calendar="${u.can_manage_calendar}">
+                                        Bearbeiten
                                     </button>
                                     <c:if test="${sessionScope.user.username != u.username}">
-         
-                                <form action="${pageContext.request.contextPath}/users/delete" method="post" style="display:inline;"
- class="delete-form">
+                                        <form action="${pageContext.request.contextPath}/users/delete" method="post" style="display:inline;" class="delete-form">
                                             <input type="hidden" name="id" value="${u.id}">
-                                            <button type="button" class="button small delete" onclick="showDeleteModal(this)"
-    
-                                             data-id="${u.id}" 
-                                                data-username="${fn:escapeXml(u.username)}">
-       
-                                          Löschen
-                                            </button>
-               
-                         </form>
+                                                <button type="button" class="button small delete" onclick="showDeleteModal(this)"
+                                                    data-id="${u.id}" 
+                                                    data-username="${fn:escapeXml(u.username)}">
+                                                    Löschen
+                                                </button>
+                                        </form>
                                     </c:if>
                                 </td>
-       
-                     </tr>
-                        </c:forEach>
-                        <c:if test="${empty users}">
-                            <tr>
- 
-                                <td colspan="6" style="text-align: center;">Keine Benutzer gefunden.</td>
                             </tr>
-                        </c:if>
-            
-         </tbody>
+                            </c:forEach>
+                                <c:if test="${empty users}">
+                                    <tr>
+                                        <td colspan="6" style="text-align: center;">Keine Benutzer gefunden.</td>
+                                    </tr>
+                                </c:if>
+                    </tbody>
                 </table>
             </div>
         </main>
@@ -233,86 +171,62 @@ name="deactivate_missing" id="deactivateMissing">
         <div id="userModal" class="modal-overlay" style="display:none;">
             <div class="modal-content">
                 <form id="userForm" method="post">
- 
-                   <input type="hidden" name="id" id="userFormId" />
+                    <input type="hidden" name="id" id="userFormId" />
                     <input type="hidden" name="action" id="userFormAction" value="add" />
                     <div>
-        
-                 <label for="userFormUsername">Mitarbeiterkennung<span class="required-star">*</span>:</label>
+                        <label for="userFormUsername">Mitarbeiterkennung<span class="required-star">*</span>:</label>
                         <input type="text" id="userFormUsername" name="username" required />
                     </div>
-                    <div style="display: flex;
- gap: 1em;">
+                    <div style="display: flex; gap: 1em;">
                         <div style="flex:1;">
                             <label for="userFormVorname">Vorname<span class="required-star">*</span>:</label>
                             <input type="text" id="userFormVorname" name="vorname" required />
-           
-             </div>
+                        </div>
                         <div style="flex:1;">
                             <label for="userFormName">Name<span class="required-star">*</span>:</label>
-                            <input type="text" id="userFormName" name="name" 
- required />
+                            <input type="text" id="userFormName" name="name" required />
                         </div>
                     </div>
-                    <div style="display: flex;
- gap: 1em;">
+                    <div style="display: flex; gap: 1em;">
                         <div style="flex:1;">
                             <label for="userFormAbteilung">Abteilung:</label>
-                            <input type="text" id="userFormAbteilung" name="abteilung" />
-             
-            </div>
+                            <input type="text" id="userFormAbteilung" name="abteilung" />          
+                        </div>
                         <div style="flex:1;">
                             <label for="userFormTeam">Team:</label>
-                            <input type="text" id="userFormTeam" name="team" />
-   
-                     </div>
+                            <input type="text" id="userFormTeam" name="team" />   
+                        </div>
                     </div>
-                    <div style="display: flex;
- gap: 1em; align-items: center;">
+                    <div style="display: flex; gap: 1em; align-items: center;">
                         <div style="flex:1;">
                             <label for="userFormStelle">Stelle:</label>
-                            <input type="text" id="userFormStelle" name="stelle" />
-           
-             </div>
-                        <div style="flex:1;
- margin-top: 2em;">
+                            <input type="text" id="userFormStelle" name="stelle" />         
+                        </div>
+                        <div style="flex:1; margin-top: 2em;">
                             <label for="userFormActive">
                                 <input type="checkbox" id="userFormActive" name="active"> Aktiv
-                            </label>
-      
-                   </div>
+                            </label>  
+                        </div>
                     </div>
-                    <div style="display: flex;
- gap: 1em; align-items: center;">
+                    <div style="display: flex; gap: 1em; align-items: center;">
                         <div style="flex:1;">
                             <label for="userFormIsUser">
                                 <input type="checkbox" id="userFormIsUser" name="is_user" value="on" checked onchange="toggleUserFields()"> ist Benutzer
- 
                             </label>
                         </div>
                         <div style="flex:1;" id="passwordFieldWrapper">
-                       
-     <label for="userFormPassword">Passwort<span class="required-star">*</span>:</label>
-                            <input type="password" id="userFormPassword" name="password" required />
+                            <label for="userFormPassword" id="passwordLabel"></label>
+                            <input type="password" id="userFormPassword" name="password" />
                         </div>
                     </div>
                 
-     <div style="margin-top: 1em;" id="rechteFieldWrapper">
+                    <div id="rechteFieldWrapper" style="margin-top: 1em;">
                         <label style="display: block; margin-bottom: 10px;">Rechte:</label>
-                        <label for="userFormCanManageUsers" style="margin-left: 2em;">
-                            <input type="checkbox" id="userFormCanManageUsers" name="can_manage_users"> Benutzerverwaltung
-                        </label>
-                        <label for="userFormSeeAllUsers" style="margin-left: 2em;">
-                            <input type="checkbox" id="userFormSeeAllUsers" name="see_all_users"> Alle Benutzer sehen
-                        </label>
-                  
-                        <label for="userFormCanViewLogbook" style="margin-left: 2em;">
-                            <input type="checkbox" id="userFormCanViewLogbook" name="can_view_logbook"> Logbuch
-                        </label>
-
-                        <label for="userFormCanManageFeiertage" style="margin-left: 2em;">
-                            <input type="checkbox" id="userFormCanManageFeiertage" name="can_manage_feiertage"> Feiertage verwalten
-                        </label>
+                        <div><label><input type="checkbox" id="userFormCanManageUsers" name="can_manage_users"> Benutzerverwaltung</label></div>
+                        <div><label><input type="checkbox" id="userFormCanViewLogbook" name="can_view_logbook"> Logbuch</label></div>
+                        <div><label><input type="checkbox" id="userFormCanManageFeiertage" name="can_manage_feiertage"> Feiertage verwalten</label></div>
+                        <div><label><input type="checkbox" id="userFormSeeAllUsers" name="see_all_users"> Alle Benutzer sehen</label></div>
+                        <div><label><input type="checkbox" id="userFormCanManageCalendar" name="can_manage_calendar"> Kalender verwalten</label></div>
                     </div>
                
                     <div class="modal-buttons" style="margin-top: 2em;">
@@ -395,52 +309,39 @@ name="deactivate_missing" id="deactivateMissing">
 
 // --- Benutzer-Modal ---
         function showUserForm(mode, btn) {
-            const modal = document.getElementById('userModal');
-            const form = document.getElementById('userForm');
-            
-            // GEÄNDERT: Das Formular wird immer an den UserServlet gesendet
-            form.action = "${pageContext.request.contextPath}/users";
-            
-            document.getElementById('userFormPassword').required = (mode === 'add');
+        const modal = document.getElementById('userModal');
+        const form = document.getElementById('userForm');
+        
+        form.action = "${pageContext.request.contextPath}/users";
+        document.getElementById('userFormPassword').required = (mode === 'add');
 
-            if (mode === 'add') {
-                document.getElementById('userFormAction').value = 'add';
-                document.getElementById('userFormId').value = '';
-                document.getElementById('userFormUsername').value = '';
-                document.getElementById('userFormName').value = '';
-                document.getElementById('userFormVorname').value = '';
-                document.getElementById('userFormStelle').value = '';
-                document.getElementById('userFormTeam').value = '';
-                document.getElementById('userFormPassword').value = '';
-                document.getElementById('userFormCanManageUsers').checked = false;
-                document.getElementById('userFormSeeAllUsers').checked = false;
-                document.getElementById('userFormCanManageFeiertage').checked = false;
-                document.getElementById('userFormCanViewLogbook').checked = false;
-                document.getElementById('userFormAbteilung').value = '';
-                document.getElementById('userFormActive').checked = true;
-                document.getElementById('userFormIsUser').checked = true;
-                toggleUserFields();
-            } else if (mode === 'edit' && btn) {
-                document.getElementById('userFormAction').value = 'edit';
-                document.getElementById('userFormId').value = btn.dataset.id;
-                document.getElementById('userFormUsername').value = btn.dataset.username;
-                document.getElementById('userFormName').value = btn.dataset.name || '';
-                document.getElementById('userFormVorname').value = btn.dataset.vorname || '';
-                document.getElementById('userFormStelle').value = btn.dataset.stelle || '';
-                document.getElementById('userFormTeam').value = btn.dataset.team || '';
-                document.getElementById('userFormPassword').value = '';
-                document.getElementById('userFormCanManageUsers').checked = (btn.dataset.can_manage_users === 'true');
-                document.getElementById('userFormSeeAllUsers').checked = (btn.dataset.see_all_users === 'true');
-                document.getElementById('userFormCanManageFeiertage').checked = (btn.dataset.can_manage_feiertage === 'true');
-                document.getElementById('userFormCanViewLogbook').checked = (btn.dataset.can_view_logbook === 'true');
-                document.getElementById('userFormAbteilung').value = btn.dataset.abteilung || '';
-                document.getElementById('userFormActive').checked = (btn.dataset.active === 'true');
-                const isUserVal = btn.dataset.is_user;
-                document.getElementById('userFormIsUser').checked = (isUserVal === 'true' || isUserVal === true || isUserVal === 1 || isUserVal === '1');
-                toggleUserFields();
-            }
-            modal.style.display = 'flex';
+        if (mode === 'add') {
+            form.reset();
+            document.getElementById('userFormAction').value = 'add';
+            document.getElementById('userFormActive').checked = true;
+            document.getElementById('userFormIsUser').checked = true;
+        } else if (mode === 'edit' && btn) {
+            form.reset();
+            document.getElementById('userFormAction').value = 'edit';
+            document.getElementById('userFormId').value = btn.dataset.id;
+            document.getElementById('userFormUsername').value = btn.dataset.username;
+            document.getElementById('userFormName').value = btn.dataset.name || '';
+            document.getElementById('userFormVorname').value = btn.dataset.vorname || '';
+            document.getElementById('userFormStelle').value = btn.dataset.stelle || '';
+            document.getElementById('userFormTeam').value = btn.dataset.team || '';
+            document.getElementById('userFormAbteilung').value = btn.dataset.abteilung || '';
+            
+            document.getElementById('userFormActive').checked = (btn.dataset.active === 'true');
+            document.getElementById('userFormIsUser').checked = (btn.dataset.isUser === 'true');
+            document.getElementById('userFormCanManageUsers').checked = (btn.dataset.canManageUsers === 'true');
+            document.getElementById('userFormCanViewLogbook').checked = (btn.dataset.canViewLogbook === 'true');
+            document.getElementById('userFormCanManageFeiertage').checked = (btn.dataset.canManageFeiertage === 'true');
+            document.getElementById('userFormSeeAllUsers').checked = (btn.dataset.seeAllUsers === 'true');
+            document.getElementById('userFormCanManageCalendar').checked = (btn.dataset.canManageCalendar === 'true');
         }
+        toggleUserFields(); // Diese Funktion steuert jetzt die Passwort-Anforderung
+            document.getElementById('userModal').style.display = 'flex';
+    }
         function hideUserModal() {
             document.getElementById('userModal').style.display = 'none';
  }
@@ -576,16 +477,22 @@ name="deactivate_missing" id="deactivateMissing">
         // (Logik für is_user entfernt)
         function toggleUserFields() {
             const isUser = document.getElementById('userFormIsUser').checked;
- document.getElementById('passwordFieldWrapper').style.display = isUser ? '' : 'none';
+            const isAddMode = document.getElementById('userFormAction').value === 'add';
+            const passwordInput = document.getElementById('userFormPassword');
+            const passwordLabel = document.getElementById('passwordLabel');
+
+            document.getElementById('passwordFieldWrapper').style.display = isUser ? '' : 'none';
             document.getElementById('rechteFieldWrapper').style.display = isUser ? '' : 'none';
-            document.getElementById('userFormPassword').required = isUser;
- }
-        // Initial beim Öffnen Modal setzen:
-        document.addEventListener('DOMContentLoaded', function() {
-            if (document.getElementById('userFormIsUser')) {
-                toggleUserFields();
+
+            // KORREKTUR: Das Passwort ist nur dann erforderlich, wenn ein neuer Benutzer angelegt wird.
+            if (isUser && isAddMode) {
+                passwordLabel.innerHTML = 'Passwort<span class="required-star">*</span>:';
+                passwordInput.required = true;
+            } else {
+                passwordLabel.innerHTML = 'Neues Passwort (optional):';
+                passwordInput.required = false;
             }
-        });
+        }
  // Auch beim Öffnen Modal setzen:
         // (Diese zweite Definition wird entfernt, die Logik ist bereits in der ersten showUserForm enthalten)
     </script>

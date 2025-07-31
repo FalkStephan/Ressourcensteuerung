@@ -97,7 +97,8 @@ public class ImportUserServlet extends HttpServlet {
                     boolean canManageUsers = "1".equals(getCellString(row, 8));
                     boolean canViewLogbook = "1".equals(getCellString(row, 9));
                     boolean canManageFeiertage = "1".equals(getCellString(row, 10));
-                    boolean seeAllUsers = "1".equals(getCellString(row, 11)); // NEU
+                    boolean seeAllUsers = "1".equals(getCellString(row, 11));
+                    boolean canManageCalendar = "1".equals(getCellString(row, 12)); // NEU
                     String password = username;
                     
                     importedUsernames.add(username);
@@ -106,11 +107,13 @@ public class ImportUserServlet extends HttpServlet {
                     if (existing != null) {
                         if (updateExisting) {
                             int id = (int) existing.get("id");
-                            DatabaseService.updateUser(id, username, password, name, vorname, stelle, team, abteilung, active, isUser, canManageUsers, canViewLogbook, canManageFeiertage, seeAllUsers, "import");
+                            // KORREKTUR: Fehlenden Parameter hinzugefügt
+                            DatabaseService.updateUser(id, username, password, name, vorname, stelle, team, abteilung, active, isUser, canManageUsers, canViewLogbook, canManageFeiertage, seeAllUsers, canManageCalendar, "import");
                             count++;
                         }
                     } else if (importNew) {
-                        DatabaseService.addUser(username, password, name, vorname, stelle, team, abteilung, active, isUser, canManageUsers, canViewLogbook, canManageFeiertage, seeAllUsers, "import");
+                        // KORREKTUR: Fehlenden Parameter hinzugefügt
+                        DatabaseService.addUser(username, password, name, vorname, stelle, team, abteilung, active, isUser, canManageUsers, canViewLogbook, canManageFeiertage, seeAllUsers, canManageCalendar, "import");
                         count++;
                     }
                 } catch (Exception e) {
@@ -131,7 +134,7 @@ public class ImportUserServlet extends HttpServlet {
                 if (lineNum == 1 || line.trim().isEmpty()) continue;
                 
                 String[] parts = line.split(";", -1);
-                if (parts.length < 12) continue;
+                if (parts.length < 13) continue; // Spaltenanzahl angepasst
 
                 try {
                     String username = parts[0].trim();
@@ -148,6 +151,7 @@ public class ImportUserServlet extends HttpServlet {
                     boolean canViewLogbook = "1".equals(parts[9].trim());
                     boolean canManageFeiertage = "1".equals(parts[10].trim());
                     boolean seeAllUsers = "1".equals(parts[11].trim());
+                    boolean canManageCalendar = "1".equals(parts[12].trim()); // NEU
                     String password = username;
                     
                     importedUsernames.add(username);
@@ -156,12 +160,13 @@ public class ImportUserServlet extends HttpServlet {
                     if (existing != null) {
                         if (updateExisting) {
                             int id = (int) existing.get("id");
-                            DatabaseService.updateUser(id, username, password, name, vorname, stelle, team, abteilung, active, isUser, canManageUsers, canViewLogbook, canManageFeiertage, seeAllUsers, "import");
+                            // KORREKTUR: Fehlenden Parameter hinzugefügt
+                            DatabaseService.updateUser(id, username, password, name, vorname, stelle, team, abteilung, active, isUser, canManageUsers, canViewLogbook, canManageFeiertage, seeAllUsers, canManageCalendar, "import");
                             count++;
                         }
                     } else if (importNew) {
-                        // KORREKTUR: Tippfehler behoben
-                        DatabaseService.addUser(username, password, name, vorname, stelle, team, abteilung, active, isUser, canManageUsers, canViewLogbook, canManageFeiertage, seeAllUsers, "import");
+                        // KORREKTUR: Fehlenden Parameter hinzugefügt
+                        DatabaseService.addUser(username, password, name, vorname, stelle, team, abteilung, active, isUser, canManageUsers, canViewLogbook, canManageFeiertage, seeAllUsers, canManageCalendar, "import");
                         count++;
                     }
                 } catch (Exception e) {

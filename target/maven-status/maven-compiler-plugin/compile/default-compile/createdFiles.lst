@@ -4,6 +4,7 @@ com/example/LoginServlet.class
 com/example/UserServlet.class
 com/example/SaveServlet.class
 com/example/DatabaseService.class
+com/example/CalendarServlet.class
 com/example/LogbookServlet.class
 com/example/ConfigService.class
 com/example/MitarbeiterServlet.class
