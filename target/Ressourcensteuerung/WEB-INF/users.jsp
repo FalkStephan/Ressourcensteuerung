@@ -108,13 +108,12 @@ name="deactivate_missing" id="deactivateMissing">
        
                   <div class="modal-content" style="max-width:420px;">
                             <h3>Spalten ein-/ausblenden</h3>
-                            <div id="columnSelector" style="margin-bottom: 1em;">
+                            <div id="columnSelector" style="margin-left: 2em;">
                      
-             <label><input type="checkbox" class="col-toggle" data-col="0" checked> ID</label>
+                                <label><input type="checkbox" class="col-toggle" data-col="0" checked> ID</label>
                                 <label><input type="checkbox" class="col-toggle" data-col="1" checked> Mitarbeiterkennung</label>
                                 <label><input type="checkbox" class="col-toggle" data-col="2" checked> Name</label>
-          
-                       <label><input type="checkbox" class="col-toggle" data-col="3" checked> Vorname</label>
+                                <label><input type="checkbox" class="col-toggle" data-col="3" checked> Vorname</label>
                                 <label><input type="checkbox" class="col-toggle" data-col="4" checked> Stelle</label>
                                 <label><input type="checkbox" class="col-toggle" data-col="5" 
  checked> Team</label>
@@ -167,23 +166,18 @@ name="deactivate_missing" id="deactivateMissing">
                                 <td><c:out value="${u.stelle}" /></td>
                                 <td><c:out value="${u.team}" /></td>
                     
-             <td>${u.can_manage_users ?
- 'Ja' : 'Nein'}</td>
-                                <td>${u.can_view_logbook ?
- 'Ja' : 'Nein'}</td>
+             <td>${u.can_manage_users ? 'Ja' : 'Nein'}</td>
+                                <td>${u.can_view_logbook ? 'Ja' : 'Nein'}</td>
                                 <td><c:out value="${u.abteilung}" /></td>
                                 <td style="text-align: center; vertical-align: middle;">
                             
- <c:if test="${u.is_user}">
-                                <span title="Benutzerkonto" style="margin-right:4px; color:#007bff; vertical-align:middle;">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;"><path d="M20 21v-2a4 4 0 0 0-3-3.87"/><path d="M4 21v-2a4 4 0 0 1 3-3.87"/><circle 
- cx="12" cy="7" r="4"/></svg>
+                <c:if test="${u.is_user}">
+                                <span title="Benutzerkonto" style="margin-right:4px; color:${u.see_all_users ? '#e74c3c' : '#007bff'}; vertical-align:middle;">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;"><path d="M20 21v-2a4 4 0 0 0-3-3.87"/><path d="M4 21v-2a4 4 0 0 1 3-3.87"/><circle cx="12" cy="7" r="4"/></svg>
                                 </span>
                             </c:if>
                             <span class="user-status-pill ${u.active ? 'user-status-aktiv' : 'user-status-inaktiv'}">
-    
-                             ${u.active ?
- 'Aktiv' : 'Inaktiv'}
+                                ${u.active ? 'Aktiv' : 'Inaktiv'}
                             </span>
                                 </td>
                                 <td>
@@ -196,6 +190,7 @@ name="deactivate_missing" id="deactivateMissing">
                                         data-stelle="${u.stelle}"
                                         data-team="${u.team}"
                                         data-can_manage_users="${u.can_manage_users}"
+                                        data-see_all_users="${u.see_all_users}"
                                         data-can_manage_feiertage="${u.can_manage_feiertage}"
                                         data-can_view_logbook="${u.can_view_logbook}"
                                         data-abteilung="${u.abteilung}"
@@ -304,8 +299,11 @@ name="deactivate_missing" id="deactivateMissing">
                 
      <div style="margin-top: 1em;" id="rechteFieldWrapper">
                         <label style="display: block; margin-bottom: 10px;">Rechte:</label>
-                        <label for="userFormCanManageUsers"> style="margin-left: 2em;">
+                        <label for="userFormCanManageUsers" style="margin-left: 2em;">
                             <input type="checkbox" id="userFormCanManageUsers" name="can_manage_users"> Benutzerverwaltung
+                        </label>
+                        <label for="userFormSeeAllUsers" style="margin-left: 2em;">
+                            <input type="checkbox" id="userFormSeeAllUsers" name="see_all_users"> Alle Benutzer sehen
                         </label>
                   
                         <label for="userFormCanViewLogbook" style="margin-left: 2em;">
@@ -415,6 +413,7 @@ name="deactivate_missing" id="deactivateMissing">
                 document.getElementById('userFormTeam').value = '';
                 document.getElementById('userFormPassword').value = '';
                 document.getElementById('userFormCanManageUsers').checked = false;
+                document.getElementById('userFormSeeAllUsers').checked = false;
                 document.getElementById('userFormCanManageFeiertage').checked = false;
                 document.getElementById('userFormCanViewLogbook').checked = false;
                 document.getElementById('userFormAbteilung').value = '';
@@ -431,6 +430,7 @@ name="deactivate_missing" id="deactivateMissing">
                 document.getElementById('userFormTeam').value = btn.dataset.team || '';
                 document.getElementById('userFormPassword').value = '';
                 document.getElementById('userFormCanManageUsers').checked = (btn.dataset.can_manage_users === 'true');
+                document.getElementById('userFormSeeAllUsers').checked = (btn.dataset.see_all_users === 'true');
                 document.getElementById('userFormCanManageFeiertage').checked = (btn.dataset.can_manage_feiertage === 'true');
                 document.getElementById('userFormCanViewLogbook').checked = (btn.dataset.can_view_logbook === 'true');
                 document.getElementById('userFormAbteilung').value = btn.dataset.abteilung || '';

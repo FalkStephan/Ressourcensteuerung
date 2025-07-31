@@ -42,15 +42,18 @@ public class DatabaseService {
                         " vorname VARCHAR(255) NOT NULL," +
                         " stelle VARCHAR(255)," +
                         " team VARCHAR(255)," +
+                        " abteilung VARCHAR(255) NULL," +
+                        " active BOOLEAN NOT NULL DEFAULT TRUE," +
+                        " is_user BOOLEAN NOT NULL DEFAULT TRUE," +
                         " can_manage_users BOOLEAN NOT NULL DEFAULT FALSE," +
                         " can_view_logbook BOOLEAN NOT NULL DEFAULT FALSE," +
                         " can_manage_feiertage BOOLEAN NOT NULL DEFAULT FALSE," +
-                        " abteilung VARCHAR(255) NULL," +
-                        " active BOOLEAN NOT NULL DEFAULT TRUE," +
-                        " is_user BOOLEAN NOT NULL DEFAULT TRUE);";
+                        " see_all_users BOOLEAN NOT NULL DEFAULT FALSE);";
                 stmt.execute(userSql);
                 try { stmt.execute("ALTER TABLE users ADD COLUMN can_manage_feiertage BOOLEAN NOT NULL DEFAULT FALSE"); } catch (Exception e) { /* Spalte existiert evtl. schon */ }
+                try { stmt.execute("ALTER TABLE users ADD COLUMN see_all_users BOOLEAN NOT NULL DEFAULT FALSE"); } catch (Exception e) { /* Spalte existiert evtl. schon */ }
                 
+
                 String mitarbeiterSql = "CREATE TABLE IF NOT EXISTS mitarbeiter (" +
                         " id INTEGER PRIMARY KEY AUTO_INCREMENT," +
                         " name VARCHAR(255) NOT NULL," +
@@ -73,23 +76,21 @@ public class DatabaseService {
     }
 
     private static void createAdminIfNotExists(Connection conn) throws SQLException {
-        try (Statement stmt = conn.createStatement();
-             ResultSet rs = stmt.executeQuery("SELECT COUNT(*) FROM users WHERE username = 'admin'")) {
-            if (rs.next() && rs.getInt(1) == 0) {
-                String hashedPassword = BCrypt.hashpw("admin", BCrypt.gensalt());
-                String sql = "INSERT INTO users(username, password_hash, name, vorname, can_manage_users, can_view_logbook, can_manage_feiertage, active, is_user) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)";
-                try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
-                    pstmt.setString(1, "admin");
-                    pstmt.setString(2, hashedPassword);
-                    pstmt.setString(3, "Admin");
-                    pstmt.setString(4, "Super");
-                    pstmt.setBoolean(5, true);
-                    pstmt.setBoolean(6, true);
-                    pstmt.setBoolean(7, true);
-                    pstmt.setBoolean(8, true);
-                    pstmt.setBoolean(9, true);
-                    pstmt.executeUpdate();
-                }
+        if (getUserByUsername("admin") == null) {
+            String hashedPassword = BCrypt.hashpw("admin", BCrypt.gensalt());
+            String sql = "INSERT INTO users(username, password_hash, name, vorname, active, is_user, can_manage_users, can_view_logbook, can_manage_feiertage, see_all_users) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+            try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+                pstmt.setString(1, "admin");
+                pstmt.setString(2, hashedPassword);
+                pstmt.setString(3, "Admin");
+                pstmt.setString(4, "Super");
+                pstmt.setBoolean(5, true); // active
+                pstmt.setBoolean(6, true); // is_user
+                pstmt.setBoolean(7, true); // can_manage_users
+                pstmt.setBoolean(8, true); // can_view_logbook
+                pstmt.setBoolean(9, true); // can_manage_feiertage
+                pstmt.setBoolean(10, true); // see_all_users
+                pstmt.executeUpdate();
             }
         }
     }
@@ -113,6 +114,7 @@ public class DatabaseService {
         user.put("can_manage_users", rs.getBoolean("can_manage_users"));
         user.put("can_view_logbook", rs.getBoolean("can_view_logbook"));
         user.put("can_manage_feiertage", rs.getBoolean("can_manage_feiertage"));
+        user.put("see_all_users", rs.getBoolean("see_all_users")); // NEU
         return user;
     }
 
@@ -145,16 +147,37 @@ public class DatabaseService {
         return null;
     }
     
-    public static List<Map<String, Object>> getAllUsers() {
+public static List<Map<String, Object>> getAllUsers(Map<String, Object> currentUser) {
         List<Map<String, Object>> users = new ArrayList<>();
-        try (Connection conn = getConnection(); Statement stmt = conn.createStatement(); ResultSet rs = stmt.executeQuery("SELECT * FROM users ORDER BY username")) {
-            while (rs.next()) users.add(mapUser(rs));
-        } catch (Exception e) { e.printStackTrace(); }
+        
+        // Entscheide, welche Abfrage verwendet wird
+        boolean canSeeAll = (currentUser != null) && Boolean.TRUE.equals(currentUser.get("see_all_users"));
+        
+        String sql;
+        if (canSeeAll) {
+            sql = "SELECT * FROM users ORDER BY username";
+        } else {
+            sql = "SELECT * FROM users WHERE active = TRUE AND abteilung = ? ORDER BY username";
+        }
+
+        try (Connection conn = getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            if (!canSeeAll) {
+                String abteilung = (currentUser != null) ? (String) currentUser.get("abteilung") : "";
+                pstmt.setString(1, abteilung);
+            }
+            
+            ResultSet rs = pstmt.executeQuery();
+            while (rs.next()) {
+                users.add(mapUser(rs));
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
         return users;
     }
     
-    public static void addUser(String username, String password, String name, String vorname, String stelle, String team, boolean canManageUsers, boolean canViewLogbook, boolean canManageFeiertage, String abteilung, String actor, boolean active, boolean isUser) throws SQLException {
-        String sql = "INSERT INTO users(username, password_hash, name, vorname, stelle, team, can_manage_users, can_view_logbook, can_manage_feiertage, abteilung, active, is_user) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+    public static void addUser(String username, String password, String name, String vorname, String stelle, String team, String abteilung, boolean active, boolean isUser, boolean canManageUsers, boolean canViewLogbook, boolean canManageFeiertage, boolean seeAllUsers, String actor) throws SQLException {
+        String sql = "INSERT INTO users(username, password_hash, name, vorname, stelle, team, abteilung, active, is_user, can_manage_users, can_view_logbook, can_manage_feiertage, see_all_users) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         try (Connection conn = getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setString(1, username);
             pstmt.setString(2, BCrypt.hashpw(password, BCrypt.gensalt()));
@@ -162,19 +185,20 @@ public class DatabaseService {
             pstmt.setString(4, vorname);
             pstmt.setString(5, stelle);
             pstmt.setString(6, team);
-            pstmt.setBoolean(7, canManageUsers);
-            pstmt.setBoolean(8, canViewLogbook);
-            pstmt.setBoolean(9, canManageFeiertage);
-            pstmt.setString(10, abteilung);
-            pstmt.setBoolean(11, active);
-            pstmt.setBoolean(12, isUser);
+            pstmt.setString(7, abteilung);
+            pstmt.setBoolean(8, active);
+            pstmt.setBoolean(9, isUser);
+            pstmt.setBoolean(10, canManageUsers);
+            pstmt.setBoolean(11, canViewLogbook);
+            pstmt.setBoolean(12, canManageFeiertage);
+            pstmt.setBoolean(13, seeAllUsers);
             pstmt.executeUpdate();
             logAction(actor, "Erstellen", "Benutzer '" + username + "' angelegt.");
         }
     }
 
-    public static void updateUser(int id, String username, String password, String name, String vorname, String stelle, String team, boolean canManageUsers, boolean canViewLogbook, boolean canManageFeiertage, String abteilung, String actor, boolean active, boolean isUser) throws SQLException {
-        StringBuilder sql = new StringBuilder("UPDATE users SET username=?, name=?, vorname=?, stelle=?, team=?, abteilung=?, active=?, is_user=?, can_manage_users=?, can_view_logbook=?, can_manage_feiertage=?");
+    public static void updateUser(int id, String username, String password, String name, String vorname, String stelle, String team, String abteilung, boolean active, boolean isUser, boolean canManageUsers, boolean canViewLogbook, boolean canManageFeiertage, boolean seeAllUsers, String actor) throws SQLException {
+        StringBuilder sql = new StringBuilder("UPDATE users SET username=?, name=?, vorname=?, stelle=?, team=?, abteilung=?, active=?, is_user=?, can_manage_users=?, can_view_logbook=?, can_manage_feiertage=?, see_all_users=?");
         if (password != null && !password.isEmpty()) {
             sql.append(", password_hash=?");
         }
@@ -193,6 +217,7 @@ public class DatabaseService {
             pstmt.setBoolean(i++, canManageUsers);
             pstmt.setBoolean(i++, canViewLogbook);
             pstmt.setBoolean(i++, canManageFeiertage);
+            pstmt.setBoolean(i++, seeAllUsers);
             if (password != null && !password.isEmpty()) {
                 pstmt.setString(i++, BCrypt.hashpw(password, BCrypt.gensalt()));
             }

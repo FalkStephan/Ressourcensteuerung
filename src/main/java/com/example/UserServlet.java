@@ -27,7 +27,7 @@ public class UserServlet extends HttpServlet {
             return;
         }
 
-        List<Map<String, Object>> userList = DatabaseService.getAllUsers();
+        List<Map<String, Object>> userList = DatabaseService.getAllUsers(user);
         req.setAttribute("users", userList);
         req.getRequestDispatcher("/WEB-INF/users.jsp").forward(req, resp);
     }
@@ -44,33 +44,33 @@ public class UserServlet extends HttpServlet {
             return;
         }
         
-        String action = req.getParameter("action");
-
         try {
+            String action = req.getParameter("action");
             String username = req.getParameter("username");
             String name = req.getParameter("name");
             String vorname = req.getParameter("vorname");
             String stelle = req.getParameter("stelle");
             String team = req.getParameter("team");
-            String password = req.getParameter("password");
             String abteilung = req.getParameter("abteilung");
-            boolean canManageUsers = "on".equals(req.getParameter("can_manage_users"));
-            boolean canViewLogbook = "on".equals(req.getParameter("can_view_logbook"));
-            boolean canManageFeiertage = "on".equals(req.getParameter("can_manage_feiertage")); // NEU
+            String password = req.getParameter("password");
             boolean active = "on".equals(req.getParameter("active"));
             boolean isUser = "on".equals(req.getParameter("is_user"));
+            boolean canManageUsers = "on".equals(req.getParameter("can_manage_users"));
+            boolean canViewLogbook = "on".equals(req.getParameter("can_view_logbook"));
+            boolean canManageFeiertage = "on".equals(req.getParameter("can_manage_feiertage"));
+            boolean seeAllUsers = "on".equals(req.getParameter("see_all_users")); // NEU
 
             if ("add".equals(action)) {
-                DatabaseService.addUser(username, password, name, vorname, stelle, team, canManageUsers, canViewLogbook, canManageFeiertage, abteilung, actor, active, isUser);
+                DatabaseService.addUser(username, password, name, vorname, stelle, team, abteilung, active, isUser, canManageUsers, canViewLogbook, canManageFeiertage, seeAllUsers, actor);
             } else if ("edit".equals(action)) {
                 int id = Integer.parseInt(req.getParameter("id"));
-                DatabaseService.updateUser(id, username, password, name, vorname, stelle, team, canManageUsers, canViewLogbook, canManageFeiertage, abteilung, actor, active, isUser);
+                DatabaseService.updateUser(id, username, password, name, vorname, stelle, team, abteilung, active, isUser, canManageUsers, canViewLogbook, canManageFeiertage, seeAllUsers, actor);
             }
             resp.sendRedirect(req.getContextPath() + "/users");
 
         } catch (SQLException | NumberFormatException e) {
             e.printStackTrace();
-            req.setAttribute("error", "Fehler beim Speichern des Benutzers: " + e.getMessage());
+            req.setAttribute("error", "Fehler beim Speichern: " + e.getMessage());
             doGet(req, resp);
         }
     }

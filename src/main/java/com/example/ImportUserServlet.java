@@ -86,7 +86,7 @@ public class ImportUserServlet extends HttpServlet {
                 try {
                     String username = getCellString(row, 0);
                     if (username.isEmpty()) continue;
-
+                    
                     String name = getCellString(row, 1);
                     String vorname = getCellString(row, 2);
                     String abteilung = getCellString(row, 3);
@@ -96,26 +96,25 @@ public class ImportUserServlet extends HttpServlet {
                     boolean isUser = "1".equals(getCellString(row, 7));
                     boolean canManageUsers = "1".equals(getCellString(row, 8));
                     boolean canViewLogbook = "1".equals(getCellString(row, 9));
-                    boolean canManageFeiertage = "1".equals(getCellString(row, 10)); // NEU
+                    boolean canManageFeiertage = "1".equals(getCellString(row, 10));
+                    boolean seeAllUsers = "1".equals(getCellString(row, 11)); // NEU
                     String password = username;
                     
                     importedUsernames.add(username);
-
                     Map<String, Object> existing = DatabaseService.getUserByUsername(username);
+
                     if (existing != null) {
                         if (updateExisting) {
                             int id = (int) existing.get("id");
-                            DatabaseService.updateUser(id, username, password, name, vorname, stelle, team, canManageUsers, canViewLogbook, canManageFeiertage, abteilung, "import", active, isUser);
+                            DatabaseService.updateUser(id, username, password, name, vorname, stelle, team, abteilung, active, isUser, canManageUsers, canViewLogbook, canManageFeiertage, seeAllUsers, "import");
                             count++;
                         }
-                    } else {
-                        if (importNew) {
-                            DatabaseService.addUser(username, password, name, vorname, stelle, team, canManageUsers, canViewLogbook, canManageFeiertage, abteilung, "import", active, isUser);
-                            count++;
-                        }
+                    } else if (importNew) {
+                        DatabaseService.addUser(username, password, name, vorname, stelle, team, abteilung, active, isUser, canManageUsers, canViewLogbook, canManageFeiertage, seeAllUsers, "import");
+                        count++;
                     }
                 } catch (Exception e) {
-                    errors.add("Fehler in Zeile " + (row.getRowNum() + 1) + ": " + e.getMessage());
+                    errors.add("Fehler in Excel-Zeile " + (row.getRowNum() + 1) + ": " + e.getMessage());
                 }
             }
         }
@@ -129,10 +128,10 @@ public class ImportUserServlet extends HttpServlet {
             int lineNum = 0;
             while ((line = reader.readLine()) != null) {
                 lineNum++;
-                if (lineNum == 1) continue;
-
+                if (lineNum == 1 || line.trim().isEmpty()) continue;
+                
                 String[] parts = line.split(";", -1);
-                if (parts.length < 11) continue;
+                if (parts.length < 12) continue;
 
                 try {
                     String username = parts[0].trim();
@@ -147,33 +146,34 @@ public class ImportUserServlet extends HttpServlet {
                     boolean isUser = "1".equals(parts[7].trim());
                     boolean canManageUsers = "1".equals(parts[8].trim());
                     boolean canViewLogbook = "1".equals(parts[9].trim());
-                    boolean canManageFeiertage = "1".equals(parts[10].trim()); // NEU
+                    boolean canManageFeiertage = "1".equals(parts[10].trim());
+                    boolean seeAllUsers = "1".equals(parts[11].trim());
                     String password = username;
                     
                     importedUsernames.add(username);
-
                     Map<String, Object> existing = DatabaseService.getUserByUsername(username);
-                     if (existing != null) {
+
+                    if (existing != null) {
                         if (updateExisting) {
                             int id = (int) existing.get("id");
-                            DatabaseService.updateUser(id, username, password, name, vorname, stelle, team, canManageUsers, canViewLogbook, canManageFeiertage, abteilung, "import", active, isUser);
+                            DatabaseService.updateUser(id, username, password, name, vorname, stelle, team, abteilung, active, isUser, canManageUsers, canViewLogbook, canManageFeiertage, seeAllUsers, "import");
                             count++;
                         }
-                    } else {
-                        if (importNew) {
-                            DatabaseService.addUser(username, password, name, vorname, stelle, team, canManageUsers, canViewLogbook, canManageFeiertage, abteilung, "import", active, isUser);
-                            count++;
-                        }
+                    } else if (importNew) {
+                        // KORREKTUR: Tippfehler behoben
+                        DatabaseService.addUser(username, password, name, vorname, stelle, team, abteilung, active, isUser, canManageUsers, canViewLogbook, canManageFeiertage, seeAllUsers, "import");
+                        count++;
                     }
                 } catch (Exception e) {
-                    errors.add("Fehler in Zeile " + lineNum + ": " + e.getMessage());
+                    errors.add("Fehler in CSV-Zeile " + lineNum + ": " + e.getMessage());
                 }
             }
         }
         return count;
     }
-
+    
     private String getCellString(Row row, int idx) {
+        if (row == null) return "";
         Cell cell = row.getCell(idx, Row.MissingCellPolicy.RETURN_BLANK_AS_NULL);
         if (cell == null) return "";
         return new DataFormatter().formatCellValue(cell).trim();
