@@ -13,5 +13,6 @@ com/example/CapacityServlet.class
 com/example/AuthFilter.class
 com/example/LogoutServlet.class
 com/example/DeleteUserServlet.class
+com/example/SettingsServlet.class
 com/example/ImportUserServlet.class
 com/example/AppContextListener.class

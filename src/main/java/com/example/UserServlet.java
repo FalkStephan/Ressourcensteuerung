@@ -61,12 +61,13 @@ public class UserServlet extends HttpServlet {
             boolean seeAllUsers = "on".equals(req.getParameter("see_all_users"));
             boolean canManageCalendar = "on".equals(req.getParameter("can_manage_calendar"));
             boolean canManageCapacities = "on".equals(req.getParameter("can_manage_capacities"));
+            boolean canManageSettings = "on".equals(req.getParameter("can_manage_settings"));
 
             if ("add".equals(action)) {
-                DatabaseService.addUser(username, password, name, vorname, stelle, team, abteilung, active, isUser, canManageUsers, canViewLogbook, canManageFeiertage, seeAllUsers, canManageCalendar, canManageCapacities, actor);
+                DatabaseService.addUser(username, password, name, vorname, stelle, team, abteilung, active, isUser, canManageUsers, canViewLogbook, canManageFeiertage, seeAllUsers, canManageCalendar, canManageCapacities, canManageSettings, actor);
             } else if ("edit".equals(action)) {
                 int id = Integer.parseInt(req.getParameter("id"));
-                DatabaseService.updateUser(id, username, password, name, vorname, stelle, team, abteilung, active, isUser, canManageUsers, canViewLogbook, canManageFeiertage, seeAllUsers, canManageCalendar, canManageCapacities, actor);
+                DatabaseService.updateUser(id, username, password, name, vorname, stelle, team, abteilung, active, isUser, canManageUsers, canViewLogbook, canManageFeiertage, seeAllUsers, canManageCalendar, canManageCapacities, canManageSettings, actor);
             }
             resp.sendRedirect(req.getContextPath() + "/users");
 

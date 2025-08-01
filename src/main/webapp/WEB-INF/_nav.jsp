@@ -26,6 +26,10 @@
         <c:if test="${sessionScope.user.can_view_logbook}">
             <li><a href="${pageContext.request.contextPath}/logbook">Logbuch</a></li>
         </c:if>
+
+        <c:if test="${sessionScope.user.can_manage_settings}">
+            <li><a href="${pageContext.request.contextPath}/settings">Einstellungen</a></li>
+        </c:if>
     </ul>
     <div class="nav-footer">
         <ul>

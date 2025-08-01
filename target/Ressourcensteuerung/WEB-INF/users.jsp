@@ -143,7 +143,8 @@
                                         data-can-manage-feiertage="${u.can_manage_feiertage}"
                                         data-see-all-users="${u.see_all_users}"
                                         data-can-manage-calendar="${u.can_manage_calendar}"
-                                        data-can-manage-calendar="${u.can_manage_capacities}">
+                                        data-can-manage-capacities="${u.can_manage_capacities}"
+                                        data-can-manage-settings="${u.can_manage_settings}">
                                         Bearbeiten
                                     </button>
                                     <c:if test="${sessionScope.user.username != u.username}">
@@ -222,13 +223,23 @@
                     </div>
                 
                     <div id="rechteFieldWrapper" style="margin-top: 1em;">
-                        <label style="display: block; margin-bottom: 10px;">Rechte:</label>
-                        <div><label><input type="checkbox" id="userFormCanManageUsers" name="can_manage_users"> Benutzerverwaltung</label></div>
-                        <div><label><input type="checkbox" id="userFormCanViewLogbook" name="can_view_logbook"> Logbuch</label></div>
-                        <div><label><input type="checkbox" id="userFormCanManageFeiertage" name="can_manage_feiertage"> Feiertage verwalten</label></div>
-                        <div><label><input type="checkbox" id="userFormSeeAllUsers" name="see_all_users"> Alle Benutzer sehen</label></div>
-                        <div><label><input type="checkbox" id="userFormCanManageCalendar" name="can_manage_calendar"> Kalender verwalten</label></div>
-                        <div><label><input type="checkbox" id="userFormCanManageCapacities" name="can_manage_capacities"> Kapazitäten verwalten</label></div>
+                        <label style="display: block; margin-bottom: 10px; font-weight: bold;">Rechte:</label>
+                        
+                        <div style="display: flex; gap: 1.5em;">
+                            <label><input type="checkbox" id="userFormCanManageUsers" name="can_manage_users"> Benutzerverwaltung</label>
+                            <label><input type="checkbox" id="userFormSeeAllUsers" name="see_all_users"> Alle Benutzer sehen</label>
+                        </div>
+                        
+                        <div style="display: flex; gap: 1.5em;">
+                            <label><input type="checkbox" id="userFormCanManageCalendar" name="can_manage_calendar"> Kalender</label>
+                            <label><input type="checkbox" id="userFormCanManageCapacities" name="can_manage_capacities"> Kapazitäten</label>
+                            <label><input type="checkbox" id="userFormCanManageFeiertage" name="can_manage_feiertage"> Feiertage</label>
+                        </div>
+
+                        <div style="display: flex; gap: 1.5em;">
+                            <label><input type="checkbox" id="userFormCanManageSettings" name="can_manage_settings"> Einstellungen</label>
+                            <label><input type="checkbox" id="userFormCanViewLogbook" name="can_view_logbook"> Logbuch</label>
+                        </div>
                     </div>
                
                     <div class="modal-buttons" style="margin-top: 2em;">
@@ -341,6 +352,7 @@
             document.getElementById('userFormSeeAllUsers').checked = (btn.dataset.seeAllUsers === 'true');
             document.getElementById('userFormCanManageCalendar').checked = (btn.dataset.canManageCalendar === 'true');
             document.getElementById('userFormCanManageCapacities').checked = (btn.dataset.canManageCapacities === 'true');
+            document.getElementById('userFormCanManageSettings').checked = (btn.dataset.canManageSettings === 'true');
         }
         toggleUserFields(); // Diese Funktion steuert jetzt die Passwort-Anforderung
             document.getElementById('userModal').style.display = 'flex';
