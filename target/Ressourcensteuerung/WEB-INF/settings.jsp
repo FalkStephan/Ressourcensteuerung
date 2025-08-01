@@ -16,7 +16,7 @@
                 <h3>Status "Aufgaben"</h3>
                 <button class="button create small" onclick="showStatusModal('add')">Neuen Status anlegen</button>
                 <table>
-                    <thead><tr><th>Name</th><th>Aktiv</th><th>Reihenfolge</th><th>Aktionen</th></tr></thead>
+                    <thead><tr><th>Name</th><th>Aktiv</th><th>Reihenfolge</th><th>Farbe</th><th>Aktionen</th></tr></thead>
                     <tbody>
                         <c:forEach var="status" items="${taskStatuses}">
                             <tr>
@@ -24,9 +24,17 @@
                                 <td>${status.active ? 'Ja' : 'Nein'}</td>
                                 <td><c:out value="${status.sort_order}"/></td>
                                 <td>
+                                   <div style="display: flex; align-items: center; gap: 8px;">
+                                        <div style="width: 20px; height: 20px; background-color: ${status.color_code}; border: 1px solid #777; border-radius: 4px;"></div>
+                                        <span><c:out value="${status.color_code}"/></span>
+                                    </div>
+                                </td>
+                                <td>
                                     <button class="button small" onclick="showStatusModal('edit', this)"
                                         data-id="${status.id}" data-name="${status.name}"
-                                        data-active="${status.active}" data-sort-order="${status.sort_order}">
+                                        data-active="${status.active}" 
+                                        data-sort-order="${status.sort_order}"
+                                        data-color-code="${status.color_code}">
                                         Bearbeiten
                                     </button>
                                 </td>
@@ -54,6 +62,10 @@
                 <input type="number" name="sort_order" id="statusSortOrder" value="0" required/>
             </div>
             <div>
+                <label>Farbcode:</label>
+                <input type="color" name="color_code" id="statusColorCode" value="#FFFFFF"/>
+            </div>
+            <div>
                 <label><input type="checkbox" name="active" id="statusActive"> Aktiv</label>
             </div>
             <div class="modal-buttons">
@@ -72,6 +84,7 @@
             document.getElementById('statusModalTitle').textContent = 'Neuen Status anlegen';
             document.getElementById('statusAction').value = 'add_status';
             document.getElementById('statusActive').checked = true;
+            document.getElementById('statusColorCode').value = '#FFFFFF';
         } else {
             document.getElementById('statusModalTitle').textContent = 'Status bearbeiten';
             document.getElementById('statusAction').value = 'edit_status';
@@ -79,6 +92,7 @@
             document.getElementById('statusName').value = btn.dataset.name;
             document.getElementById('statusSortOrder').value = btn.dataset.sortOrder;
             document.getElementById('statusActive').checked = (btn.dataset.active === 'true');
+            document.getElementById('statusColorCode').value = btn.dataset.colorCode;
         }
         document.getElementById('statusModal').style.display = 'flex';
     }

@@ -42,6 +42,7 @@ public class SettingsServlet extends HttpServlet {
         }
         String actor = (String) user.get("username");
         String action = req.getParameter("action");
+        String colorCode = req.getParameter("color_code");
 
         try {
             switch (action) {
@@ -50,6 +51,7 @@ public class SettingsServlet extends HttpServlet {
                         req.getParameter("name"),
                         "on".equals(req.getParameter("active")),
                         Integer.parseInt(req.getParameter("sort_order")),
+                        colorCode,
                         actor);
                     break;
                 case "edit_status":
@@ -58,6 +60,7 @@ public class SettingsServlet extends HttpServlet {
                         req.getParameter("name"),
                         "on".equals(req.getParameter("active")),
                         Integer.parseInt(req.getParameter("sort_order")),
+                        colorCode,
                         actor);
                     break;
                 case "delete_status":

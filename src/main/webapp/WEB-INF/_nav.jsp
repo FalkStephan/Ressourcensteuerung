@@ -19,6 +19,10 @@
             <li><a href="${pageContext.request.contextPath}/calendar">Kalender</a></li>
         </c:if>
 
+        <c:if test="${sessionScope.user.can_manage_tasks}">
+            <li><a href="${pageContext.request.contextPath}/tasks">Aufgaben</a></li>
+        </c:if>
+
         <c:if test="${sessionScope.user.can_manage_feiertage}">
             <li><a href="${pageContext.request.contextPath}/feiertage">Feiertage</a></li>
         </c:if>

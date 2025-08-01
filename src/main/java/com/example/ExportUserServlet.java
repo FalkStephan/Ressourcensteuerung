@@ -43,7 +43,8 @@ public class ExportUserServlet extends HttpServlet {
                     boolToCsv(u.get("see_all_users")),
                     boolToCsv(u.get("can_manage_calendar")),
                     boolToCsv(u.get("can_manage_capacities")),
-                    boolToCsv(u.get("can_manage_settings"))
+                    boolToCsv(u.get("can_manage_settings")),
+                    boolToCsv(u.get("can_manage_tasks"))
                 );
                 out.println(line);
             }

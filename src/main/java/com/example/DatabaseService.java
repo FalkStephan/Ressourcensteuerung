@@ -51,7 +51,8 @@ public class DatabaseService {
                         " see_all_users BOOLEAN NOT NULL DEFAULT FALSE," +
                         " can_manage_calendar BOOLEAN NOT NULL DEFAULT FALSE," +
                         " can_manage_capacities BOOLEAN NOT NULL DEFAULT FALSE," +
-                        " can_manage_settings BOOLEAN NOT NULL DEFAULT FALSE);";
+                        " can_manage_settings BOOLEAN NOT NULL DEFAULT FALSE," +
+                        " can_manage_tasks BOOLEAN NOT NULL DEFAULT FALSE);";
                 stmt.execute(userSql);
 
                 // Spalten für bestehende Installationen hinzufügen (sicherstellen, dass alle vorhanden sind)
@@ -60,7 +61,10 @@ public class DatabaseService {
                 try { stmt.execute("ALTER TABLE users ADD COLUMN can_manage_calendar BOOLEAN NOT NULL DEFAULT FALSE"); } catch (Exception e) { /* Spalte existiert evtl. schon */ }
                 try { stmt.execute("ALTER TABLE users ADD COLUMN can_manage_capacities BOOLEAN NOT NULL DEFAULT FALSE"); } catch (Exception e) { /* Spalte existiert evtl. schon */ }
                 try { stmt.execute("ALTER TABLE users ADD COLUMN can_manage_settings BOOLEAN NOT NULL DEFAULT FALSE"); } catch (Exception e) { /* Spalte existiert evtl. schon */ }
-                
+                try { stmt.execute("ALTER TABLE users ADD COLUMN can_manage_tasks BOOLEAN NOT NULL DEFAULT FALSE"); } catch (Exception e) { /* Spalte existiert evtl. schon */ }
+                try { stmt.execute("ALTER TABLE task_statuses ADD COLUMN color_code VARCHAR(7) DEFAULT '#FFFFFF'"); } catch (Exception e) { /* Spalte existiert evtl. schon */ }
+                try { stmt.execute("ALTER TABLE tasks ADD COLUMN abteilung VARCHAR(255)"); } catch (SQLException e) {}
+               
                 String mitarbeiterSql = "CREATE TABLE IF NOT EXISTS mitarbeiter (" +
                         " id INTEGER PRIMARY KEY AUTO_INCREMENT," +
                         " name VARCHAR(255) NOT NULL," +
@@ -97,8 +101,24 @@ public class DatabaseService {
                         " id INTEGER PRIMARY KEY AUTO_INCREMENT," +
                         " name VARCHAR(255) NOT NULL," +
                         " active BOOLEAN NOT NULL DEFAULT TRUE," +
-                        " sort_order INTEGER NOT NULL DEFAULT 0);";
+                        " sort_order INTEGER NOT NULL DEFAULT 0," +
+                        " color_code VARCHAR(7) NOT NULL DEFAULT '#FFFFFF');";
                 stmt.execute(statusSql);
+
+                // Tabelle für Aufgaben
+                String taskSql = "CREATE TABLE IF NOT EXISTS tasks (" +
+                        " id INTEGER PRIMARY KEY AUTO_INCREMENT," +
+                        " name VARCHAR(255) NOT NULL," +
+                        " start_date DATE," +
+                        " end_date DATE," +
+                        " effort_days DECIMAL(10, 2)," +
+                        " status_id INTEGER," +
+                        " progress_percent INTEGER DEFAULT 0," +
+                        " abteilung VARCHAR(255)," +
+                        " FOREIGN KEY(status_id) REFERENCES task_statuses(id));";
+                stmt.execute(taskSql);
+                
+
 
                 createAdminIfNotExists(conn);
             }
@@ -111,7 +131,7 @@ public class DatabaseService {
     private static void createAdminIfNotExists(Connection conn) throws SQLException {
         if (getUserByUsername("admin") == null) {
             String hashedPassword = BCrypt.hashpw("admin", BCrypt.gensalt());
-            String sql = "INSERT INTO users(username, password_hash, name, vorname, active, is_user, can_manage_users, can_view_logbook, can_manage_feiertage, see_all_users, can_manage_calendar, can_manage_capacities, can_manage_settings) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+            String sql = "INSERT INTO users(username, password_hash, name, vorname, active, is_user, can_manage_users, can_view_logbook, can_manage_feiertage, see_all_users, can_manage_calendar, can_manage_capacities, can_manage_settings, can_manage_tasks) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
             try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
                 pstmt.setString(1, "admin");
                 pstmt.setString(2, hashedPassword);
@@ -126,6 +146,7 @@ public class DatabaseService {
                 pstmt.setBoolean(11, true); // can_manage_calendar
                 pstmt.setBoolean(12, true); // can_manage_capacities
                 pstmt.setBoolean(13, true); // can_manage_settings
+                pstmt.setBoolean(14, true); // can_manage_tasks
                 pstmt.executeUpdate();
             }
         }
@@ -154,6 +175,7 @@ public class DatabaseService {
         user.put("can_manage_calendar", rs.getBoolean("can_manage_calendar"));
         user.put("can_manage_capacities", rs.getBoolean("can_manage_capacities"));
         user.put("can_manage_settings", rs.getBoolean("can_manage_settings"));
+        user.put("can_manage_tasks", rs.getBoolean("can_manage_tasks"));
         return user;
     }
 
@@ -217,8 +239,8 @@ public class DatabaseService {
         return users;
     }
     
-   public static void addUser(String username, String password, String name, String vorname, String stelle, String team, String abteilung, boolean active, boolean isUser, boolean canManageUsers, boolean canViewLogbook, boolean canManageFeiertage, boolean seeAllUsers, boolean canManageCalendar, boolean canManageCapacities, boolean canManageSettings, String actor) throws SQLException {
-        String sql = "INSERT INTO users(username, password_hash, name, vorname, stelle, team, abteilung, active, is_user, can_manage_users, can_view_logbook, can_manage_feiertage, see_all_users, can_manage_calendar, can_manage_capacities, can_manage_settings) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+   public static void addUser(String username, String password, String name, String vorname, String stelle, String team, String abteilung, boolean active, boolean isUser, boolean canManageUsers, boolean canViewLogbook, boolean canManageFeiertage, boolean seeAllUsers, boolean canManageCalendar, boolean canManageCapacities, boolean canManageSettings, boolean canManageTasks, String actor) throws SQLException {
+        String sql = "INSERT INTO users(username, password_hash, name, vorname, stelle, team, abteilung, active, is_user, can_manage_users, can_view_logbook, can_manage_feiertage, see_all_users, can_manage_calendar, can_manage_capacities, can_manage_settings, can_manage_tasks) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         try (Connection conn = getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
             int i = 1;
             pstmt.setString(i++, username);
@@ -237,13 +259,14 @@ public class DatabaseService {
             pstmt.setBoolean(i++, canManageCalendar);
             pstmt.setBoolean(i++, canManageCapacities);
             pstmt.setBoolean(i++, canManageSettings);
+            pstmt.setBoolean(i++, canManageTasks);
             pstmt.executeUpdate();
             logAction(actor, "Erstellen", "Benutzer '" + username + "' angelegt.");
         }
     }
 
-    public static void updateUser(int id, String username, String password, String name, String vorname, String stelle, String team, String abteilung, boolean active, boolean isUser, boolean canManageUsers, boolean canViewLogbook, boolean canManageFeiertage, boolean seeAllUsers, boolean canManageCalendar, boolean canManageCapacities, boolean canManageSettings, String actor) throws SQLException {
-        StringBuilder sql = new StringBuilder("UPDATE users SET username=?, name=?, vorname=?, stelle=?, team=?, abteilung=?, active=?, is_user=?, can_manage_users=?, can_view_logbook=?, can_manage_feiertage=?, see_all_users=?, can_manage_calendar=?, can_manage_capacities=?, can_manage_settings=?");
+    public static void updateUser(int id, String username, String password, String name, String vorname, String stelle, String team, String abteilung, boolean active, boolean isUser, boolean canManageUsers, boolean canViewLogbook, boolean canManageFeiertage, boolean seeAllUsers, boolean canManageCalendar, boolean canManageCapacities, boolean canManageSettings, boolean canManageTasks, String actor) throws SQLException {
+        StringBuilder sql = new StringBuilder("UPDATE users SET username=?, name=?, vorname=?, stelle=?, team=?, abteilung=?, active=?, is_user=?, can_manage_users=?, can_view_logbook=?, can_manage_feiertage=?, see_all_users=?, can_manage_calendar=?, can_manage_capacities=?, can_manage_settings=?, can_manage_tasks=?");
         if (password != null && !password.isEmpty()) {
             sql.append(", password_hash=?");
         }
@@ -266,6 +289,7 @@ public class DatabaseService {
             pstmt.setBoolean(i++, canManageCalendar);
             pstmt.setBoolean(i++, canManageCapacities);
             pstmt.setBoolean(i++, canManageSettings);
+            pstmt.setBoolean(i++, canManageTasks);
             
             if (password != null && !password.isEmpty()) {
                 pstmt.setString(i++, BCrypt.hashpw(password, BCrypt.gensalt()));
@@ -702,6 +726,7 @@ public class DatabaseService {
                 status.put("name", rs.getString("name"));
                 status.put("active", rs.getBoolean("active"));
                 status.put("sort_order", rs.getInt("sort_order"));
+                status.put("color_code", rs.getString("color_code"));
                 statuses.add(status);
             }
         } catch (SQLException e) {
@@ -710,24 +735,26 @@ public class DatabaseService {
         return statuses;
     }
 
-    public static void addTaskStatus(String name, boolean active, int sortOrder, String actor) throws SQLException {
-        String sql = "INSERT INTO task_statuses(name, active, sort_order) VALUES (?, ?, ?)";
+    public static void addTaskStatus(String name, boolean active, int sortOrder, String colorCode, String actor) throws SQLException {
+        String sql = "INSERT INTO task_statuses(name, active, sort_order, color_code) VALUES (?, ?, ?, ?)";
         try (Connection conn = getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setString(1, name);
             pstmt.setBoolean(2, active);
             pstmt.setInt(3, sortOrder);
+            pstmt.setString(4, colorCode); // NEU
             pstmt.executeUpdate();
             logAction(actor, "Erstellen", "Neuer Aufgaben-Status erstellt: " + name);
         }
     }
 
-    public static void updateTaskStatus(int id, String name, boolean active, int sortOrder, String actor) throws SQLException {
-        String sql = "UPDATE task_statuses SET name = ?, active = ?, sort_order = ? WHERE id = ?";
+    public static void updateTaskStatus(int id, String name, boolean active, int sortOrder, String colorCode, String actor) throws SQLException {
+        String sql = "UPDATE task_statuses SET name = ?, active = ?, sort_order = ?, color_code = ? WHERE id = ?";
         try (Connection conn = getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setString(1, name);
             pstmt.setBoolean(2, active);
             pstmt.setInt(3, sortOrder);
-            pstmt.setInt(4, id);
+            pstmt.setString(4, colorCode); // NEU
+            pstmt.setInt(5, id);
             pstmt.executeUpdate();
             logAction(actor, "Bearbeiten", "Aufgaben-Status (ID: " + id + ") aktualisiert.");
         }
@@ -739,6 +766,100 @@ public class DatabaseService {
             pstmt.setInt(1, id);
             pstmt.executeUpdate();
             logAction(actor, "Löschen", "Aufgaben-Status (ID: " + id + ") gelöscht.");
+        }
+    }
+
+
+
+    // ####################
+    // Aufgaben
+    // ####################
+    public static List<Map<String, Object>> getAllTasks(String search, int statusId, Map<String, Object> currentUser) {
+    List<Map<String, Object>> tasks = new ArrayList<>();
+    
+    StringBuilder sql = new StringBuilder("SELECT t.*, ts.name as status_name, ts.color_code as status_color FROM tasks t LEFT JOIN task_statuses ts ON t.status_id = ts.id");
+    List<Object> params = new ArrayList<>();
+    List<String> whereClauses = new ArrayList<>();
+
+    // Textsuche
+    if (search != null && !search.trim().isEmpty()) {
+        whereClauses.add("t.name LIKE ?");
+        params.add("%" + search.trim() + "%");
+    }
+
+    // Status-Filter
+    if (statusId > 0) {
+        whereClauses.add("t.status_id = ?");
+        params.add(statusId);
+    }
+
+    // Abteilungs-Filter basierend auf Benutzerrechten
+    if (currentUser != null && !Boolean.TRUE.equals(currentUser.get("see_all_users"))) {
+        whereClauses.add("t.abteilung = ?");
+        params.add(currentUser.get("abteilung"));
+    }
+    
+    if (!whereClauses.isEmpty()) {
+        sql.append(" WHERE ").append(String.join(" AND ", whereClauses));
+    }
+    
+    sql.append(" ORDER BY t.start_date ASC, t.name ASC");
+
+    try (Connection conn = getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql.toString())) {
+        for (int i = 0; i < params.size(); i++) {
+            pstmt.setObject(i + 1, params.get(i));
+        }
+        
+        ResultSet rs = pstmt.executeQuery();
+        while (rs.next()) {
+            Map<String, Object> task = new HashMap<>();
+            // KORREKTUR: Sicherstellen, dass alle Felder ausgelesen werden
+            task.put("id", rs.getInt("id"));
+            task.put("name", rs.getString("name"));
+            task.put("start_date", rs.getObject("start_date", LocalDate.class));
+            task.put("end_date", rs.getObject("end_date", LocalDate.class));
+            task.put("effort_days", rs.getBigDecimal("effort_days"));
+            task.put("status_id", rs.getInt("status_id"));
+            task.put("status_name", rs.getString("status_name"));
+            task.put("status_color", rs.getString("status_color")); 
+            task.put("progress_percent", rs.getInt("progress_percent"));
+            task.put("abteilung", rs.getString("abteilung"));
+            tasks.add(task);
+        }
+    } catch (SQLException e) {
+        e.printStackTrace();
+    }
+    return tasks;
+}
+
+    public static void addTask(String name, LocalDate startDate, LocalDate endDate, double effortDays, int statusId, int progress, String abteilung, String actor) throws SQLException {
+        String sql = "INSERT INTO tasks(name, start_date, end_date, effort_days, status_id, progress_percent, abteilung) VALUES (?, ?, ?, ?, ?, ?, ?)";
+        try (Connection conn = getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, name);
+            pstmt.setDate(2, startDate != null ? Date.valueOf(startDate) : null);
+            pstmt.setDate(3, endDate != null ? Date.valueOf(endDate) : null);
+            pstmt.setDouble(4, effortDays);
+            pstmt.setInt(5, statusId);
+            pstmt.setInt(6, progress);
+            pstmt.setString(7, abteilung);
+            pstmt.executeUpdate();
+            logAction(actor, "Erstellen", "Neue Aufgabe erstellt: " + name);
+        }
+    }
+
+    public static void updateTask(int id, String name, LocalDate startDate, LocalDate endDate, double effortDays, int statusId, int progress, String abteilung, String actor) throws SQLException {
+        String sql = "UPDATE tasks SET name = ?, start_date = ?, end_date = ?, effort_days = ?, status_id = ?, progress_percent = ?, abteilung = ? WHERE id = ?";
+         try (Connection conn = getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, name);
+            pstmt.setDate(2, startDate != null ? Date.valueOf(startDate) : null);
+            pstmt.setDate(3, endDate != null ? Date.valueOf(endDate) : null);
+            pstmt.setDouble(4, effortDays);
+            pstmt.setInt(5, statusId);
+            pstmt.setInt(6, progress);
+            pstmt.setString(7, abteilung);
+            pstmt.setInt(8, id);
+            pstmt.executeUpdate();
+            logAction(actor, "Bearbeiten", "Aufgabe (ID: " + id + ") aktualisiert.");
         }
     }
 

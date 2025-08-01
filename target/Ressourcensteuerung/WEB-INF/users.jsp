@@ -144,7 +144,8 @@
                                         data-see-all-users="${u.see_all_users}"
                                         data-can-manage-calendar="${u.can_manage_calendar}"
                                         data-can-manage-capacities="${u.can_manage_capacities}"
-                                        data-can-manage-settings="${u.can_manage_settings}">
+                                        data-can-manage-settings="${u.can_manage_settings}"
+                                        data-can-manage-tasks="${u.can_manage_tasks}">
                                         Bearbeiten
                                     </button>
                                     <c:if test="${sessionScope.user.username != u.username}">
@@ -237,6 +238,7 @@
                         </div>
 
                         <div style="display: flex; gap: 1.5em;">
+                            <label><input type="checkbox" id="userFormCanManageTasks" name="can_manage_tasks"> Aufgaben</label>
                             <label><input type="checkbox" id="userFormCanManageSettings" name="can_manage_settings"> Einstellungen</label>
                             <label><input type="checkbox" id="userFormCanViewLogbook" name="can_view_logbook"> Logbuch</label>
                         </div>
@@ -353,6 +355,7 @@
             document.getElementById('userFormCanManageCalendar').checked = (btn.dataset.canManageCalendar === 'true');
             document.getElementById('userFormCanManageCapacities').checked = (btn.dataset.canManageCapacities === 'true');
             document.getElementById('userFormCanManageSettings').checked = (btn.dataset.canManageSettings === 'true');
+            document.getElementById('userFormCanManageTasks').checked = (btn.dataset.canManageTasks === 'true');
         }
         toggleUserFields(); // Diese Funktion steuert jetzt die Passwort-Anforderung
             document.getElementById('userModal').style.display = 'flex';
