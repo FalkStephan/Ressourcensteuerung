@@ -102,6 +102,7 @@ public class ImportUserServlet extends HttpServlet {
                     boolean canManageCapacities = "1".equals(getCellString(row, 13));
                     boolean canManageSettings = "1".equals(getCellString(row, 14));
                     boolean canManageTasks = "1".equals(getCellString(row, 15));
+                    boolean canManageCalendarOverview = "1".equals(getCellString(row, 16));
                     String password = username;
                     
                     importedUsernames.add(username);
@@ -111,12 +112,12 @@ public class ImportUserServlet extends HttpServlet {
                         if (updateExisting) {
                             int id = (int) existing.get("id");
                             // KORREKTUR: Fehlenden Parameter hinzugefügt
-                            DatabaseService.updateUser(id, username, password, name, vorname, stelle, team, abteilung, active, isUser, canManageUsers, canViewLogbook, canManageFeiertage, seeAllUsers, canManageCalendar, canManageCapacities, canManageSettings, canManageTasks, "import");
+                            DatabaseService.updateUser(id, username, password, name, vorname, stelle, team, abteilung, active, isUser, canManageUsers, canViewLogbook, canManageFeiertage, seeAllUsers, canManageCalendar, canManageCapacities, canManageSettings, canManageTasks, canManageCalendarOverview, "import");
                             count++;
                         }
                     } else if (importNew) {
                         // KORREKTUR: Fehlenden Parameter hinzugefügt
-                        DatabaseService.addUser(username, password, name, vorname, stelle, team, abteilung, active, isUser, canManageUsers, canViewLogbook, canManageFeiertage, seeAllUsers, canManageCalendar, canManageCapacities, canManageSettings, canManageTasks, "import");
+                        DatabaseService.addUser(username, password, name, vorname, stelle, team, abteilung, active, isUser, canManageUsers, canViewLogbook, canManageFeiertage, seeAllUsers, canManageCalendar, canManageCapacities, canManageSettings, canManageTasks, canManageCalendarOverview, "import");
                         count++;
                     }
                 } catch (Exception e) {
@@ -158,6 +159,7 @@ public class ImportUserServlet extends HttpServlet {
                     boolean canManageCapacities = "1".equals(parts[13].trim());
                     boolean canManageSettings = "1".equals(parts[14].trim());
                     boolean canManageTasks = "1".equals(parts[15].trim());
+                    boolean canManageCalendarOverview = "1".equals(parts[16].trim());
                     String password = username;
                     
                     importedUsernames.add(username);
@@ -166,11 +168,11 @@ public class ImportUserServlet extends HttpServlet {
                     if (existing != null) {
                         if (updateExisting) {
                             int id = (int) existing.get("id");
-                            DatabaseService.updateUser(id, username, password, name, vorname, stelle, team, abteilung, active, isUser, canManageUsers, canViewLogbook, canManageFeiertage, seeAllUsers, canManageCalendar, canManageCapacities, canManageSettings, canManageTasks, "import");
+                            DatabaseService.updateUser(id, username, password, name, vorname, stelle, team, abteilung, active, isUser, canManageUsers, canViewLogbook, canManageFeiertage, seeAllUsers, canManageCalendar, canManageCapacities, canManageSettings, canManageTasks, canManageCalendarOverview, "import");
                             count++;
                         }
                     } else if (importNew) {
-                        DatabaseService.addUser(username, password, name, vorname, stelle, team, abteilung, active, isUser, canManageUsers, canViewLogbook, canManageFeiertage, seeAllUsers, canManageCalendar, canManageCapacities, canManageSettings, canManageTasks, "import");
+                        DatabaseService.addUser(username, password, name, vorname, stelle, team, abteilung, active, isUser, canManageUsers, canViewLogbook, canManageFeiertage, seeAllUsers, canManageCalendar, canManageCapacities, canManageSettings, canManageTasks, canManageCalendarOverview, "import");
                         count++;
                     }
                 } catch (Exception e) {

@@ -53,6 +53,7 @@ public class DatabaseService {
                         " can_manage_calendar BOOLEAN NOT NULL DEFAULT FALSE," +
                         " can_manage_capacities BOOLEAN NOT NULL DEFAULT FALSE," +
                         " can_manage_settings BOOLEAN NOT NULL DEFAULT FALSE," +
+                        " can_manage_calendar_overview BOOLEAN NOT NULL DEFAULT FALSE," +
                         " can_manage_tasks BOOLEAN NOT NULL DEFAULT FALSE);";
                 stmt.execute(userSql);
 
@@ -60,6 +61,7 @@ public class DatabaseService {
                 try { stmt.execute("ALTER TABLE users ADD COLUMN can_manage_feiertage BOOLEAN NOT NULL DEFAULT FALSE"); } catch (Exception e) { /* Spalte existiert evtl. schon */ }
                 try { stmt.execute("ALTER TABLE users ADD COLUMN see_all_users BOOLEAN NOT NULL DEFAULT FALSE"); } catch (Exception e) { /* Spalte existiert evtl. schon */ }
                 try { stmt.execute("ALTER TABLE users ADD COLUMN can_manage_calendar BOOLEAN NOT NULL DEFAULT FALSE"); } catch (Exception e) { /* Spalte existiert evtl. schon */ }
+                try { stmt.execute("ALTER TABLE users ADD COLUMN can_manage_calendar_overview BOOLEAN NOT NULL DEFAULT FALSE"); } catch (Exception e) { /* Spalte existiert evtl. schon */ }
                 try { stmt.execute("ALTER TABLE users ADD COLUMN can_manage_capacities BOOLEAN NOT NULL DEFAULT FALSE"); } catch (Exception e) { /* Spalte existiert evtl. schon */ }
                 try { stmt.execute("ALTER TABLE users ADD COLUMN can_manage_settings BOOLEAN NOT NULL DEFAULT FALSE"); } catch (Exception e) { /* Spalte existiert evtl. schon */ }
                 try { stmt.execute("ALTER TABLE users ADD COLUMN can_manage_tasks BOOLEAN NOT NULL DEFAULT FALSE"); } catch (Exception e) { /* Spalte existiert evtl. schon */ }
@@ -132,7 +134,7 @@ public class DatabaseService {
     private static void createAdminIfNotExists(Connection conn) throws SQLException {
         if (getUserByUsername("admin") == null) {
             String hashedPassword = BCrypt.hashpw("admin", BCrypt.gensalt());
-            String sql = "INSERT INTO users(username, password_hash, name, vorname, active, is_user, can_manage_users, can_view_logbook, can_manage_feiertage, see_all_users, can_manage_calendar, can_manage_capacities, can_manage_settings, can_manage_tasks) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+            String sql = "INSERT INTO users(username, password_hash, name, vorname, active, is_user, can_manage_users, can_view_logbook, can_manage_feiertage, see_all_users, can_manage_calendar, can_manage_capacities, can_manage_settings, can_manage_tasks, can_manage_calendar_overview) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
             try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
                 pstmt.setString(1, "admin");
                 pstmt.setString(2, hashedPassword);
@@ -148,6 +150,7 @@ public class DatabaseService {
                 pstmt.setBoolean(12, true); // can_manage_capacities
                 pstmt.setBoolean(13, true); // can_manage_settings
                 pstmt.setBoolean(14, true); // can_manage_tasks
+                pstmt.setBoolean(15, true); // can_manage_calendar_overview
                 pstmt.executeUpdate();
             }
         }
@@ -177,6 +180,7 @@ public class DatabaseService {
         user.put("can_manage_capacities", rs.getBoolean("can_manage_capacities"));
         user.put("can_manage_settings", rs.getBoolean("can_manage_settings"));
         user.put("can_manage_tasks", rs.getBoolean("can_manage_tasks"));
+        user.put("can_manage_calendar_overview", rs.getBoolean("can_manage_calendar_overview"));
         return user;
     }
 
@@ -240,8 +244,8 @@ public class DatabaseService {
         return users;
     }
     
-   public static void addUser(String username, String password, String name, String vorname, String stelle, String team, String abteilung, boolean active, boolean isUser, boolean canManageUsers, boolean canViewLogbook, boolean canManageFeiertage, boolean seeAllUsers, boolean canManageCalendar, boolean canManageCapacities, boolean canManageSettings, boolean canManageTasks, String actor) throws SQLException {
-        String sql = "INSERT INTO users(username, password_hash, name, vorname, stelle, team, abteilung, active, is_user, can_manage_users, can_view_logbook, can_manage_feiertage, see_all_users, can_manage_calendar, can_manage_capacities, can_manage_settings, can_manage_tasks) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+   public static void addUser(String username, String password, String name, String vorname, String stelle, String team, String abteilung, boolean active, boolean isUser, boolean canManageUsers, boolean canViewLogbook, boolean canManageFeiertage, boolean seeAllUsers, boolean canManageCalendar, boolean canManageCapacities, boolean canManageSettings, boolean canManageTasks, boolean canManageCalendarOverview, String actor) throws SQLException {
+        String sql = "INSERT INTO users(username, password_hash, name, vorname, stelle, team, abteilung, active, is_user, can_manage_users, can_view_logbook, can_manage_feiertage, see_all_users, can_manage_calendar, can_manage_capacities, can_manage_settings, can_manage_tasks, can_manage_calendar_overview) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         try (Connection conn = getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
             int i = 1;
             pstmt.setString(i++, username);
@@ -261,13 +265,14 @@ public class DatabaseService {
             pstmt.setBoolean(i++, canManageCapacities);
             pstmt.setBoolean(i++, canManageSettings);
             pstmt.setBoolean(i++, canManageTasks);
+            pstmt.setBoolean(i++, canManageCalendarOverview);
             pstmt.executeUpdate();
             logAction(actor, "Erstellen", "Benutzer '" + username + "' angelegt.");
         }
     }
 
-    public static void updateUser(int id, String username, String password, String name, String vorname, String stelle, String team, String abteilung, boolean active, boolean isUser, boolean canManageUsers, boolean canViewLogbook, boolean canManageFeiertage, boolean seeAllUsers, boolean canManageCalendar, boolean canManageCapacities, boolean canManageSettings, boolean canManageTasks, String actor) throws SQLException {
-        StringBuilder sql = new StringBuilder("UPDATE users SET username=?, name=?, vorname=?, stelle=?, team=?, abteilung=?, active=?, is_user=?, can_manage_users=?, can_view_logbook=?, can_manage_feiertage=?, see_all_users=?, can_manage_calendar=?, can_manage_capacities=?, can_manage_settings=?, can_manage_tasks=?");
+    public static void updateUser(int id, String username, String password, String name, String vorname, String stelle, String team, String abteilung, boolean active, boolean isUser, boolean canManageUsers, boolean canViewLogbook, boolean canManageFeiertage, boolean seeAllUsers, boolean canManageCalendar, boolean canManageCapacities, boolean canManageSettings, boolean canManageTasks, boolean canManageCalendarOverview, String actor) throws SQLException {
+        StringBuilder sql = new StringBuilder("UPDATE users SET username=?, name=?, vorname=?, stelle=?, team=?, abteilung=?, active=?, is_user=?, can_manage_users=?, can_view_logbook=?, can_manage_feiertage=?, see_all_users=?, can_manage_calendar=?, can_manage_capacities=?, can_manage_settings=?, can_manage_tasks=?, can_manage_calendar_overview=?");
         if (password != null && !password.isEmpty()) {
             sql.append(", password_hash=?");
         }
@@ -291,6 +296,7 @@ public class DatabaseService {
             pstmt.setBoolean(i++, canManageCapacities);
             pstmt.setBoolean(i++, canManageSettings);
             pstmt.setBoolean(i++, canManageTasks);
+            pstmt.setBoolean(i++, canManageCalendarOverview);
             
             if (password != null && !password.isEmpty()) {
                 pstmt.setString(i++, BCrypt.hashpw(password, BCrypt.gensalt()));
