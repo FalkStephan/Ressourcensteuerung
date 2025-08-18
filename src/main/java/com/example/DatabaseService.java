@@ -48,6 +48,7 @@ public class DatabaseService {
                         " can_manage_users BOOLEAN NOT NULL DEFAULT FALSE," +
                         " can_view_logbook BOOLEAN NOT NULL DEFAULT FALSE," +
                         " can_manage_feiertage BOOLEAN NOT NULL DEFAULT FALSE," +
+                        " INDEX idx_abteilung (abteilung)," +
                         " see_all_users BOOLEAN NOT NULL DEFAULT FALSE," +
                         " can_manage_calendar BOOLEAN NOT NULL DEFAULT FALSE," +
                         " can_manage_capacities BOOLEAN NOT NULL DEFAULT FALSE," +
@@ -632,7 +633,7 @@ public class DatabaseService {
     }
 
     // ####################
-    // Kalender
+    // Abwesenheiten
     // ####################
 
     public static void addAbsence(int userId, LocalDate startDate, LocalDate endDate, String reason, String actor) throws SQLException {
@@ -868,5 +869,110 @@ public class DatabaseService {
         if (a == null && b == null) return true;
         if (a == null || b == null) return false;
         return a.equals(b);
+    }
+
+    // Settings
+    public static Map<String, String> getAllSettings() throws SQLException {
+        Map<String, String> settings = new HashMap<>();
+        String sql = "SELECT setting_key, setting_value FROM settings";
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql);
+             ResultSet rs = stmt.executeQuery()) {
+            while (rs.next()) {
+                settings.put(rs.getString("setting_key"), rs.getString("setting_value"));
+            }
+        }
+        return settings;
+    }
+
+    public static void updateSetting(String key, String value, String actor) throws SQLException {
+        String sql = "UPDATE settings SET setting_value = ? WHERE setting_key = ?";
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, value);
+            stmt.setString(2, key);
+            stmt.executeUpdate();
+            logAction(actor, "Einstellung ändern", "Setting '" + key + "' auf '" + value + "' geändert");
+        }
+    }
+
+    public static List<Map<String, Object>> getSettingsWithDescription() throws SQLException {
+        List<Map<String, Object>> settings = new ArrayList<>();
+        String sql = "SELECT setting_key, setting_value, description FROM settings ORDER BY setting_key";
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql);
+             ResultSet rs = stmt.executeQuery()) {
+            while (rs.next()) {
+                Map<String, Object> setting = new HashMap<>();
+                setting.put("key", rs.getString("setting_key"));
+                setting.put("value", rs.getString("setting_value"));
+                setting.put("description", rs.getString("description"));
+                settings.add(setting);
+            }
+        }
+        return settings;
+    }
+
+    // Kalenderübersicht
+    public static List<Map<String, Object>> getActiveUsers() throws SQLException {
+        List<Map<String, Object>> users = new ArrayList<>();
+        String sql = "SELECT id, username, name, vorname, abteilung FROM users WHERE active = true ORDER BY abteilung, name, vorname";
+        
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql);
+             ResultSet rs = stmt.executeQuery()) {
+            
+            while (rs.next()) {
+                Map<String, Object> user = new HashMap<>();
+                user.put("id", rs.getInt("id"));
+                user.put("username", rs.getString("username"));
+                user.put("name", rs.getString("name"));
+                user.put("vorname", rs.getString("vorname"));
+                user.put("abteilung", rs.getString("abteilung"));
+                users.add(user);
+            }
+        }
+        return users;
+    }
+    
+    public static Map<LocalDate, String> getHolidaysForMonth(int year, int month) throws SQLException {
+        Map<LocalDate, String> holidays = new HashMap<>();
+        String sql = "SELECT datum, bezeichnung FROM feiertage WHERE YEAR(datum) = ? AND MONTH(datum) = ?";
+        
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            
+            stmt.setInt(1, year);
+            stmt.setInt(2, month);
+            
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    LocalDate date = rs.getDate("datum").toLocalDate();
+                    String name = rs.getString("bezeichnung");
+                    holidays.put(date, name);
+                }
+            }
+        }
+        return holidays;
+    }
+    
+    public static List<LocalDate> getAbsencesForUser(int userId, LocalDate startDate, LocalDate endDate) throws SQLException {
+        List<LocalDate> absences = new ArrayList<>();
+        String sql = "SELECT datum FROM calendar WHERE user_id = ? AND datum BETWEEN ? AND ?";
+        
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            
+            stmt.setInt(1, userId);
+            stmt.setDate(2, java.sql.Date.valueOf(startDate));
+            stmt.setDate(3, java.sql.Date.valueOf(endDate));
+            
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    absences.add(rs.getDate("datum").toLocalDate());
+                }
+            }
+        }
+        return absences;
     }
 }

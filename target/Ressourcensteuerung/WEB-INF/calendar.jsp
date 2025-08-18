@@ -4,7 +4,7 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-    <c:set var="title" value="Kalender" scope="request"/>
+    <c:set var="title" value="Abwesenheiten" scope="request"/>
     <jsp:include page="/WEB-INF/_header.jsp"/>
     <style>
         .user-card { margin-bottom: 2em; padding: 1em; border: 1px solid #ddd; border-radius: 5px; }

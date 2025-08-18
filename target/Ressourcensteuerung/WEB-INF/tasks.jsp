@@ -13,7 +13,9 @@
     <main>
         <div class="container">
             <h2>Aufgaben</h2>
+
             <button class="button create" onclick="showTaskModal('add')">Neue Aufgabe anlegen</button>
+
             <form id="filterForm" action="tasks" method="get" class="search-container">
                 <input type="text" id="searchInput" name="search" value="<c:out value='${currentSearch}'/>" placeholder="Aufgabe suchen...">
                 <select name="status_filter" onchange="this.form.submit()" style="margin-left: 1em;">
@@ -24,7 +26,10 @@
                         </option>
                     </c:forEach>
                 </select>
-                </form>
+            </form>
+
+            
+            
             <table>
                 <thead>
                     <tr>
@@ -42,7 +47,7 @@
                     <c:forEach var="task" items="${tasks}">
                         <tr>
                             <td><c:out value="${task.name}"/></td>
-                            <td><c:out value="${task.abteilung}"/></td> 
+                            <td><c:out value="${task.abteilung}"/></td>
                             <td><fmt:formatDate value="${task.start_date}" type="date" pattern="dd.MM.yyyy"/></td>
                             <td><fmt:formatDate value="${task.end_date}" type="date" pattern="dd.MM.yyyy"/></td>
                             <td><c:out value="${task.effort_days}"/></td>
@@ -66,7 +71,8 @@
                                     data-id="${task.id}" data-name="${task.name}"
                                     data-start-date="${task.start_date}" data-end-date="${task.end_date}"
                                     data-effort-days="${task.effort_days}" data-status-id="${task.status_id}"
-                                    data-progress-percent="${task.progress_percent}">
+                                    data-progress-percent="${task.progress_percent}"
+                                    data-abteilung="${task.abteilung}">
                                     Bearbeiten
                                 </button>
                             </td>
@@ -103,7 +109,7 @@
             <div>
                 <label>Status:</label>
                 <select name="status_id" id="taskStatus" required>
-                    <c:forEach var="status" items="${taskStatuses}">                        
+                    <c:forEach var="status" items="${taskStatuses}">
                         <option value="${status.id}">${status.name}</option>
                     </c:forEach>
                 </select>
@@ -117,7 +123,6 @@
 </div>
 
 <script>
-
     const searchInput = document.getElementById('searchInput');
     const filterForm = document.getElementById('filterForm');
     let debounceTimer;
@@ -126,16 +131,22 @@
         clearTimeout(debounceTimer);
         debounceTimer = setTimeout(() => {
             filterForm.submit();
-        }, 500); // Wartet 500ms nach der letzten Eingabe
+        }, 500);
     });
-
 
     function showTaskModal(mode, btn) {
         const form = document.getElementById('taskForm');
         form.reset();
+        
+        const abteilungInput = document.getElementById('taskAbteilung');
+        const userCanSeeAll = ${sessionScope.user.see_all_users};
+
         if (mode === 'add') {
             document.getElementById('taskModalTitle').textContent = 'Neue Aufgabe';
             document.getElementById('taskAction').value = 'add';
+            if (!userCanSeeAll) {
+                abteilungInput.value = "${sessionScope.user.abteilung}";
+            }
         } else {
             document.getElementById('taskModalTitle').textContent = 'Aufgabe bearbeiten';
             document.getElementById('taskAction').value = 'edit';
@@ -146,10 +157,12 @@
             document.getElementById('taskEffort').value = btn.dataset.effortDays;
             document.getElementById('taskStatus').value = btn.dataset.statusId;
             document.getElementById('taskProgress').value = btn.dataset.progressPercent;
-            document.getElementById('taskAbteilung').value = btn.dataset.abteilung;
+            // KORREKTUR: Fehlende Zeile zum Setzen der Abteilung
+            abteilungInput.value = btn.dataset.abteilung;
         }
         document.getElementById('taskModal').style.display = 'flex';
     }
+    
     function hideTaskModal() {
         document.getElementById('taskModal').style.display = 'none';
     }

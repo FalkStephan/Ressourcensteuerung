@@ -25,9 +25,19 @@ public class SettingsServlet extends HttpServlet {
             return;
         }
 
-        List<Map<String, Object>> statuses = DatabaseService.getAllTaskStatuses();
-        req.setAttribute("taskStatuses", statuses);
-        req.getRequestDispatcher("/WEB-INF/settings.jsp").forward(req, resp);
+        try {
+            // Lade Task-Status
+            List<Map<String, Object>> statuses = DatabaseService.getAllTaskStatuses();
+            req.setAttribute("taskStatuses", statuses);
+            
+            // Lade Einstellungen
+            List<Map<String, Object>> settings = DatabaseService.getSettingsWithDescription();
+            req.setAttribute("settings", settings);
+            
+            req.getRequestDispatcher("/WEB-INF/settings.jsp").forward(req, resp);
+        } catch (SQLException e) {
+            throw new ServletException("Fehler beim Laden der Einstellungen", e);
+        }
     }
 
     @Override
@@ -42,27 +52,41 @@ public class SettingsServlet extends HttpServlet {
         }
         String actor = (String) user.get("username");
         String action = req.getParameter("action");
-        String colorCode = req.getParameter("color_code");
 
         try {
             switch (action) {
+                case "update_settings":
+                    // Alle settings aus der Datenbank holen
+                    Map<String, String> currentSettings = DatabaseService.getAllSettings();
+                    
+                    // Für jede Einstellung prüfen, ob sie geändert wurde
+                    for (String key : currentSettings.keySet()) {
+                        String newValue = req.getParameter(key);
+                        if (newValue != null && !newValue.equals(currentSettings.get(key))) {
+                            DatabaseService.updateSetting(key, newValue, actor);
+                        }
+                    }
+                    break;
+
                 case "add_status":
                     DatabaseService.addTaskStatus(
                         req.getParameter("name"),
                         "on".equals(req.getParameter("active")),
                         Integer.parseInt(req.getParameter("sort_order")),
-                        colorCode,
+                        req.getParameter("color_code"),
                         actor);
                     break;
+                    
                 case "edit_status":
                     DatabaseService.updateTaskStatus(
                         Integer.parseInt(req.getParameter("id")),
                         req.getParameter("name"),
                         "on".equals(req.getParameter("active")),
                         Integer.parseInt(req.getParameter("sort_order")),
-                        colorCode,
+                        req.getParameter("color_code"),
                         actor);
                     break;
+                    
                 case "delete_status":
                     DatabaseService.deleteTaskStatus(
                         Integer.parseInt(req.getParameter("id")),

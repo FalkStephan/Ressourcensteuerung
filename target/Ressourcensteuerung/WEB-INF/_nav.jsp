@@ -16,7 +16,11 @@
         </c:if>
 
         <c:if test="${sessionScope.user.can_manage_calendar}">
-            <li><a href="${pageContext.request.contextPath}/calendar">Kalender</a></li>
+            <li><a href="${pageContext.request.contextPath}/calendar">Abwesenheiten</a></li>
+        </c:if>
+
+        <c:if test="${sessionScope.user.can_manage_calendar}">
+            <li><a href="${pageContext.request.contextPath}/calendar_overview">Kalender</a></li>
         </c:if>
 
         <c:if test="${sessionScope.user.can_manage_tasks}">

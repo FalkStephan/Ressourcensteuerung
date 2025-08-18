@@ -232,7 +232,7 @@
                         </div>
                         
                         <div style="display: flex; gap: 1.5em;">
-                            <label><input type="checkbox" id="userFormCanManageCalendar" name="can_manage_calendar"> Kalender</label>
+                            <label><input type="checkbox" id="userFormCanManageCalendar" name="can_manage_calendar"> Abwesenheiten</label>
                             <label><input type="checkbox" id="userFormCanManageCapacities" name="can_manage_capacities"> Kapazitäten</label>
                             <label><input type="checkbox" id="userFormCanManageFeiertage" name="can_manage_feiertage"> Feiertage</label>
                         </div>

@@ -5,6 +5,54 @@
 <head>
     <c:set var="title" value="Einstellungen" scope="request"/>
     <jsp:include page="/WEB-INF/_header.jsp"/>
+    <style>
+        .settings-section {
+            margin-bottom: 2em;
+            background: #fff;
+            padding: 1em;
+            border-radius: 4px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .settings-section h3 {
+            margin-top: 0;
+            padding-bottom: 0.5em;
+            border-bottom: 1px solid #eee;
+        }
+        .settings-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1em;
+            margin-top: 1em;
+        }
+        .setting-item {
+            display: flex;
+            align-items: center;
+            gap: 1em;
+            padding: 0.5em;
+        }
+        .setting-item label {
+            flex: 1;
+        }
+        .color-preview {
+            width: 30px;
+            height: 30px;
+            border: 1px solid #ccc;
+            display: inline-block;
+            vertical-align: middle;
+            margin-left: 0.5em;
+            border-radius: 4px;
+        }
+        .color-input-group {
+            display: flex;
+            align-items: center;
+            gap: 0.5em;
+        }
+        input[type="color"] {
+            padding: 0;
+            width: 50px;
+            height: 30px;
+        }
+    </style>
 </head>
 <body>
 <div class="layout-wrapper">
@@ -12,7 +60,39 @@
     <main>
         <div class="container">
             <h2>Einstellungen</h2>
-            <div class="user-card">
+            <!-- Kalenderfarben -->
+            <div class="settings-section">
+                <h3>Kalenderfarben</h3>
+                <form id="colorSettingsForm" method="post" action="${pageContext.request.contextPath}/settings">
+                    <input type="hidden" name="action" value="update_settings">
+                    <div class="settings-grid">
+                        <c:forEach var="setting" items="${settings}">
+                            <c:if test="${setting.key.startsWith('calendar_color_')}">
+                                <div class="setting-item">
+                                    <label for="${setting.key}">${setting.description}:</label>
+                                    <div class="color-input-group">
+                                        <input type="color" 
+                                               id="${setting.key}" 
+                                               name="${setting.key}" 
+                                               value="${setting.value}"
+                                               onchange="updatePreview(this)">
+                                        <span class="color-preview" 
+                                              id="preview_${setting.key}" 
+                                              style="background-color: ${setting.value}">
+                                        </span>
+                                    </div>
+                                </div>
+                            </c:if>
+                        </c:forEach>
+                    </div>
+                    <div style="margin-top: 1em;">
+                        <button type="submit" class="button create">Farben speichern</button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Task-Status -->
+            <div class="settings-section">
                 <h3>Status "Aufgaben"</h3>
                 <button class="button create small" onclick="showStatusModal('add')">Neuen Status anlegen</button>
                 <table>
@@ -77,6 +157,11 @@
 </div>
 
 <script>
+    // Farb-Preview aktualisieren
+    function updatePreview(input) {
+        document.getElementById('preview_' + input.id).style.backgroundColor = input.value;
+    }
+
     function showStatusModal(mode, btn) {
         const form = document.getElementById('statusForm');
         form.reset();
