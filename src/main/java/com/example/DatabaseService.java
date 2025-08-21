@@ -20,7 +20,58 @@ import org.mindrot.jbcrypt.BCrypt;
 
 public class DatabaseService {
 
+public class DatabaseService {
     
+    // Task Assignments
+    public static int getLastInsertedTaskId() throws SQLException {
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement("SELECT MAX(id) FROM tasks")) {
+            ResultSet rs = stmt.executeQuery();
+            if (rs.next()) {
+                return rs.getInt(1);
+            }
+            throw new SQLException("Keine Task-ID gefunden");
+        }
+    }
+
+    public static void updateTaskAssignments(int taskId, List<Integer> userIds) throws SQLException {
+        try (Connection conn = getConnection()) {
+            // Transaktion starten
+            conn.setAutoCommit(false);
+            
+            try {
+                // Erst alle bestehenden Zuweisungen für diese Aufgabe löschen
+                try (PreparedStatement deleteStmt = conn.prepareStatement(
+                        "DELETE FROM task_user_assignments WHERE task_id = ?")) {
+                    deleteStmt.setInt(1, taskId);
+                    deleteStmt.executeUpdate();
+                }
+                
+                // Dann die neuen Zuweisungen einfügen
+                if (!userIds.isEmpty()) {
+                    try (PreparedStatement insertStmt = conn.prepareStatement(
+                            "INSERT INTO task_user_assignments (task_id, user_id, effort_days) VALUES (?, ?, ?)")) {
+                        for (Integer userId : userIds) {
+                            insertStmt.setInt(1, taskId);
+                            insertStmt.setInt(2, userId);
+                            insertStmt.setDouble(3, 0.0); // Standard-Aufwand auf 0 setzen
+                            insertStmt.executeUpdate();
+                        }
+                    }
+                }
+                
+                // Transaktion bestätigen
+                conn.commit();
+            } catch (SQLException e) {
+                // Bei Fehler Rollback durchführen
+                conn.rollback();
+                throw e;
+            } finally {
+                // Auto-Commit wieder aktivieren
+                conn.setAutoCommit(true);
+            }
+        }
+    }
 
     private static Connection getConnection() throws SQLException {
         return DriverManager.getConnection(
@@ -34,6 +85,17 @@ public class DatabaseService {
         try {
             Class.forName("org.mariadb.jdbc.Driver");
             try (Connection conn = getConnection(); Statement stmt = conn.createStatement()) {
+                // Erstelle Tabelle für Aufgaben-Benutzerzuweisungen
+                String taskUserAssignmentsSql = "CREATE TABLE IF NOT EXISTS task_user_assignments (" +
+                    "task_id INTEGER NOT NULL," +
+                    "user_id INTEGER NOT NULL," +
+                    "effort_days DECIMAL(10,2) NOT NULL DEFAULT 0," +
+                    "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP," +
+                    "PRIMARY KEY (task_id, user_id)," +
+                    "FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE CASCADE," +
+                    "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE" +
+                ")";
+                stmt.executeUpdate(taskUserAssignmentsSql);
                 String userSql = "CREATE TABLE IF NOT EXISTS users (" +
                         " id INTEGER PRIMARY KEY AUTO_INCREMENT," +
                         " username VARCHAR(255) NOT NULL UNIQUE," +
@@ -919,28 +981,37 @@ public class DatabaseService {
         return settings;
     }
 
-    // Kalenderübersicht
-    public static List<Map<String, Object>> getActiveUsers() throws SQLException {
+    // Benutzer nach Abteilung filtern
+    public static List<Map<String, Object>> getActiveUsersByDepartment(String abteilung) throws SQLException {
         List<Map<String, Object>> users = new ArrayList<>();
-        String sql = "SELECT id, username, name, vorname, abteilung FROM users WHERE active = true ORDER BY abteilung, name, vorname";
+        String sql = "SELECT id, username, name, vorname, abteilung FROM users WHERE active = true " +
+                    (abteilung != null && !abteilung.isEmpty() ? "AND abteilung = ? " : "") +
+                    "ORDER BY abteilung, name, vorname";
         
         try (Connection conn = getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql);
-             ResultSet rs = stmt.executeQuery()) {
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
             
-            while (rs.next()) {
-                Map<String, Object> user = new HashMap<>();
-                user.put("id", rs.getInt("id"));
-                user.put("username", rs.getString("username"));
-                user.put("name", rs.getString("name"));
-                user.put("vorname", rs.getString("vorname"));
-                user.put("abteilung", rs.getString("abteilung"));
-                users.add(user);
+            if (abteilung != null && !abteilung.isEmpty()) {
+                stmt.setString(1, abteilung);
+            }
+            
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    Map<String, Object> user = new HashMap<>();
+                    user.put("id", rs.getInt("id"));
+                    user.put("username", rs.getString("username"));
+                    user.put("name", rs.getString("name"));
+                    user.put("vorname", rs.getString("vorname"));
+                    user.put("abteilung", rs.getString("abteilung"));
+                    users.add(user);
+                }
             }
         }
         return users;
     }
     
+    
+
     public static Map<LocalDate, String> getHolidaysForMonth(int year, int month) throws SQLException {
         Map<LocalDate, String> holidays = new HashMap<>();
         String sql = "SELECT datum, bezeichnung FROM feiertage WHERE YEAR(datum) = ? AND MONTH(datum) = ?";
@@ -980,5 +1051,36 @@ public class DatabaseService {
             }
         }
         return absences;
+    }
+
+
+
+    public static List<Map<String, Object>> getAssignedUsersForTask(int taskId) throws SQLException {
+        List<Map<String, Object>> assignments = new ArrayList<>();
+        String sql = "SELECT u.id, u.username, u.name, u.vorname, u.abteilung, tua.effort_days " +
+                    "FROM users u " +
+                    "JOIN task_user_assignments tua ON u.id = tua.user_id " +
+                    "WHERE tua.task_id = ? " +
+                    "ORDER BY u.abteilung, u.name, u.vorname";
+        
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            
+            stmt.setInt(1, taskId);
+            
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    Map<String, Object> assignment = new HashMap<>();
+                    assignment.put("id", rs.getInt("id"));
+                    assignment.put("username", rs.getString("username"));
+                    assignment.put("name", rs.getString("name"));
+                    assignment.put("vorname", rs.getString("vorname"));
+                    assignment.put("abteilung", rs.getString("abteilung"));
+                    assignment.put("effort_days", rs.getDouble("effort_days"));
+                    assignments.add(assignment);
+                }
+            }
+        }
+        return assignments;
     }
 }

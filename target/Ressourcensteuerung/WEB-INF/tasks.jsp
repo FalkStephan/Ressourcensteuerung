@@ -102,17 +102,28 @@
                     </c:otherwise>
                 </c:choose>
             </div>
-            <div><label>Start-Datum:</label><input type="date" name="start_date" id="taskStartDate"/></div>
-            <div><label>Ende-Datum:</label><input type="date" name="end_date" id="taskEndDate"/></div>
+            <div style="display: flex; gap: 1.5em;">
+                <div><label>Start-Datum:</label><input type="date" name="start_date" id="taskStartDate"/></div>
+                <div><label>Ende-Datum:</label><input type="date" name="end_date" id="taskEndDate"/></div>
+            </div>
             <div><label>Aufwand (PT):</label><input type="number" step="0.1" name="effort_days" id="taskEffort" value="0" required/></div>
-            <div><label>Fortschritt (%):</label><input type="number" name="progress_percent" id="taskProgress" value="0" min="0" max="100" required/></div>
-            <div>
-                <label>Status:</label>
-                <select name="status_id" id="taskStatus" required>
-                    <c:forEach var="status" items="${taskStatuses}">
-                        <option value="${status.id}">${status.name}</option>
-                    </c:forEach>
-                </select>
+            <div style="display: flex; gap: 1.5em;">
+                <div><label>Fortschritt (%):</label><input type="number" name="progress_percent" id="taskProgress" value="0" min="0" max="100" required/></div>
+                <div>
+                    <label>Status:</label>
+                    <select name="status_id" id="taskStatus" required>
+                        <c:forEach var="status" items="${taskStatuses}">
+                            <option value="${status.id}">${status.name}</option>
+                        </c:forEach>
+                    </select>
+                </div>
+            </div>
+            <div class="assigned-users-section">
+                <h4>Zugewiesene Benutzer</h4>
+                <div id="assignedUsersContainer">
+                    <!-- Hier werden die zugewiesenen Benutzer dynamisch eingefügt -->
+                </div>
+                <button type="button" class="button" onclick="showAssignUserModal()">Benutzer zuweisen</button>
             </div>
             <div class="modal-buttons">
                 <button type="submit" class="button create">Speichern</button>
@@ -139,7 +150,7 @@
         form.reset();
         
         const abteilungInput = document.getElementById('taskAbteilung');
-        const userCanSeeAll = ${sessionScope.user.see_all_users};
+        const userCanSeeAll = ${sessionScope.user.can_manage_users};
 
         if (mode === 'add') {
             document.getElementById('taskModalTitle').textContent = 'Neue Aufgabe';
@@ -147,18 +158,23 @@
             if (!userCanSeeAll) {
                 abteilungInput.value = "${sessionScope.user.abteilung}";
             }
+            // Zugewiesene Benutzer zurücksetzen
+            loadAssignedUsers(null);
         } else {
             document.getElementById('taskModalTitle').textContent = 'Aufgabe bearbeiten';
             document.getElementById('taskAction').value = 'edit';
-            document.getElementById('taskId').value = btn.dataset.id;
+            const taskId = btn.dataset.id;
+            document.getElementById('taskId').value = taskId;
             document.getElementById('taskName').value = btn.dataset.name;
             document.getElementById('taskStartDate').value = btn.dataset.startDate;
             document.getElementById('taskEndDate').value = btn.dataset.endDate;
             document.getElementById('taskEffort').value = btn.dataset.effortDays;
             document.getElementById('taskStatus').value = btn.dataset.statusId;
             document.getElementById('taskProgress').value = btn.dataset.progressPercent;
-            // KORREKTUR: Fehlende Zeile zum Setzen der Abteilung
             abteilungInput.value = btn.dataset.abteilung;
+            
+            // Zugewiesene Benutzer laden
+            loadAssignedUsers(taskId);
         }
         document.getElementById('taskModal').style.display = 'flex';
     }
@@ -166,6 +182,146 @@
     function hideTaskModal() {
         document.getElementById('taskModal').style.display = 'none';
     }
+
+    // Globales Array für zugewiesene Benutzer
+    let assignedUsers = [];
+
+    function showAssignUserModal() {
+        // AJAX-Aufruf um verfügbare Benutzer zu laden
+        fetch('tasks?action=getAvailableUsers&abteilung=' + encodeURIComponent(document.getElementById('taskAbteilung').value))
+            .then(response => response.json())
+            .then(users => {
+                const modal = document.createElement('div');
+                modal.className = 'modal-overlay';
+                modal.id = 'assignUserModal';
+                modal.style.display = 'flex';
+                
+                const content = `
+                    <div class="modal-content">
+                        <h3>Benutzer zuweisen</h3>
+                        <div>
+                            <label>Benutzer:</label>
+                            <select id="userSelect">
+                                <c:forEach var="user" items="${users}">
+                                    <option value="${user.id}"><c:out value="${user.name}, ${user.vorname}"/></option>
+                                </c:forEach>
+                            </select>
+                        </div>
+                        <div>
+                            <label>Aufwand (PT):</label>
+                            <input type="number" id="userEffort" step="0.1" min="0" value="0" />
+                        </div>
+                        <div class="modal-buttons">
+                            <button type="button" class="button create" onclick="assignUser()">Zuweisen</button>
+                            <button type="button" class="button delete" onclick="hideAssignUserModal()">Abbrechen</button>
+                        </div>
+                    </div>
+                `;
+                
+                modal.innerHTML = content;
+                document.body.appendChild(modal);
+            });
+    }
+
+    function hideAssignUserModal() {
+        const modal = document.getElementById('assignUserModal');
+        if (modal) {
+            modal.remove();
+        }
+    }
+
+    function assignUser() {
+        const select = document.getElementById('userSelect');
+        const effort = document.getElementById('userEffort').value;
+        const userId = select.value;
+        const userName = select.options[select.selectedIndex].text;
+        
+        // Benutzer zum Array hinzufügen
+        assignedUsers.push({
+            userId: userId,
+            name: userName,
+            effort: effort
+        });
+        
+        // Benutzer-Container aktualisieren
+        updateAssignedUsersDisplay();
+        
+        // Modal schließen
+        hideAssignUserModal();
+    }
+
+    function updateAssignedUsersDisplay() {
+        const container = document.getElementById('assignedUsersContainer');
+        container.innerHTML = '';
+        
+        assignedUsers.forEach(user => {
+            const div = document.createElement('div');
+            div.className = 'assigned-user';
+            
+            const span = document.createElement('span');
+            span.textContent = user.name + ' (' + user.effort + ' PT)';
+            div.appendChild(span);
+            
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = 'button small delete';
+            button.onclick = () => removeAssignedUser(user.userId);
+            button.textContent = 'Entfernen';
+            div.appendChild(button);
+            
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = 'assigned_user_ids[]';
+            input.value = user.userId;
+            div.appendChild(input);
+            
+            const effortInput = document.createElement('input');
+            effortInput.type = 'hidden';
+            effortInput.name = 'assigned_user_efforts[]';
+            effortInput.value = user.effort;
+            div.appendChild(effortInput);
+            
+            container.appendChild(div);
+        });
+    }
+
+    function removeAssignedUser(userId) {
+        assignedUsers = assignedUsers.filter(user => user.userId !== userId);
+        updateAssignedUsersDisplay();
+    }
+
+    function loadAssignedUsers(taskId) {
+        if (taskId) {
+            fetch('tasks?action=getAssignedUsers&taskId=' + taskId)
+                .then(response => response.json())
+                .then(users => {
+                    assignedUsers = users;
+                    updateAssignedUsersDisplay();
+                });
+        } else {
+            assignedUsers = [];
+            updateAssignedUsersDisplay();
+        }
+    }
 </script>
+<style>
+    .assigned-users-section {
+        margin-top: 1.5em;
+        border-top: 1px solid #ddd;
+        padding-top: 1em;
+    }
+    .assigned-user {
+        display: flex;
+        align-items: center;
+        gap: 1em;
+        margin: 0.5em 0;
+        padding: 0.5em;
+        background: #f5f5f5;
+        border-radius: 4px;
+    }
+    .assigned-user span {
+        flex-grow: 1;
+    }
+</style>
 </body>
 </html>

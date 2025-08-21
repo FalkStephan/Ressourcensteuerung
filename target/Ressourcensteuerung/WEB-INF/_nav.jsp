@@ -19,7 +19,7 @@
             <li><a href="${pageContext.request.contextPath}/calendar">Abwesenheiten</a></li>
         </c:if>
 
-        <c:if test="${sessionScope.user.can_manage_calendar}">
+        <c:if test="${sessionScope.user.can_manage_calendar_overview}">
             <li><a href="${pageContext.request.contextPath}/calendar_overview">Kalender</a></li>
         </c:if>
 

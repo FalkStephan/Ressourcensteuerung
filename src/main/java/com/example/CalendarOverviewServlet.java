@@ -88,13 +88,11 @@ public class CalendarOverviewServlet extends HttpServlet {
             
             if (seeAllUsers) {
                 // Benutzer mit see_all_users Recht sehen alle aktiven Mitarbeiter
-                employees = DatabaseService.getActiveUsers();
+                employees = DatabaseService.getActiveUsersByDepartment(null);
             } else {
                 // Andere Benutzer sehen nur Mitarbeiter ihrer eigenen Abteilung
                 String userDepartment = (String) currentUser.get("abteilung");
-                employees = DatabaseService.getActiveUsers().stream()
-                    .filter(emp -> userDepartment.equals(emp.get("abteilung")))
-                    .collect(Collectors.toList());
+                employees = DatabaseService.getActiveUsersByDepartment(userDepartment);
             }
             
             // Hole Feiertage für den Monat
