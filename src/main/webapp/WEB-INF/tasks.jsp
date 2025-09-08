@@ -14,7 +14,7 @@
         <div class="container">
             <h2>Aufgaben</h2>
 
-            <button class="button create" onclick="showTaskModal('add')">Neue Aufgabe anlegen</button>
+            <a href="tasks?action=edit" class="button create">Neue Aufgabe anlegen</a>
 
             <form id="filterForm" action="tasks" method="get" class="search-container">
                 <input type="text" id="searchInput" name="search" value="<c:out value='${currentSearch}'/>" placeholder="Aufgabe suchen...">
@@ -67,14 +67,7 @@
                                 </div>
                             </td>
                             <td>
-                                <button class="button small" onclick="showTaskModal('edit', this)"
-                                    data-id="${task.id}" data-name="${task.name}"
-                                    data-start-date="${task.start_date}" data-end-date="${task.end_date}"
-                                    data-effort-days="${task.effort_days}" data-status-id="${task.status_id}"
-                                    data-progress-percent="${task.progress_percent}"
-                                    data-abteilung="${task.abteilung}">
-                                    Bearbeiten
-                                </button>
+                                <a href="tasks?action=edit&id=${task.id}" class="button small">Bearbeiten</a>
                             </td>
                         </tr>
                     </c:forEach>
@@ -84,54 +77,18 @@
     </main>
 </div>
 
-<div id="taskModal" class="modal-overlay" style="display:none;">
-    <div class="modal-content">
-        <h3 id="taskModalTitle"></h3>
-        <form id="taskForm" method="post" action="tasks">
-            <input type="hidden" name="action" id="taskAction"/>
-            <input type="hidden" name="id" id="taskId"/>
-            <div><label>Name:</label><input type="text" name="name" id="taskName" required/></div>
-            <div>
-                <label>Abteilung:</label>
-                <c:choose>
-                    <c:when test="${sessionScope.user.see_all_users}">
-                        <input type="text" name="abteilung" id="taskAbteilung" />
-                    </c:when>
-                    <c:otherwise>
-                        <input type="text" name="abteilung" id="taskAbteilung" value="<c:out value='${sessionScope.user.abteilung}'/>" readonly />
-                    </c:otherwise>
-                </c:choose>
-            </div>
-            <div style="display: flex; gap: 1.5em;">
-                <div><label>Start-Datum:</label><input type="date" name="start_date" id="taskStartDate"/></div>
-                <div><label>Ende-Datum:</label><input type="date" name="end_date" id="taskEndDate"/></div>
-            </div>
-            <div><label>Aufwand (PT):</label><input type="number" step="0.1" name="effort_days" id="taskEffort" value="0" required/></div>
-            <div style="display: flex; gap: 1.5em;">
-                <div><label>Fortschritt (%):</label><input type="number" name="progress_percent" id="taskProgress" value="0" min="0" max="100" required/></div>
-                <div>
-                    <label>Status:</label>
-                    <select name="status_id" id="taskStatus" required>
-                        <c:forEach var="status" items="${taskStatuses}">
-                            <option value="${status.id}">${status.name}</option>
-                        </c:forEach>
-                    </select>
-                </div>
-            </div>
-            <div class="assigned-users-section">
-                <h4>Zugewiesene Benutzer</h4>
-                <div id="assignedUsersContainer">
-                    <!-- Hier werden die zugewiesenen Benutzer dynamisch eingefügt -->
-                </div>
-                <button type="button" class="button" onclick="showAssignUserModal()">Benutzer zuweisen</button>
-            </div>
-            <div class="modal-buttons">
-                <button type="submit" class="button create">Speichern</button>
-                <button type="button" class="button delete" onclick="hideTaskModal()">Abbrechen</button>
-            </div>
-        </form>
-    </div>
-</div>
+<script>
+    const searchInput = document.getElementById('searchInput');
+    const filterForm = document.getElementById('filterForm');
+    let debounceTimer;
+
+    searchInput.addEventListener('keyup', () => {
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => {
+            filterForm.submit();
+        }, 500);
+    });
+</script>
 
 <script>
     const searchInput = document.getElementById('searchInput');

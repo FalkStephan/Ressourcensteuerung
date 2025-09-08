@@ -7,15 +7,15 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.sql.Date;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
-import java.util.Arrays;
 import java.util.ArrayList;
+import java.util.HashMap;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import java.io.PrintWriter;
 import java.sql.SQLException;
 
 @WebServlet("/tasks")
@@ -26,6 +26,13 @@ public class TaskServlet extends HttpServlet {
     @SuppressWarnings("unchecked")
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
         String action = req.getParameter("action");
+        HttpSession session = req.getSession(false);
+        Map<String, Object> user = (session != null) ? (Map<String, Object>) session.getAttribute("user") : null;
+        
+        if (user == null || !Boolean.TRUE.equals(user.get("can_manage_tasks"))) {
+            resp.sendError(HttpServletResponse.SC_FORBIDDEN, "Zugriff verweigert");
+            return;
+        }
         
         if ("getAvailableUsers".equals(action)) {
             handleGetAvailableUsers(req, resp);
@@ -36,14 +43,11 @@ public class TaskServlet extends HttpServlet {
         } else if ("getLastInsertedTaskId".equals(action)) {
             handleGetLastInsertedTaskId(req, resp);
             return;
-        }
-        HttpSession session = req.getSession(false);
-        // KORREKTUR: Das 'user'-Objekt muss hier deklariert werden
-        Map<String, Object> user = (session != null) ? (Map<String, Object>) session.getAttribute("user") : null;
-        
-        // NEU: Rechteprüfung
-        if (user == null || !Boolean.TRUE.equals(user.get("can_manage_tasks"))) {
-            resp.sendError(HttpServletResponse.SC_FORBIDDEN, "Zugriff verweigert");
+        } else if ("getUserDetails".equals(action)) {
+            handleGetUserDetails(req, resp);
+            return;
+        } else if ("edit".equals(action)) {
+            handleEditForm(req, resp, user);
             return;
         }
 
@@ -141,65 +145,85 @@ public class TaskServlet extends HttpServlet {
             out.print("{\"error\": \"" + e.getMessage() + "\"}");
         }
     }
-
-    private void handleSaveAssignments(HttpServletRequest request, HttpServletResponse response, String actor) 
-            throws IOException {
-        response.setContentType("application/json");
-        response.setCharacterEncoding("UTF-8");
-        PrintWriter out = response.getWriter();
+    
+    private void handleEditForm(HttpServletRequest request, HttpServletResponse response, Map<String, Object> user) 
+            throws ServletException, IOException {
+        String taskId = request.getParameter("id");
+        Map<String, Object> task = null;
+        
+        if (taskId != null) {
+            try {
+                task = DatabaseService.getTaskById(Integer.parseInt(taskId));
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+        }
+        
+        List<Map<String, Object>> statuses = new ArrayList<>();
+        List<Map<String, Object>> availableUsers = new ArrayList<>();
         
         try {
-            int taskId = Integer.parseInt(request.getParameter("taskId"));
-            String[] userIds = request.getParameterValues("userIds[]");
-            
-            // Konvertiere String-Array in Integer-Liste
-            List<Integer> userIdList = new ArrayList<>();
-            if (userIds != null) {
-                for (String userId : userIds) {
-                    userIdList.add(Integer.parseInt(userId));
-                }
+            statuses = DatabaseService.getAllTaskStatuses();
+            if (Boolean.TRUE.equals(user.get("can_manage_users"))) {
+                availableUsers = DatabaseService.getActiveUsersByDepartment(null);
+            } else {
+                String userDepartment = (String) user.get("abteilung");
+                availableUsers = DatabaseService.getActiveUsersByDepartment(userDepartment);
             }
-            
-            DatabaseService.updateTaskAssignments(taskId, userIdList);
-            out.print("{\"success\": true}");
-        } catch (SQLException | NumberFormatException e) {
-            response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
-            out.print("{\"error\": \"" + e.getMessage() + "\"}");
+        } catch (SQLException e) {
+            e.printStackTrace();
         }
+        
+        request.setAttribute("task", task);
+        request.setAttribute("taskStatuses", statuses);
+        request.setAttribute("availableUsers", availableUsers);
+        
+        request.getRequestDispatcher("/WEB-INF/edit-task.jsp").forward(request, response);
     }
 
     @Override
     @SuppressWarnings("unchecked")
     protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-        HttpSession session = req.getSession(false);
-        Map<String, Object> user = (session != null) ? (Map<String, Object>) session.getAttribute("user") : null;
-        
-        // Prüfe Berechtigung
-        if (user == null || !Boolean.TRUE.equals(user.get("can_manage_tasks"))) {
-            resp.sendError(HttpServletResponse.SC_FORBIDDEN, "Zugriff verweigert");
-            return;
-        }
-        
-        String actor = (user != null) ? (String) user.get("username") : "System";
-        String action = req.getParameter("action");
-        
-        if ("saveAssignments".equals(action)) {
-            handleSaveAssignments(req, resp, actor);
-            return;
-        }
-        
-        if ("saveAssignments".equals(action)) {
-            handleSaveAssignments(req, resp);
-            return;
-        }
+        resp.setContentType("application/json");
+        resp.setCharacterEncoding("UTF-8");
+        PrintWriter out = resp.getWriter();
 
         try {
+            String action = req.getParameter("action");
+            
+            // Wenn es sich um Zuweisungen handelt, andere Verarbeitung
+            if ("saveAssignments".equals(action)) {
+                handleSaveAssignments(req, resp);
+                return;
+            }
+            
+            // Ab hier normale Task-Verarbeitung
             String name = req.getParameter("name");
-            LocalDate startDate = req.getParameter("start_date").isEmpty() ? null : LocalDate.parse(req.getParameter("start_date"));
-            LocalDate endDate = req.getParameter("end_date").isEmpty() ? null : LocalDate.parse(req.getParameter("end_date"));
+            if (name == null || name.trim().isEmpty()) {
+                resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                out.print("{\"error\": \"Name ist erforderlich\"}");
+                return;
+            }
+            
+            String actor = "System"; // Standardwert
+
+            // Berechtigungsprüfung
+            HttpSession session = req.getSession(false);
+            if (session != null) {
+                Map<String, Object> user = (Map<String, Object>) session.getAttribute("user");
+                if (user != null) {
+                    actor = (String) user.get("username");
+                }
+            }
+
+            // Parameter verarbeiten
+            String startDateStr = req.getParameter("start_date");
+            String endDateStr = req.getParameter("end_date");
             String abteilung = req.getParameter("abteilung");
             
-            // CORRECTED SECTION: Safely parse numeric inputs
+            LocalDate startDate = (startDateStr == null || startDateStr.isEmpty()) ? null : LocalDate.parse(startDateStr);
+            LocalDate endDate = (endDateStr == null || endDateStr.isEmpty()) ? null : LocalDate.parse(endDateStr);
+
             String effortParam = req.getParameter("effort_days");
             double effortDays = (effortParam == null || effortParam.isEmpty()) ? 0.0 : Double.parseDouble(effortParam);
 
@@ -208,17 +232,114 @@ public class TaskServlet extends HttpServlet {
             
             String statusParam = req.getParameter("status_id");
             int statusId = (statusParam == null || statusParam.isEmpty()) ? 0 : Integer.parseInt(statusParam);
-            // END CORRECTION
 
+            // Aktion ausführen
             if ("add".equals(action)) {
                 DatabaseService.addTask(name, startDate, endDate, effortDays, statusId, progress, abteilung, actor);
+                out.print("{\"success\": true, \"message\": \"Task erfolgreich erstellt\"}");
             } else if ("edit".equals(action)) {
                 int id = Integer.parseInt(req.getParameter("id"));
                 DatabaseService.updateTask(id, name, startDate, endDate, effortDays, statusId, progress, abteilung, actor);
+                out.print("{\"success\": true, \"message\": \"Task erfolgreich aktualisiert\"}");
+            } else {
+                resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                out.print("{\"error\": \"Ungültige Aktion: " + action + "\"}");
             }
+
+        } catch (NumberFormatException e) {
+            resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+            out.print("{\"error\": \"Ungültiges Zahlenformat: " + e.getMessage() + "\"}");
         } catch (Exception e) {
-            e.printStackTrace(); 
+            e.printStackTrace();
+            resp.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+            out.print("{\"error\": \"Serverfehler: " + e.getMessage() + "\"}");
         }
-        resp.sendRedirect(req.getContextPath() + "/tasks");
+    }
+    
+    private void handleSaveAssignments(HttpServletRequest req, HttpServletResponse resp) throws IOException {
+        resp.setContentType("application/json");
+        PrintWriter out = resp.getWriter();
+
+        try {
+            // Debug: Alle empfangenen Parameter ausgeben
+            System.out.println("Empfangene Parameter:");
+            req.getParameterMap().forEach((key, value) -> {
+                System.out.println(key + ": " + String.join(", ", value));
+            });
+
+            int taskId = Integer.parseInt(req.getParameter("taskId"));
+            int count = Integer.parseInt(req.getParameter("count"));
+            
+            List<Map<String, Object>> assignments = new ArrayList<>();
+            
+            // Parameter ohne Index prüfen
+            String userIdRaw = req.getParameter("userId_");
+            String effortDaysRaw = req.getParameter("effortDays_");
+            
+            if (userIdRaw != null && effortDaysRaw != null) {
+                Map<String, Object> assignment = new HashMap<>();
+                assignment.put("userId", Integer.parseInt(userIdRaw.trim()));
+                assignment.put("effortDays", Double.parseDouble(effortDaysRaw.trim()));
+                assignments.add(assignment);
+                System.out.println("Zuweisung hinzugefügt: " + assignment);
+            }
+            
+            System.out.println("Speichere " + assignments.size() + " Zuweisungen");
+            DatabaseService.saveTaskAssignments(taskId, assignments);
+            
+            out.print("{\"success\": true, \"message\": \"Zuweisungen erfolgreich gespeichert\"}");
+            
+        } catch (Exception e) {
+            System.err.println("Fehler beim Speichern der Zuweisungen: " + e.getMessage());
+            e.printStackTrace();
+            resp.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+            out.print("{\"error\": \"" + e.getMessage() + "\"}");
+        }
+    }
+
+    private void handleGetUserDetails(HttpServletRequest request, HttpServletResponse response) 
+            throws IOException {
+        response.setContentType("application/json");
+        response.setCharacterEncoding("UTF-8");
+        PrintWriter out = response.getWriter();
+        
+        String userIdParam = request.getParameter("userId");
+        if (userIdParam == null) {
+            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+            out.print("{\"error\": \"Fehlender Parameter: userId\"}");
+            return;
+        }
+        
+        int userId;
+        try {
+            userId = Integer.parseInt(userIdParam);
+        } catch (NumberFormatException e) {
+            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+            out.print("{\"error\": \"Ungültige userId\"}");
+            return;
+        }
+        
+        try {
+            Map<String, Object> userDetails = DatabaseService.getUserById(userId);
+            
+            if (userDetails == null) {
+                response.setStatus(HttpServletResponse.SC_NOT_FOUND);
+                out.print("{\"error\": \"Benutzer nicht gefunden\"}");
+                return;
+            }
+            
+            // Nur die benötigten Felder zurückgeben
+            Map<String, Object> userResponse = new HashMap<>();
+            userResponse.put("id", userDetails.get("id"));
+            userResponse.put("name", userDetails.get("name"));
+            userResponse.put("vorname", userDetails.get("vorname"));
+            userResponse.put("abteilung", userDetails.get("abteilung"));
+            
+            out.print(gson.toJson(userResponse));
+            
+        } catch (SQLException e) {
+            response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+            out.print("{\"error\": \"Datenbankfehler: " + e.getMessage() + "\"}");
+        }
     }
 }

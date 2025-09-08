@@ -27,11 +27,18 @@ public class DeleteUserServlet extends HttpServlet {
 
         int id = Integer.parseInt(req.getParameter("id"));
         String currentUsername = (String) user.get("username");
-        Map<String, Object> userToDelete = DatabaseService.getUserById(id);
+        
+        try {
+            Map<String, Object> userToDelete = DatabaseService.getUserById(id);
 
-        // Verhindern, dass der Admin sich selbst löscht
-        if (currentUsername.equals(userToDelete.get("username"))) {
-            // Optional: Eine Fehlermeldung anzeigen
+            // Verhindern, dass der Admin sich selbst löscht
+            if (currentUsername.equals(userToDelete.get("username"))) {
+                // Optional: Eine Fehlermeldung anzeigen
+                resp.sendRedirect(req.getContextPath() + "/users");
+                return;
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
             resp.sendRedirect(req.getContextPath() + "/users");
             return;
         }

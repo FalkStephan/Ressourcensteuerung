@@ -19,8 +19,13 @@ import java.util.StringJoiner;
 import org.mindrot.jbcrypt.BCrypt;
 
 public class DatabaseService {
-
-public class DatabaseService {
+    private static Connection getConnection() throws SQLException {
+        return DriverManager.getConnection(
+            ConfigService.getDbUrl(),
+            ConfigService.getDbUser(),
+            ConfigService.getDbPassword()
+        );
+    }
     
     // Task Assignments
     public static int getLastInsertedTaskId() throws SQLException {
@@ -34,7 +39,37 @@ public class DatabaseService {
         }
     }
 
-    public static void updateTaskAssignments(int taskId, List<Integer> userIds) throws SQLException {
+    public static Map<String, Object> getTaskById(int id) throws SQLException {
+        String sql = "SELECT t.*, ts.name as status_name, ts.color_code as status_color " +
+                    "FROM tasks t " +
+                    "LEFT JOIN task_statuses ts ON t.status_id = ts.id " +
+                    "WHERE t.id = ?";
+                    
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            
+            stmt.setInt(1, id);
+            ResultSet rs = stmt.executeQuery();
+            
+            if (rs.next()) {
+                Map<String, Object> task = new HashMap<>();
+                task.put("id", rs.getInt("id"));
+                task.put("name", rs.getString("name"));
+                task.put("start_date", rs.getObject("start_date", LocalDate.class));
+                task.put("end_date", rs.getObject("end_date", LocalDate.class));
+                task.put("effort_days", rs.getBigDecimal("effort_days"));
+                task.put("status_id", rs.getInt("status_id"));
+                task.put("status_name", rs.getString("status_name"));
+                task.put("status_color", rs.getString("status_color"));
+                task.put("progress_percent", rs.getInt("progress_percent"));
+                task.put("abteilung", rs.getString("abteilung"));
+                return task;
+            }
+            return null;
+        }
+    }
+
+    public static void updateTaskAssignments(int taskId, Map<Integer, Double> assignments) throws SQLException {
         try (Connection conn = getConnection()) {
             // Transaktion starten
             conn.setAutoCommit(false);
@@ -48,13 +83,13 @@ public class DatabaseService {
                 }
                 
                 // Dann die neuen Zuweisungen einfügen
-                if (!userIds.isEmpty()) {
+                if (!assignments.isEmpty()) {
                     try (PreparedStatement insertStmt = conn.prepareStatement(
                             "INSERT INTO task_user_assignments (task_id, user_id, effort_days) VALUES (?, ?, ?)")) {
-                        for (Integer userId : userIds) {
+                        for (Map.Entry<Integer, Double> entry : assignments.entrySet()) {
                             insertStmt.setInt(1, taskId);
-                            insertStmt.setInt(2, userId);
-                            insertStmt.setDouble(3, 0.0); // Standard-Aufwand auf 0 setzen
+                            insertStmt.setInt(2, entry.getKey());
+                            insertStmt.setDouble(3, entry.getValue());
                             insertStmt.executeUpdate();
                         }
                     }
@@ -71,14 +106,6 @@ public class DatabaseService {
                 conn.setAutoCommit(true);
             }
         }
-    }
-
-    private static Connection getConnection() throws SQLException {
-        return DriverManager.getConnection(
-            ConfigService.getDbUrl(),
-            ConfigService.getDbUser(),
-            ConfigService.getDbPassword()
-        );
     }
 
     public static void init() {
@@ -266,7 +293,7 @@ public class DatabaseService {
         return null;
     }
 
-    public static Map<String, Object> getUserById(int id) {
+    public static Map<String, Object> getUserById(int id) throws SQLException {
         try (Connection conn = getConnection(); PreparedStatement pstmt = conn.prepareStatement("SELECT * FROM users WHERE id = ?")) {
             pstmt.setInt(1, id);
             ResultSet rs = pstmt.executeQuery();
@@ -844,62 +871,61 @@ public class DatabaseService {
     // Aufgaben
     // ####################
     public static List<Map<String, Object>> getAllTasks(String search, int statusId, Map<String, Object> currentUser) {
-    List<Map<String, Object>> tasks = new ArrayList<>();
-    
-    StringBuilder sql = new StringBuilder("SELECT t.*, ts.name as status_name, ts.color_code as status_color FROM tasks t LEFT JOIN task_statuses ts ON t.status_id = ts.id");
-    List<Object> params = new ArrayList<>();
-    List<String> whereClauses = new ArrayList<>();
+        List<Map<String, Object>> tasks = new ArrayList<>();
+        
+        StringBuilder sql = new StringBuilder("SELECT t.*, ts.name as status_name, ts.color_code as status_color FROM tasks t LEFT JOIN task_statuses ts ON t.status_id = ts.id");
+        List<Object> params = new ArrayList<>();
+        List<String> whereClauses = new ArrayList<>();
 
-    // Textsuche
-    if (search != null && !search.trim().isEmpty()) {
-        whereClauses.add("t.name LIKE ?");
-        params.add("%" + search.trim() + "%");
-    }
+        // Textsuche
+        if (search != null && !search.trim().isEmpty()) {
+            whereClauses.add("t.name LIKE ?");
+            params.add("%" + search.trim() + "%");
+        }
 
-    // Status-Filter
-    if (statusId > 0) {
-        whereClauses.add("t.status_id = ?");
-        params.add(statusId);
-    }
+        // Status-Filter
+        if (statusId > 0) {
+            whereClauses.add("t.status_id = ?");
+            params.add(statusId);
+        }
 
-    // Abteilungs-Filter basierend auf Benutzerrechten
-    if (currentUser != null && !Boolean.TRUE.equals(currentUser.get("see_all_users"))) {
-        whereClauses.add("t.abteilung = ?");
-        params.add(currentUser.get("abteilung"));
-    }
-    
-    if (!whereClauses.isEmpty()) {
-        sql.append(" WHERE ").append(String.join(" AND ", whereClauses));
-    }
-    
-    sql.append(" ORDER BY t.start_date ASC, t.name ASC");
-
-    try (Connection conn = getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql.toString())) {
-        for (int i = 0; i < params.size(); i++) {
-            pstmt.setObject(i + 1, params.get(i));
+        // Abteilungs-Filter basierend auf Benutzerrechten
+        if (currentUser != null && !Boolean.TRUE.equals(currentUser.get("see_all_users"))) {
+            whereClauses.add("t.abteilung = ?");
+            params.add(currentUser.get("abteilung"));
         }
         
-        ResultSet rs = pstmt.executeQuery();
-        while (rs.next()) {
-            Map<String, Object> task = new HashMap<>();
-            // KORREKTUR: Sicherstellen, dass alle Felder ausgelesen werden
-            task.put("id", rs.getInt("id"));
-            task.put("name", rs.getString("name"));
-            task.put("start_date", rs.getObject("start_date", LocalDate.class));
-            task.put("end_date", rs.getObject("end_date", LocalDate.class));
-            task.put("effort_days", rs.getBigDecimal("effort_days"));
-            task.put("status_id", rs.getInt("status_id"));
-            task.put("status_name", rs.getString("status_name"));
-            task.put("status_color", rs.getString("status_color")); 
-            task.put("progress_percent", rs.getInt("progress_percent"));
-            task.put("abteilung", rs.getString("abteilung"));
-            tasks.add(task);
+        if (!whereClauses.isEmpty()) {
+            sql.append(" WHERE ").append(String.join(" AND ", whereClauses));
         }
-    } catch (SQLException e) {
-        e.printStackTrace();
+        
+        sql.append(" ORDER BY t.start_date ASC, t.name ASC");
+
+        try (Connection conn = getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql.toString())) {
+            for (int i = 0; i < params.size(); i++) {
+                pstmt.setObject(i + 1, params.get(i));
+            }
+            
+            ResultSet rs = pstmt.executeQuery();
+            while (rs.next()) {
+                Map<String, Object> task = new HashMap<>();
+                task.put("id", rs.getInt("id"));
+                task.put("name", rs.getString("name"));
+                task.put("start_date", rs.getObject("start_date", LocalDate.class));
+                task.put("end_date", rs.getObject("end_date", LocalDate.class));
+                task.put("effort_days", rs.getBigDecimal("effort_days"));
+                task.put("status_id", rs.getInt("status_id"));
+                task.put("status_name", rs.getString("status_name"));
+                task.put("status_color", rs.getString("status_color")); 
+                task.put("progress_percent", rs.getInt("progress_percent"));
+                task.put("abteilung", rs.getString("abteilung"));
+                tasks.add(task);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return tasks;
     }
-    return tasks;
-}
 
     public static void addTask(String name, LocalDate startDate, LocalDate endDate, double effortDays, int statusId, int progress, String abteilung, String actor) throws SQLException {
         String sql = "INSERT INTO tasks(name, start_date, end_date, effort_days, status_id, progress_percent, abteilung) VALUES (?, ?, ?, ?, ?, ?, ?)";
@@ -1053,8 +1079,6 @@ public class DatabaseService {
         return absences;
     }
 
-
-
     public static List<Map<String, Object>> getAssignedUsersForTask(int taskId) throws SQLException {
         List<Map<String, Object>> assignments = new ArrayList<>();
         String sql = "SELECT u.id, u.username, u.name, u.vorname, u.abteilung, tua.effort_days " +
@@ -1082,5 +1106,45 @@ public class DatabaseService {
             }
         }
         return assignments;
+    }
+
+    public static void saveTaskAssignments(int taskId, List<Map<String, Object>> assignments) throws SQLException {
+        String deleteSQL = "DELETE FROM task_user_assignments WHERE task_id = ?";
+        String insertSQL = "INSERT INTO task_user_assignments (task_id, user_id, effort_days) VALUES (?, ?, ?)";
+        
+        try (Connection conn = getConnection()) {
+            conn.setAutoCommit(false);
+            try {
+                // Bestehende Zuweisungen löschen
+                try (PreparedStatement deleteStmt = conn.prepareStatement(deleteSQL)) {
+                    deleteStmt.setInt(1, taskId);
+                    int deleted = deleteStmt.executeUpdate();
+                    System.out.println(deleted + " bestehende Zuweisungen gelöscht");
+                }
+                
+                // Neue Zuweisungen einfügen
+                try (PreparedStatement insertStmt = conn.prepareStatement(insertSQL)) {
+                    for (Map<String, Object> assignment : assignments) {
+                        insertStmt.setInt(1, taskId);
+                        insertStmt.setInt(2, (Integer) assignment.get("userId"));
+                        insertStmt.setDouble(3, (Double) assignment.get("effortDays"));
+                        insertStmt.executeUpdate();
+                        System.out.println("Zuweisung eingefügt: taskId=" + taskId + 
+                                        ", userId=" + assignment.get("userId") + 
+                                        ", effortDays=" + assignment.get("effortDays"));
+                    }
+                }
+                
+                conn.commit();
+                System.out.println("Transaktion erfolgreich committet");
+                
+            } catch (SQLException e) {
+                System.err.println("Fehler beim Speichern der Zuweisungen, führe Rollback durch");
+                conn.rollback();
+                throw e;
+            } finally {
+                conn.setAutoCommit(true);
+            }
+        }
     }
 }
