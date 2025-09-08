@@ -1124,15 +1124,42 @@ public class DatabaseService {
                 
                 // Neue Zuweisungen einfügen
                 try (PreparedStatement insertStmt = conn.prepareStatement(insertSQL)) {
+                    System.out.println("Beginne Speicherung von " + assignments.size() + " Zuweisungen");
+                    
+                    int successCount = 0;
                     for (Map<String, Object> assignment : assignments) {
-                        insertStmt.setInt(1, taskId);
-                        insertStmt.setInt(2, (Integer) assignment.get("userId"));
-                        insertStmt.setDouble(3, (Double) assignment.get("effortDays"));
-                        insertStmt.executeUpdate();
-                        System.out.println("Zuweisung eingefügt: taskId=" + taskId + 
-                                        ", userId=" + assignment.get("userId") + 
-                                        ", effortDays=" + assignment.get("effortDays"));
+                        try {
+                            // Debug-Ausgabe der Zuweisung
+                            System.out.println("Verarbeite Zuweisung: " + assignment);
+                            
+                            // Validierung der Werte
+                            if (assignment.get("userId") == null || assignment.get("effortDays") == null) {
+                                System.err.println("Überspringe ungültige Zuweisung: " + assignment);
+                                continue;
+                            }
+                            
+                            // Werte einfügen
+                            insertStmt.setInt(1, taskId);
+                            insertStmt.setInt(2, (Integer) assignment.get("userId"));
+                            insertStmt.setDouble(3, (Double) assignment.get("effortDays"));
+                            
+                            // Ausführen und Ergebnis prüfen
+                            int affected = insertStmt.executeUpdate();
+                            if (affected > 0) {
+                                successCount++;
+                                System.out.println("Zuweisung erfolgreich gespeichert: taskId=" + taskId + 
+                                                ", userId=" + assignment.get("userId") + 
+                                                ", effortDays=" + assignment.get("effortDays"));
+                            }
+                        } catch (Exception e) {
+                            System.err.println("Fehler beim Speichern der Zuweisung: " + assignment);
+                            e.printStackTrace();
+                            throw e; // Fehler weiterwerfen für Rollback
+                        }
                     }
+                    
+                    System.out.println("Speicherung abgeschlossen: " + successCount + " von " + 
+                                      assignments.size() + " Zuweisungen erfolgreich gespeichert");
                 }
                 
                 conn.commit();

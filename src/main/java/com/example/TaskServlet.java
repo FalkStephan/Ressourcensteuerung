@@ -261,33 +261,75 @@ public class TaskServlet extends HttpServlet {
         PrintWriter out = resp.getWriter();
 
         try {
-            // Debug: Alle empfangenen Parameter ausgeben
+            int taskId = Integer.parseInt(req.getParameter("taskId"));
+            
+            // Debug: Alle Parameter ausgeben
             System.out.println("Empfangene Parameter:");
-            req.getParameterMap().forEach((key, value) -> {
+            Map<String, String[]> parameterMap = req.getParameterMap();
+            parameterMap.forEach((key, value) -> {
                 System.out.println(key + ": " + String.join(", ", value));
             });
-
-            int taskId = Integer.parseInt(req.getParameter("taskId"));
-            int count = Integer.parseInt(req.getParameter("count"));
             
             List<Map<String, Object>> assignments = new ArrayList<>();
             
-            // Parameter ohne Index prüfen
-            String userIdRaw = req.getParameter("userId_");
-            String effortDaysRaw = req.getParameter("effortDays_");
+            // Hole die Arrays aus dem Request
+            String[] userIdValues = parameterMap.get("userId_");
+            String[] effortDayValues = parameterMap.get("effortDays_");
+
+            System.out.println("Anzahl der Zuweisungen gesamt: " + userIdValues.length);
             
-            if (userIdRaw != null && effortDaysRaw != null) {
-                Map<String, Object> assignment = new HashMap<>();
-                assignment.put("userId", Integer.parseInt(userIdRaw.trim()));
-                assignment.put("effortDays", Double.parseDouble(effortDaysRaw.trim()));
-                assignments.add(assignment);
-                System.out.println("Zuweisung hinzugefügt: " + assignment);
+            if (userIdValues != null && userIdValues.length > 0 && 
+                effortDayValues != null && effortDayValues.length > 0) {
+                
+                // Hole die Werte aus dem ersten Array-Element und splitte sie
+                // String[] userIds = userIdValues[0].split("\\s*,\\s*");  // Entfernt Leerzeichen um Kommas
+                // String[] effortDays = effortDayValues[0].split("\\s*,\\s*");
+                
+                // System.out.println("Gefundene User IDs: " + String.join(", ", userIds));
+                // System.out.println("Gefundene Effort Days: " + String.join(", ", effortDays));
+                
+                // Prüfe ob die Arrays gleich lang sind
+                // if (userIds.length != effortDays.length) {
+                //     throw new IllegalArgumentException("Unterschiedliche Anzahl von Benutzer-IDs und Aufwandstagen");
+                // }
+                if (userIdValues.length != effortDayValues.length) {
+                    throw new IllegalArgumentException("Unterschiedliche Anzahl von Benutzer-IDs und Aufwandstagen");
+                }
+                
+                // Verarbeite alle Zuweisungen
+                System.out.println("Anzahl der Zuweisungen: " + userIdValues.length);
+
+                for (int i = 0; i < userIdValues.length; i++) {
+                    // String userId = userIds[i];
+                    // String effortDay = effortDays[i];
+
+                    String userId = userIdValues[i];
+                    String effortDay = effortDayValues[i];
+                    
+                    System.out.println("Verarbeite Zuweisung " + (i+1) + " von " + userIdValues.length);
+                    System.out.println("- userId: " + userId);
+                    System.out.println("- effortDays: " + effortDay);
+                    
+                    if (!userId.isEmpty() && !effortDay.isEmpty()) {
+                        try {
+                            Map<String, Object> assignment = new HashMap<>();
+                            assignment.put("userId", Integer.parseInt(userId));
+                            assignment.put("effortDays", Double.parseDouble(effortDay));
+                            assignments.add(assignment);
+                            System.out.println("Zuweisung hinzugefügt: " + assignment);
+                        } catch (NumberFormatException e) {
+                            System.err.println("Fehler beim Parsen für Benutzer " + userId + ": " + e.getMessage());
+                        }
+                    }
+                }
             }
             
-            System.out.println("Speichere " + assignments.size() + " Zuweisungen");
-            DatabaseService.saveTaskAssignments(taskId, assignments);
+            System.out.println("Speichere " + assignments.size() + " Zuweisungen für Task " + taskId);
+            if (!assignments.isEmpty()) {
+                DatabaseService.saveTaskAssignments(taskId, assignments);
+            }
             
-            out.print("{\"success\": true, \"message\": \"Zuweisungen erfolgreich gespeichert\"}");
+            out.print("{\"success\": true, \"message\": \"" + assignments.size() + " Zuweisungen erfolgreich gespeichert\"}");
             
         } catch (Exception e) {
             System.err.println("Fehler beim Speichern der Zuweisungen: " + e.getMessage());

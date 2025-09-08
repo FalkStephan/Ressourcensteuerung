@@ -308,40 +308,17 @@ async function loadAssignedUsers(taskId) {
             throw new Error('Ungültiges Datenformat für zugewiesene Benutzer');
         }
         
-        // Für jeden Benutzer die Details laden
-        const detailedUsers = [];
-        for (const user of users) {
-            if (!user || !user.id) {
-                console.warn('Ungültige Benutzerdaten übersprungen:', user);
-                continue;
-            }
-            
-            try {
-                const details = await loadUserDetails(user.id.toString()); // ID explizit als String
-                if (details && details.id) {
-                    detailedUsers.push({
-                        ...user,
-                        name: details.name || 'N/A',
-                        vorname: details.vorname || '',
-                        abteilung: details.abteilung || ''
-                    });
-                } else {
-                    console.warn(`Keine gültigen Details für Benutzer ${user.id} erhalten`);
-                }
-            } catch (error) {
-                console.error(`Fehler beim Laden der Details für Benutzer ${user.id} ${task.id}:`, error);
-                // Füge den Benutzer mit minimalen Informationen hinzu
-                detailedUsers.push({
-                    ...user,
-                    name: 'Nicht verfügbar',
-                    vorname: '',
-                    abteilung: ''
-                });
-            }
-        }
+        assignedUsers = users.map(user => ({
+            id: user.id,
+            name: user.name || 'N/A',
+            vorname: user.vorname || '',
+            abteilung: user.abteilung || '',
+            effort_days: user.effort_days || 0
+        }));
         
-        assignedUsers = detailedUsers;
         updateAssignedUsersDisplay();
+        console.log('Geladene Zuweisungen:', assignedUsers);
+        
     } catch (error) {
         console.error('Fehler beim Laden der zugewiesenen Benutzer:', error);
         alert('Fehler beim Laden der zugewiesenen Benutzer: ' + error.message);
@@ -359,45 +336,32 @@ function closeUserSelectDialog() {
 async function assignSelectedUser() {
     try {
         const select = document.getElementById('userSelect');
-        
-        if (!select || !select.value) {
-            throw new Error('Bitte wählen Sie einen Benutzer aus');
-        }
-        
         const userId = select.value;
         
-        // Debug-Ausgabe
-        console.log('Versuche Benutzer hinzuzufügen:', {
-            userId: userId,
-            selectedOption: select.options[select.selectedIndex].text
-        });
+        if (!userId) {
+            throw new Error('Bitte wählen Sie einen Benutzer aus');
+        }
         
         // Prüfen ob der Benutzer bereits zugewiesen ist
         if (assignedUsers.some(u => u.id.toString() === userId.toString())) {
             alert('Dieser Benutzer ist bereits zugewiesen');
-            console.log('Dieser Benutzer ist bereits zugewiesen');
             closeUserSelectDialog();
             return;
         }
         
-        // Lade die Benutzerdaten vom Server
-        const userDetails = await loadUserDetails(userId);
-        console.log('Geladene Benutzerdaten:', userDetails);
+        // Füge den neuen Benutzer zur bestehenden Liste hinzu
+        const selectedOption = select.options[select.selectedIndex];
+        const [name, vorname] = selectedOption.text.split(', ');
+        const abteilung = selectedOption.text.match(/\((.*?)\)/)?.[1] || '';
         
-        if (!userDetails) {
-            throw new Error('Keine Benutzerdaten empfangen');
-        }
-        
-        // Füge den Benutzer zur Liste hinzu
         assignedUsers.push({
             id: userId,
-            name: userDetails.name,
-            vorname: userDetails.vorname,
-            abteilung: userDetails.abteilung,
+            name: name,
+            vorname: vorname.replace(/ \(.*\)$/, ''), // Entferne die Abteilung aus dem Vornamen
+            abteilung: abteilung,
             effort_days: 0
         });
         
-        // Aktualisiere die Anzeige und schließe den Dialog
         updateAssignedUsersDisplay();
         closeUserSelectDialog();
         
