@@ -1174,4 +1174,35 @@ public class DatabaseService {
             }
         }
     }
+
+    public static List<Map<String, Object>> getTaskAssignments(int taskId) throws SQLException {
+        List<Map<String, Object>> assignments = new ArrayList<>();
+        String sql = """
+            SELECT tua.user_id, u.name, u.vorname, u.abteilung, tua.effort_days 
+            FROM task_user_assignments tua 
+            JOIN users u ON tua.user_id = u.id 
+            WHERE tua.task_id = ?
+            ORDER BY u.name, u.vorname
+        """;
+        
+        try (Connection conn = getConnection();
+            PreparedStatement stmt = conn.prepareStatement(sql)) {
+            
+            stmt.setInt(1, taskId);
+            
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    Map<String, Object> assignment = new HashMap<>();
+                    assignment.put("user_id", rs.getInt("user_id"));
+                    assignment.put("name", rs.getString("name"));
+                    assignment.put("vorname", rs.getString("vorname"));
+                    assignment.put("abteilung", rs.getString("abteilung"));
+                    assignment.put("effort_days", rs.getDouble("effort_days"));
+                    assignments.add(assignment);
+                }
+            }
+        }
+        
+        return assignments;
+    }
 }

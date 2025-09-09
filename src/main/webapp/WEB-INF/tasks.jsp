@@ -26,6 +26,12 @@
                         </option>
                     </c:forEach>
                 </select>
+                <div class="filter-group">
+                    <label>
+                        <input type="checkbox" id="showAssignments" onchange="updateTaskList()">
+                        Zuweisungen anzeigen
+                    </label>
+                </div>
             </form>
 
             
@@ -45,7 +51,7 @@
                 </thead>
                 <tbody>
                     <c:forEach var="task" items="${tasks}">
-                        <tr>
+                        <tr class="task-item" data-task-id="${task.id}">
                             <td><c:out value="${task.name}"/></td>
                             <td><c:out value="${task.abteilung}"/></td>
                             <td><fmt:formatDate value="${task.start_date}" type="date" pattern="dd.MM.yyyy"/></td>
@@ -81,19 +87,7 @@
     const searchInput = document.getElementById('searchInput');
     const filterForm = document.getElementById('filterForm');
     let debounceTimer;
-
-    searchInput.addEventListener('keyup', () => {
-        clearTimeout(debounceTimer);
-        debounceTimer = setTimeout(() => {
-            filterForm.submit();
-        }, 500);
-    });
-</script>
-
-<script>
-    const searchInput = document.getElementById('searchInput');
-    const filterForm = document.getElementById('filterForm');
-    let debounceTimer;
+    let taskAssignments = new Map(); // Speichert die Zuweisungen pro Task
 
     searchInput.addEventListener('keyup', () => {
         clearTimeout(debounceTimer);
@@ -291,6 +285,80 @@
         const data = await response.json();
         return data.taskId;
     }
+
+    async function loadTaskAssignments(taskId) {
+        try {
+            if (!taskId) {
+                console.error('Keine gültige Task-ID:', taskId);
+                return [];
+            }
+
+            console.log('Lade Zuweisungen für Task:', taskId);
+            const response = await fetch('tasks?action=getAssignedUsers&taskId=' + encodeURIComponent(taskId));
+            
+            if (!response.ok) {
+                throw new Error('Fehler beim Laden der Zuweisungen');
+            }
+            
+            const assignments = await response.json();
+            console.log('Geladene Zuweisungen:', assignments);
+            return assignments;
+        } catch (error) {
+            console.error('Fehler beim Laden der Zuweisungen:', error);
+            return [];
+        }
+    }
+
+    async function updateTaskList() {
+        const showAssignments = document.getElementById('showAssignments').checked;
+        const taskElements = document.querySelectorAll('.task-item');
+        
+        for (const taskElement of taskElements) {
+            // Explizit das data-task-id Attribut auslesen
+            const taskId = taskElement.getAttribute('data-task-id');
+            console.log('Verarbeite Task:', taskId);
+            
+            let assignmentsContainer = taskElement.querySelector('.task-assignments');
+            
+            if (showAssignments) {
+                if (!assignmentsContainer) {
+                    assignmentsContainer = document.createElement('div');
+                    assignmentsContainer.className = 'task-assignments';
+                    // Container zur ersten Tabellenzelle hinzufügen
+                    taskElement.querySelector('td:first-child').appendChild(assignmentsContainer);
+                }
+                
+                if (taskId) {  // Nur laden wenn taskId vorhanden
+                    try {
+                        const assignments = await loadTaskAssignments(taskId);
+                        if (assignments && assignments.length > 0) {
+                            const html = assignments.map(assignment => 
+                                '<div class="task-assignment">' +
+                                    assignment.name + ', ' + assignment.vorname + 
+                                    ' <span class="effort">(' + assignment.effort_days + ' PT)</span>' +
+                                    (assignment.abteilung ? ' <span class="department">' + assignment.abteilung + '</span>' : '') +
+                            '</div>'
+                            ).join('');
+                            assignmentsContainer.innerHTML = html;
+                        } else {
+                            assignmentsContainer.innerHTML = '<div class="task-assignment">Keine Zuweisungen</div>';
+                        }
+                        assignmentsContainer.style.display = 'block';
+                    } catch (error) {
+                        console.error('Fehler beim Laden der Zuweisungen für Task', taskId, ':', error);
+                        assignmentsContainer.innerHTML = '<div class="task-assignment error">Fehler beim Laden der Zuweisungen</div>';
+                    }
+                }
+            } else if (assignmentsContainer) {
+                assignmentsContainer.style.display = 'none';
+            }
+        }
+    }
+
+    // Initial aufrufen
+    document.addEventListener('DOMContentLoaded', function() {
+        updateTaskList();
+    });
 </script>
 <style>
     .assigned-users-section {
@@ -309,6 +377,28 @@
     }
     .assigned-user span {
         flex-grow: 1;
+    }
+
+    .task-assignments {
+        margin-top: 0.5em;
+        font-size: 0.9em;
+        color: #666;
+    }
+
+    .task-assignment {
+        display: block;
+        margin: 0.2em 0;
+        padding-left: 1em;
+        border-left: 2px solid #e0e0e0;
+    }
+
+    .task-assignment .effort {
+        font-weight: bold;
+        color: #444;
+    }
+
+    .task-assignment.error {
+        color: #dc3545;
     }
 </style>
 </body>

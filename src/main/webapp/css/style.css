@@ -300,3 +300,29 @@ form input[type="password"] {
 .sortable-header.desc::after {
     border-top-color: #333;
 }
+
+.task-assignments {
+    margin-top: 0.5em;
+    padding-left: 1em;
+    font-size: 0.9em;
+}
+
+.task-assignment {
+    margin: 0.2em 0;
+    color: #666;
+}
+
+.task-assignment .effort {
+    font-weight: bold;
+    color: #444;
+    margin-left: 0.5em;
+}
+
+.task-assignment .department {
+    color: #888;
+    margin-left: 0.5em;
+}
+
+.task-assignment.error {
+    color: #dc3545;
+}

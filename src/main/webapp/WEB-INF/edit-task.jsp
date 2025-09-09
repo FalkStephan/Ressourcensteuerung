@@ -316,8 +316,9 @@ async function loadAssignedUsers(taskId) {
             effort_days: user.effort_days || 0
         }));
         
-        updateAssignedUsersDisplay();
         console.log('Geladene Zuweisungen:', assignedUsers);
+        updateAssignedUsersDisplay();
+        
         
     } catch (error) {
         console.error('Fehler beim Laden der zugewiesenen Benutzer:', error);
@@ -392,7 +393,7 @@ function updateAssignedUsersDisplay() {
         const span = document.createElement('span');
         
         // Anzeige der Benutzerdaten
-        console.log('Zuweisung:', user.name);
+        console.log('Zuweisung:', user.name + ', ' + user.vorname + ' (' + user.abteilung + ') -->' + user.effort_days);
         //if (user.vorname && user.abteilung) {
         //    span.textContent = `${user.name}, ${user.vorname} (${user.abteilung})`;
         // } else {
