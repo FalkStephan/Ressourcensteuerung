@@ -314,7 +314,6 @@
         const taskElements = document.querySelectorAll('.task-item');
         
         for (const taskElement of taskElements) {
-            // Explizit das data-task-id Attribut auslesen
             const taskId = taskElement.getAttribute('data-task-id');
             console.log('Verarbeite Task:', taskId);
             
@@ -325,25 +324,53 @@
                     assignmentsContainer = document.createElement('div');
                     assignmentsContainer.className = 'task-assignments';
                     // Container zur ersten Tabellenzelle hinzufügen
-                    taskElement.querySelector('td:first-child').appendChild(assignmentsContainer);
+                    // taskElement.querySelector('td:first-child').appendChild(assignmentsContainer);
                 }
                 
                 if (taskId) {  // Nur laden wenn taskId vorhanden
                     try {
                         const assignments = await loadTaskAssignments(taskId);
+                        // if (assignments && assignments.length > 0) {
+                        //    const html = assignments.map(assignment => 
+                        //        '<div class="task-assignment">' +
+                        //           assignment.name + ', ' + assignment.vorname + 
+                        //            ' <span class="effort">(' + assignment.effort_days + ' PT)</span>' +
+                        //            (assignment.abteilung ? ' <span class="department">' + assignment.abteilung + '</span>' : '') +
+                        //    '</div>'
+                        //    ).join('');
+                        //    assignmentsContainer.innerHTML = html;
+                        //} else {
+                        //    assignmentsContainer.innerHTML = '<div class="task-assignment">Keine Zuweisungen</div>';
+                        // }
+                        //assignmentsContainer.style.display = 'block';
+
                         if (assignments && assignments.length > 0) {
-                            const html = assignments.map(assignment => 
-                                '<div class="task-assignment">' +
-                                    assignment.name + ', ' + assignment.vorname + 
-                                    ' <span class="effort">(' + assignment.effort_days + ' PT)</span>' +
-                                    (assignment.abteilung ? ' <span class="department">' + assignment.abteilung + '</span>' : '') +
-                            '</div>'
+                            // HTML für die verschiedenen Spalten erstellen
+                            const nameHtml = assignments.map(assignment => 
+                                '<div class="assignment-value">' + assignment.name  + '</span>' + '</div>'
                             ).join('');
-                            assignmentsContainer.innerHTML = html;
-                        } else {
-                            assignmentsContainer.innerHTML = '<div class="task-assignment">Keine Zuweisungen</div>';
+                            
+                            const vornameHtml = assignments.map(assignment => 
+                                '<div class="assignment-value">'  + assignment.vorname + '</span>' + '</div>'
+                            ).join('');
+                            
+                            const abteilungHtml = assignments.map(assignment => 
+                                '<div class="assignment-value">' + assignment.abteilung  + '</span>' + '</div>'
+                            ).join('');
+                            
+                            const effortHtml = assignments.map(assignment => 
+                                '<div class="assignment-value">' + assignment.effort_days  + '</span>' + '</div>'
+                            ).join('');
+                            
+                            // Werte in die entsprechenden Zellen einfügen
+                            taskElement.querySelector('td:nth-child(3)').innerHTML = nameHtml;
+                            taskElement.querySelector('td:nth-child(4)').innerHTML = vornameHtml;
+                            taskElement.querySelector('td:nth-child(2)').innerHTML = abteilungHtml;
+                            taskElement.querySelector('td:nth-child(5)').innerHTML = effortHtml;
                         }
-                        assignmentsContainer.style.display = 'block';
+
+
+
                     } catch (error) {
                         console.error('Fehler beim Laden der Zuweisungen für Task', taskId, ':', error);
                         assignmentsContainer.innerHTML = '<div class="task-assignment error">Fehler beim Laden der Zuweisungen</div>';
@@ -351,6 +378,16 @@
                 }
             } else if (assignmentsContainer) {
                 assignmentsContainer.style.display = 'none';
+            
+
+            } else {
+                // Ursprüngliche Werte wiederherstellen
+                console.log('Ursprüngliche Werte', taskId);
+                taskElement.querySelector('td:nth-child(3)').innerHTML = originalValues.start;
+                taskElement.querySelector('td:nth-child(4)').innerHTML = originalValues.end;
+                taskElement.querySelector('td:nth-child(2)').innerHTML = originalValues.abteilung;
+                taskElement.querySelector('td:nth-child(5)').innerHTML = originalValues.effort;
+
             }
         }
     }
@@ -399,6 +436,26 @@
 
     .task-assignment.error {
         color: #dc3545;
+    }
+
+    .assignment-value {
+        padding: 2px 0;
+        border-bottom: 1px solid #eee;
+
+    }
+
+    .assignment-value:last-child {
+        border-bottom: none;
+    }
+
+    td .assignment-value {
+        font-size: 0.9em;
+        color: #666;
+        margin: 0 auto;
+    }
+
+    td .assignment-value:hover {
+        background-color: #f8f9fa;
     }
 </style>
 </body>
