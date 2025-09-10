@@ -344,19 +344,57 @@
                             let lastElement = taskElement;
                             assignments.forEach(assignment => {
                                 const newRow = document.createElement('tr');
-                                newRow.className = 'task-assignment-row'; // Eine Klasse zum einfachen Finden und Entfernen
+                                newRow.className = 'task-assignment-row';
 
-                                // HTML für die neue Zeile mit den Zuweisungsdaten in den richtigen Spalten
-                                newRow.innerHTML = `
-                                    <td></td> <td><div class="assignment-value">${assignment.abteilung || ''}</div></td>
-                                    <td><div class="assignment-value">${assignment.name || ''}</div></td>
-                                    <td><div class="assignment-value">${assignment.vorname || ''}</div></td>
-                                    <td><div class="assignment-value">${assignment.effort_days || ''}</div></td>
-                                    <td></td> <td></td> <td></td> `;
+                                // --- Zellen und deren Inhalt sicher und getrennt erstellen ---
 
-                                // Füge die neue Zeile nach dem Task-Element oder der letzten Zuweisungszeile ein
+                                // Leere Zelle für "Aufgabe"
+                                newRow.appendChild(document.createElement('td'));
+
+                                // Zelle für "Abteilung"
+                                const cellAbteilung = document.createElement('td');
+                                const divAbteilung = document.createElement('div');
+                                divAbteilung.className = 'assignment-value';
+                                // HIER: Wert sicher als Text setzen
+                                divAbteilung.textContent = assignment.abteilung || '';
+                                cellAbteilung.appendChild(divAbteilung);
+                                newRow.appendChild(cellAbteilung);
+
+                                // Zelle für "Name"
+                                const cellName = document.createElement('td');
+                                const divName = document.createElement('div');
+                                divName.className = 'assignment-value';
+                                // HIER: Wert sicher als Text setzen
+                                divName.textContent = assignment.name || '';
+                                cellName.appendChild(divName);
+                                newRow.appendChild(cellName);
+
+                                // Zelle für "Vorname"
+                                const cellVorname = document.createElement('td');
+                                const divVorname = document.createElement('div');
+                                divVorname.className = 'assignment-value';
+                                // HIER: Wert sicher als Text setzen
+                                divVorname.textContent = assignment.vorname || '';
+                                cellVorname.appendChild(divVorname);
+                                newRow.appendChild(cellVorname);
+
+                                // Zelle für "Aufwand (PT)"
+                                const cellEffort = document.createElement('td');
+                                const divEffort = document.createElement('div');
+                                divEffort.className = 'assignment-value';
+                                // HIER: Wert sicher als Text setzen
+                                divEffort.textContent = assignment.effort_days ? assignment.effort_days + ' PT' : '';
+                                cellEffort.appendChild(divEffort);
+                                newRow.appendChild(cellEffort);
+
+                                // Restliche leere Zellen
+                                newRow.appendChild(document.createElement('td'));
+                                newRow.appendChild(document.createElement('td'));
+                                newRow.appendChild(document.createElement('td'));
+
+                                // Die fertige Zeile in die Tabelle einfügen
                                 lastElement.parentNode.insertBefore(newRow, lastElement.nextSibling);
-                                lastElement = newRow; // Aktualisiere das letzte Element für die nächste Iteration
+                                lastElement = newRow;
                             });
                         }
                     } catch (error) {
@@ -370,7 +408,6 @@
             }
         }
     }
-    
 
 
 
@@ -439,6 +476,16 @@
 
     td .assignment-value:hover {
         background-color: #f8f9fa;
+    }
+
+    .task-assignment-row td {
+        padding: 2px 8px; /* Reduziert den vertikalen und horizontalen Abstand in der Zelle */
+        line-height: 1.2; /* Verringert den Zeilenabstand */
+    }
+
+    .task-assignment-row .assignment-value {
+        font-size: 0.85em; /* Macht die Schrift etwas kleiner */
+        color: #333;      /* Etwas dunklere Schrift für bessere Lesbarkeit */
     }
 </style>
 </body>
