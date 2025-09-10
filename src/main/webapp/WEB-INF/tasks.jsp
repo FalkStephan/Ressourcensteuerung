@@ -87,7 +87,9 @@
     const searchInput = document.getElementById('searchInput');
     const filterForm = document.getElementById('filterForm');
     let debounceTimer;
-    let taskAssignments = new Map(); // Speichert die Zuweisungen pro Task
+    let taskAssignments = new Map();
+    let originalValues = new Map(); // Map für ursprüngliche Werte
+    let assignedUsers = []; // Globales Array für zugewiesene Benutzer
 
     searchInput.addEventListener('keyup', () => {
         clearTimeout(debounceTimer);
@@ -134,8 +136,7 @@
         document.getElementById('taskModal').style.display = 'none';
     }
 
-    // Globales Array für zugewiesene Benutzer
-    let assignedUsers = [];
+
 
     function showAssignUserModal() {
         // AJAX-Aufruf um verfügbare Benutzer zu laden
@@ -309,91 +310,73 @@
         }
     }
 
+    // Funktion zum Speichern der ursprünglichen Werte
+    async function saveOriginalValues() {
+        console.log('Alte Werte speichern');
+        const taskElements = document.querySelectorAll('.task-item');
+        console.log('. Taskelement:', teaskelements);
+        taskElements.forEach(taskElement => {
+            const taskId = taskElement.getAttribute('data-task-id');
+            originalValues.set(taskId, {
+                name: taskElement.querySelector('td:nth-child(1)').innerHTML,
+                abteilung: taskElement.querySelector('td:nth-child(2)').innerHTML,
+                start: taskElement.querySelector('td:nth-child(3)').innerHTML,
+                end: taskElement.querySelector('td:nth-child(4)').innerHTML,
+                effort: taskElement.querySelector('td:nth-child(5)').innerHTML
+            });
+        });
+    }
+
     async function updateTaskList() {
         const showAssignments = document.getElementById('showAssignments').checked;
         const taskElements = document.querySelectorAll('.task-item');
-        
-        for (const taskElement of taskElements) {
-            const taskId = taskElement.getAttribute('data-task-id');
-            console.log('Verarbeite Task:', taskId);
-            
-            let assignmentsContainer = taskElement.querySelector('.task-assignments');
-            
-            if (showAssignments) {
-                if (!assignmentsContainer) {
-                    assignmentsContainer = document.createElement('div');
-                    assignmentsContainer.className = 'task-assignments';
-                    // Container zur ersten Tabellenzelle hinzufügen
-                    // taskElement.querySelector('td:first-child').appendChild(assignmentsContainer);
-                }
-                
-                if (taskId) {  // Nur laden wenn taskId vorhanden
+
+        // Zuerst alle alten Zuweisungszeilen entfernen
+        document.querySelectorAll('.task-assignment-row').forEach(row => row.remove());
+
+        if (showAssignments) {
+            for (const taskElement of taskElements) {
+                const taskId = taskElement.getAttribute('data-task-id');
+                if (taskId) {
                     try {
                         const assignments = await loadTaskAssignments(taskId);
-                        // if (assignments && assignments.length > 0) {
-                        //    const html = assignments.map(assignment => 
-                        //        '<div class="task-assignment">' +
-                        //           assignment.name + ', ' + assignment.vorname + 
-                        //            ' <span class="effort">(' + assignment.effort_days + ' PT)</span>' +
-                        //            (assignment.abteilung ? ' <span class="department">' + assignment.abteilung + '</span>' : '') +
-                        //    '</div>'
-                        //    ).join('');
-                        //    assignmentsContainer.innerHTML = html;
-                        //} else {
-                        //    assignmentsContainer.innerHTML = '<div class="task-assignment">Keine Zuweisungen</div>';
-                        // }
-                        //assignmentsContainer.style.display = 'block';
-
                         if (assignments && assignments.length > 0) {
-                            // HTML für die verschiedenen Spalten erstellen
-                            const nameHtml = assignments.map(assignment => 
-                                '<div class="assignment-value">' + assignment.name  + '</span>' + '</div>'
-                            ).join('');
-                            
-                            const vornameHtml = assignments.map(assignment => 
-                                '<div class="assignment-value">'  + assignment.vorname + '</span>' + '</div>'
-                            ).join('');
-                            
-                            const abteilungHtml = assignments.map(assignment => 
-                                '<div class="assignment-value">' + assignment.abteilung  + '</span>' + '</div>'
-                            ).join('');
-                            
-                            const effortHtml = assignments.map(assignment => 
-                                '<div class="assignment-value">' + assignment.effort_days  + '</span>' + '</div>'
-                            ).join('');
-                            
-                            // Werte in die entsprechenden Zellen einfügen
-                            taskElement.querySelector('td:nth-child(3)').innerHTML = nameHtml;
-                            taskElement.querySelector('td:nth-child(4)').innerHTML = vornameHtml;
-                            taskElement.querySelector('td:nth-child(2)').innerHTML = abteilungHtml;
-                            taskElement.querySelector('td:nth-child(5)').innerHTML = effortHtml;
+                            let lastElement = taskElement;
+                            assignments.forEach(assignment => {
+                                const newRow = document.createElement('tr');
+                                newRow.className = 'task-assignment-row'; // Eine Klasse zum einfachen Finden und Entfernen
+
+                                // HTML für die neue Zeile mit den Zuweisungsdaten in den richtigen Spalten
+                                newRow.innerHTML = `
+                                    <td></td> <td><div class="assignment-value">${assignment.abteilung || ''}</div></td>
+                                    <td><div class="assignment-value">${assignment.name || ''}</div></td>
+                                    <td><div class="assignment-value">${assignment.vorname || ''}</div></td>
+                                    <td><div class="assignment-value">${assignment.effort_days || ''}</div></td>
+                                    <td></td> <td></td> <td></td> `;
+
+                                // Füge die neue Zeile nach dem Task-Element oder der letzten Zuweisungszeile ein
+                                lastElement.parentNode.insertBefore(newRow, lastElement.nextSibling);
+                                lastElement = newRow; // Aktualisiere das letzte Element für die nächste Iteration
+                            });
                         }
-
-
-
                     } catch (error) {
                         console.error('Fehler beim Laden der Zuweisungen für Task', taskId, ':', error);
-                        assignmentsContainer.innerHTML = '<div class="task-assignment error">Fehler beim Laden der Zuweisungen</div>';
+                        const errorRow = document.createElement('tr');
+                        errorRow.className = 'task-assignment-row';
+                        errorRow.innerHTML = `<td colspan="8"><div class="task-assignment error">Fehler beim Laden der Zuweisungen</div></td>`;
+                        taskElement.parentNode.insertBefore(errorRow, taskElement.nextSibling);
                     }
                 }
-            } else if (assignmentsContainer) {
-                assignmentsContainer.style.display = 'none';
-            
-
-            } else {
-                // Ursprüngliche Werte wiederherstellen
-                console.log('Ursprüngliche Werte', taskId);
-                taskElement.querySelector('td:nth-child(3)').innerHTML = originalValues.start;
-                taskElement.querySelector('td:nth-child(4)').innerHTML = originalValues.end;
-                taskElement.querySelector('td:nth-child(2)').innerHTML = originalValues.abteilung;
-                taskElement.querySelector('td:nth-child(5)').innerHTML = originalValues.effort;
-
             }
         }
     }
+    
 
-    // Initial aufrufen
+
+
+    // Initialisierung
     document.addEventListener('DOMContentLoaded', function() {
+        saveOriginalValues(); // Speichere ursprüngliche Werte beim Laden
         updateTaskList();
     });
 </script>

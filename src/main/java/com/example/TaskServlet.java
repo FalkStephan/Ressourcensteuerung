@@ -115,50 +115,36 @@ public class TaskServlet extends HttpServlet {
         }
     }
 
-    private void handleGetAssignedUsers(HttpServletRequest req, HttpServletResponse resp) throws IOException {
-        resp.setContentType("application/json");
-        PrintWriter out = resp.getWriter();
-        
-        try {
-            String taskIdStr = req.getParameter("taskId");
-            if (taskIdStr == null || taskIdStr.trim().isEmpty()) {
-                resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-                out.print("[]");
-                return;
-            }
-            
-            int taskId = Integer.parseInt(taskIdStr);
-            List<Map<String, Object>> assignments = DatabaseService.getTaskAssignments(taskId);
-            
-            // JSON-Array als String erstellen
-            StringBuilder json = new StringBuilder("[");
-            for (int i = 0; i < assignments.size(); i++) {
-                Map<String, Object> assignment = assignments.get(i);
-                if (i > 0) json.append(",");
-                
-                // Sicherstellen, dass die Werte nicht null sind
-                String name = assignment.get("name") != null ? assignment.get("name").toString() : "";
-                String vorname = assignment.get("vorname") != null ? assignment.get("vorname").toString() : "";
-                String abteilung = assignment.get("abteilung") != null ? assignment.get("abteilung").toString() : "";
-                
-                json.append("{")
-                    .append("\"id\":").append(assignment.get("user_id")).append(",")
-                    .append("\"name\":\"").append(escapeJsonString(name)).append("\",")
-                    .append("\"vorname\":\"").append(escapeJsonString(vorname)).append("\",")
-                    .append("\"abteilung\":\"").append(escapeJsonString(abteilung)).append("\",")
-                    .append("\"effort_days\":").append(assignment.get("effort_days"))
-                    .append("}");
-            }
-            json.append("]");
-            
-            out.print(json.toString());
-            
-        } catch (Exception e) {
-            resp.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+
+
+ private void handleGetAssignedUsers(HttpServletRequest req, HttpServletResponse resp) throws IOException {
+    resp.setContentType("application/json");
+    resp.setCharacterEncoding("UTF-8");
+    PrintWriter out = resp.getWriter();
+    
+    try {
+        String taskIdStr = req.getParameter("taskId");
+        if (taskIdStr == null || taskIdStr.trim().isEmpty()) {
+            resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
             out.print("[]");
-            e.printStackTrace();
+            return;
         }
+        
+        int taskId = Integer.parseInt(taskIdStr);
+        List<Map<String, Object>> assignments = DatabaseService.getTaskAssignments(taskId);
+        
+        // Die Liste der Zuweisungen direkt mit Gson in JSON umwandeln.
+        // Das ist sicher und behandelt alle Datentypen korrekt.
+        out.print(gson.toJson(assignments));
+        
+    } catch (Exception e) {
+        resp.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+        out.print("[]"); // Leeres Array bei Fehlern zurückgeben
+        e.printStackTrace();
     }
+}
+
+
 
     // Hilfsmethode zum Escapen von JSON-Strings
     private String escapeJsonString(String input) {

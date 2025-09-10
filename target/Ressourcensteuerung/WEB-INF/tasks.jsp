@@ -87,7 +87,9 @@
     const searchInput = document.getElementById('searchInput');
     const filterForm = document.getElementById('filterForm');
     let debounceTimer;
-    let taskAssignments = new Map(); // Speichert die Zuweisungen pro Task
+    let taskAssignments = new Map();
+    let originalValues = new Map(); // Map für ursprüngliche Werte
+    let assignedUsers = []; // Globales Array für zugewiesene Benutzer
 
     searchInput.addEventListener('keyup', () => {
         clearTimeout(debounceTimer);
@@ -134,8 +136,7 @@
         document.getElementById('taskModal').style.display = 'none';
     }
 
-    // Globales Array für zugewiesene Benutzer
-    let assignedUsers = [];
+
 
     function showAssignUserModal() {
         // AJAX-Aufruf um verfügbare Benutzer zu laden
@@ -288,12 +289,20 @@
 
     async function loadTaskAssignments(taskId) {
         try {
-            const response = await fetch(`tasks?action=getAssignedUsers&taskId=${taskId}`);
+            if (!taskId) {
+                console.error('Keine gültige Task-ID:', taskId);
+                return [];
+            }
+
+            console.log('Lade Zuweisungen für Task:', taskId);
+            const response = await fetch('tasks?action=getAssignedUsers&taskId=' + encodeURIComponent(taskId));
+            
             if (!response.ok) {
                 throw new Error('Fehler beim Laden der Zuweisungen');
             }
+            
             const assignments = await response.json();
-            taskAssignments.set(taskId, assignments);
+            console.log('Geladene Zuweisungen:', assignments);
             return assignments;
         } catch (error) {
             console.error('Fehler beim Laden der Zuweisungen:', error);
@@ -301,51 +310,73 @@
         }
     }
 
+    // Funktion zum Speichern der ursprünglichen Werte
+    async function saveOriginalValues() {
+        console.log('Alte Werte speichern');
+        const taskElements = document.querySelectorAll('.task-item');
+        console.log('. Taskelement:', teaskelements);
+        taskElements.forEach(taskElement => {
+            const taskId = taskElement.getAttribute('data-task-id');
+            originalValues.set(taskId, {
+                name: taskElement.querySelector('td:nth-child(1)').innerHTML,
+                abteilung: taskElement.querySelector('td:nth-child(2)').innerHTML,
+                start: taskElement.querySelector('td:nth-child(3)').innerHTML,
+                end: taskElement.querySelector('td:nth-child(4)').innerHTML,
+                effort: taskElement.querySelector('td:nth-child(5)').innerHTML
+            });
+        });
+    }
+
     async function updateTaskList() {
         const showAssignments = document.getElementById('showAssignments').checked;
         const taskElements = document.querySelectorAll('.task-item');
-        
-        for (const taskElement of taskElements) {
-            const taskId = taskElement.dataset.taskId;
-            let assignmentsContainer = taskElement.querySelector('.task-assignments');
-            
-            if (showAssignments) {
-                // Container erstellen falls nicht vorhanden
-                if (!assignmentsContainer) {
-                    assignmentsContainer = document.createElement('div');
-                    assignmentsContainer.className = 'task-assignments';
-                    taskElement.querySelector('td:first-child').appendChild(assignmentsContainer);
-                }
-                
-                // Zuweisungen laden falls noch nicht vorhanden
-                if (!taskAssignments.has(taskId)) {
+
+        // Zuerst alle alten Zuweisungszeilen entfernen
+        document.querySelectorAll('.task-assignment-row').forEach(row => row.remove());
+
+        if (showAssignments) {
+            for (const taskElement of taskElements) {
+                const taskId = taskElement.getAttribute('data-task-id');
+                if (taskId) {
                     try {
                         const assignments = await loadTaskAssignments(taskId);
                         if (assignments && assignments.length > 0) {
-                            const html = assignments.map(assignment => `
-                                <span class="task-assignment">
-                                    ${assignment.name}, ${assignment.vorname} 
-                                    <span class="effort">(${assignment.effort_days} PT)</span>
-                                </span>
-                            `).join('');
-                            assignmentsContainer.innerHTML = html;
-                        } else {
-                            assignmentsContainer.innerHTML = '<span class="task-assignment">Keine Zuweisungen</span>';
+                            let lastElement = taskElement;
+                            assignments.forEach(assignment => {
+                                const newRow = document.createElement('tr');
+                                newRow.className = 'task-assignment-row'; // Eine Klasse zum einfachen Finden und Entfernen
+
+                                // HTML für die neue Zeile mit den Zuweisungsdaten in den richtigen Spalten
+                                newRow.innerHTML = `
+                                    <td></td> <td><div class="assignment-value">${assignment.abteilung || ''}</div></td>
+                                    <td><div class="assignment-value">${assignment.name || ''}</div></td>
+                                    <td><div class="assignment-value">${assignment.vorname || ''}</div></td>
+                                    <td><div class="assignment-value">${assignment.effort_days || ''}</div></td>
+                                    <td></td> <td></td> <td></td> `;
+
+                                // Füge die neue Zeile nach dem Task-Element oder der letzten Zuweisungszeile ein
+                                lastElement.parentNode.insertBefore(newRow, lastElement.nextSibling);
+                                lastElement = newRow; // Aktualisiere das letzte Element für die nächste Iteration
+                            });
                         }
                     } catch (error) {
-                        console.error('Fehler beim Laden der Zuweisungen:', error);
-                        assignmentsContainer.innerHTML = '<span class="task-assignment error">Fehler beim Laden</span>';
+                        console.error('Fehler beim Laden der Zuweisungen für Task', taskId, ':', error);
+                        const errorRow = document.createElement('tr');
+                        errorRow.className = 'task-assignment-row';
+                        errorRow.innerHTML = `<td colspan="8"><div class="task-assignment error">Fehler beim Laden der Zuweisungen</div></td>`;
+                        taskElement.parentNode.insertBefore(errorRow, taskElement.nextSibling);
                     }
                 }
-                assignmentsContainer.style.display = 'block';
-            } else if (assignmentsContainer) {
-                assignmentsContainer.style.display = 'none';
             }
         }
     }
+    
 
-    // Initial aufrufen
+
+
+    // Initialisierung
     document.addEventListener('DOMContentLoaded', function() {
+        saveOriginalValues(); // Speichere ursprüngliche Werte beim Laden
         updateTaskList();
     });
 </script>
@@ -388,6 +419,26 @@
 
     .task-assignment.error {
         color: #dc3545;
+    }
+
+    .assignment-value {
+        padding: 2px 0;
+        border-bottom: 1px solid #eee;
+
+    }
+
+    .assignment-value:last-child {
+        border-bottom: none;
+    }
+
+    td .assignment-value {
+        font-size: 0.9em;
+        color: #666;
+        margin: 0 auto;
+    }
+
+    td .assignment-value:hover {
+        background-color: #f8f9fa;
     }
 </style>
 </body>
