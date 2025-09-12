@@ -25,13 +25,13 @@
                             <c:out value="${status.name}"/>
                         </option>
                     </c:forEach>
+                    <div class="filter-group">
+                        <label>
+                            <input type="checkbox" id="showAssignments" onchange="updateTaskList()">
+                            alle Zuweisungen anzeigen
+                        </label>
+                    </div>
                 </select>
-                <div class="filter-group">
-                    <label>
-                        <input type="checkbox" id="showAssignments" onchange="updateTaskList()">
-                        Zuweisungen anzeigen
-                    </label>
-                </div>
             </form>
 
             
@@ -72,7 +72,8 @@
                                     <span><c:out value="${task.progress_percent}"/>%</span>
                                 </div>
                             </td>
-                            <td>
+                            <td style="display: flex; gap: 5px;">
+                                <button type="button" class="button small toggle-assignments-btn" title="Zuweisungen anzeigen" value="0" onclick="toggleTaskAssignments()">▼</button>
                                 <a href="tasks?action=edit&id=${task.id}" class="button small">Bearbeiten</a>
                             </td>
                         </tr>
@@ -287,26 +288,47 @@
         return data.taskId;
     }
 
+//    async function loadTaskAssignments(taskId) {
+//        try {
+//            if (!taskId) {
+//                console.error('Keine gültige Task-ID:', taskId);
+//                return [];
+//            }
+//
+//            console.log('Lade Zuweisungen für Task:', taskId);
+//            const response = await fetch('tasks?action=getAssignedUsers&taskId=' + encodeURIComponent(taskId));
+//            
+//            if (!response.ok) {
+//                throw new Error('Fehler beim Laden der Zuweisungen');
+//            }
+//            
+//            const assignments = await response.json();
+//            console.log('Geladene Zuweisungen:', assignments);
+//            return assignments;
+//        } catch (error) {
+//            console.error('Fehler beim Laden der Zuweisungen:', error);
+//            return [];
+//        }
+//    }
+
+    /**
+     * Lädt die Zuweisungen für eine bestimmte Task-ID vom Server.
+     * @param {string} taskId Die ID des Tasks.
+     * @returns {Promise<Array>} Ein Promise, das mit einem Array von Zuweisungsobjekten aufgelöst wird.
+     */
     async function loadTaskAssignments(taskId) {
         try {
-            if (!taskId) {
-                console.error('Keine gültige Task-ID:', taskId);
-                return [];
-            }
-
-            console.log('Lade Zuweisungen für Task:', taskId);
             const response = await fetch('tasks?action=getAssignedUsers&taskId=' + encodeURIComponent(taskId));
-            
             if (!response.ok) {
-                throw new Error('Fehler beim Laden der Zuweisungen');
+                throw new Error('Netzwerkantwort war nicht OK');
             }
-            
             const assignments = await response.json();
             console.log('Geladene Zuweisungen:', assignments);
             return assignments;
+            return await response.json();
         } catch (error) {
             console.error('Fehler beim Laden der Zuweisungen:', error);
-            return [];
+            return []; // Leeres Array im Fehlerfall zurückgeben
         }
     }
 
@@ -344,19 +366,57 @@
                             let lastElement = taskElement;
                             assignments.forEach(assignment => {
                                 const newRow = document.createElement('tr');
-                                newRow.className = 'task-assignment-row'; // Eine Klasse zum einfachen Finden und Entfernen
+                                newRow.className = 'task-assignment-row';
 
-                                // HTML für die neue Zeile mit den Zuweisungsdaten in den richtigen Spalten
-                                newRow.innerHTML = `
-                                    <td></td> <td><div class="assignment-value">${assignment.abteilung || ''}</div></td>
-                                    <td><div class="assignment-value">${assignment.name || ''}</div></td>
-                                    <td><div class="assignment-value">${assignment.vorname || ''}</div></td>
-                                    <td><div class="assignment-value">${assignment.effort_days || ''}</div></td>
-                                    <td></td> <td></td> <td></td> `;
+                                // --- Zellen und deren Inhalt sicher und getrennt erstellen ---
 
-                                // Füge die neue Zeile nach dem Task-Element oder der letzten Zuweisungszeile ein
+                                // Leere Zelle für "Aufgabe"
+                                newRow.appendChild(document.createElement('td'));
+
+                                // Zelle für "Abteilung"
+                                const cellAbteilung = document.createElement('td');
+                                const divAbteilung = document.createElement('div');
+                                divAbteilung.className = 'assignment-value';
+                                // HIER: Wert sicher als Text setzen
+                                divAbteilung.textContent = assignment.abteilung || '';
+                                cellAbteilung.appendChild(divAbteilung);
+                                newRow.appendChild(cellAbteilung);
+
+                                // Zelle für "Name"
+                                const cellName = document.createElement('td');
+                                const divName = document.createElement('div');
+                                divName.className = 'assignment-value';
+                                // HIER: Wert sicher als Text setzen
+                                divName.textContent = assignment.name || '';
+                                cellName.appendChild(divName);
+                                newRow.appendChild(cellName);
+
+                                // Zelle für "Vorname"
+                                const cellVorname = document.createElement('td');
+                                const divVorname = document.createElement('div');
+                                divVorname.className = 'assignment-value';
+                                // HIER: Wert sicher als Text setzen
+                                divVorname.textContent = assignment.vorname || '';
+                                cellVorname.appendChild(divVorname);
+                                newRow.appendChild(cellVorname);
+
+                                // Zelle für "Aufwand (PT)"
+                                const cellEffort = document.createElement('td');
+                                const divEffort = document.createElement('div');
+                                divEffort.className = 'assignment-value';
+                                // HIER: Wert sicher als Text setzen
+                                divEffort.textContent = assignment.effort_days ? assignment.effort_days + ' PT' : '';
+                                cellEffort.appendChild(divEffort);
+                                newRow.appendChild(cellEffort);
+
+                                // Restliche leere Zellen
+                                newRow.appendChild(document.createElement('td'));
+                                newRow.appendChild(document.createElement('td'));
+                                newRow.appendChild(document.createElement('td'));
+
+                                // Die fertige Zeile in die Tabelle einfügen
                                 lastElement.parentNode.insertBefore(newRow, lastElement.nextSibling);
-                                lastElement = newRow; // Aktualisiere das letzte Element für die nächste Iteration
+                                lastElement = newRow;
                             });
                         }
                     } catch (error) {
@@ -370,15 +430,150 @@
             }
         }
     }
-    
 
 
 
     // Initialisierung
+    //document.addEventListener('DOMContentLoaded', function() {
+         // saveOriginalValues(); // Speichere ursprüngliche Werte beim Laden
+         // updateTaskList();
+         // console.log('Details anzeigen');
     document.addEventListener('DOMContentLoaded', function() {
-        saveOriginalValues(); // Speichere ursprüngliche Werte beim Laden
-        updateTaskList();
+        const tableBody = document.querySelector('table tbody');
+
+        // Sicherheitsprüfung: Nur fortfahren, wenn der Tabellenkörper gefunden wurde.
+        if (!tableBody) {
+            console.error("Fehler: Der Tabellenkörper (tbody) wurde nicht gefunden. Das Skript kann nicht ausgeführt werden.");
+            return;
+        }
+
+        // 1. Ein einziger Klick-Listener für die gesamte Tabelle
+        console.log('Klick');
+        tableBody.addEventListener('click', function(event) {
+            const toggleButton = event.target.closest('.toggle-assignments-btn');
+
+            if (!toggleButton) {
+                return; // Klick war nicht auf den Button
+            }
+
+            const taskRow = toggleButton.closest('.task-item');
+            if (taskRow) {
+                toggleTaskAssignments(taskRow, toggleButton);
+            }
+        });
     });
+
+
+
+    /**
+     * Klappt die Zuweisungen für eine Task-Zeile ein oder aus.
+     */
+    async function toggleTaskAssignments() {
+        const toggleButton = event.target.closest('.toggle-assignments-btn');
+        const taskRow = toggleButton.closest('.task-item');
+        const taskId = taskRow.dataset.taskId;
+        if (!taskId) return;
+
+        const assignmentRows = document.querySelectorAll(`.task-assignment-row[data-task-parent='${taskId}']`);
+
+        // Fall 1: Zuweisungen sind sichtbar -> ausblenden
+        console.log('Klick-Info: ', toggleButton.value);
+        // if (toggleButton.value == '1') {
+        //     console.log('Schliessen');
+        //     assignmentRows.forEach(row => row.remove());
+        //     taskRow.classList.remove('active-task');
+        //     toggleButton.innerHTML = '▼';
+        //     toggleButton.value = '0';
+        //     toggleButton.title = 'Zuweisungen anzeigen';
+        //     return;
+        // }
+        // Wir prüfen, ob die direkt folgende Zeile eine Zuweisungszeile ist.
+        let nextSibling = taskRow.nextElementSibling;
+        if (nextSibling && nextSibling.classList.contains('task-assignment-row')) {
+            // Wenn ja, entfernen wir alle folgenden Zuweisungszeilen, bis keine mehr kommt.
+            while (nextSibling && nextSibling.classList.contains('task-assignment-row')) {
+                const rowToRemove = nextSibling;
+                nextSibling = nextSibling.nextElementSibling; // Wichtig: Zuerst zum nächsten gehen
+                rowToRemove.remove(); // Dann die aktuelle entfernen
+            }
+
+            // Zustand zurücksetzen
+            taskRow.classList.remove('active-task');
+            toggleButton.innerHTML = '▼';
+            toggleButton.value = '0';
+            toggleButton.title = 'Zuweisungen anzeigen';
+            return; // Mission erfüllt, Funktion beenden.
+        }
+
+        // Fall 2: Zuweisungen sind nicht sichtbar -> laden und anzeigen
+        taskRow.classList.add('active-task');
+        toggleButton.innerHTML = '▲';
+        toggleButton.value = '1';
+        toggleButton.title = 'Zuweisungen ausblenden';
+
+        try {
+            const assignments = await loadTaskAssignments(taskId);
+            let lastElement = taskRow;
+
+            if (assignments && assignments.length > 0) {
+                assignments.forEach(assignment => {
+                    const newRow = document.createElement('tr');
+                    newRow.className = 'task-assignment-row';
+                    newRow.dataset.taskParent = taskId;
+
+                    newRow.appendChild(document.createElement('td'));
+
+                    const cellAbteilung = document.createElement('td');
+                    const divAbteilung = document.createElement('div');
+                    divAbteilung.className = 'assignment-value';
+                    divAbteilung.textContent = assignment.abteilung || '';
+                    cellAbteilung.appendChild(divAbteilung);
+                    newRow.appendChild(cellAbteilung);
+
+                    const cellName = document.createElement('td');
+                    const divName = document.createElement('div');
+                    divName.className = 'assignment-value';
+                    divName.textContent = assignment.name || '';
+                    cellName.appendChild(divName);
+                    newRow.appendChild(cellName);
+
+                    const cellVorname = document.createElement('td');
+                    const divVorname = document.createElement('div');
+                    divVorname.className = 'assignment-value';
+                    divVorname.textContent = assignment.vorname || '';
+                    cellVorname.appendChild(divVorname);
+                    newRow.appendChild(cellVorname);
+
+                    const cellEffort = document.createElement('td');
+                    const divEffort = document.createElement('div');
+                    divEffort.className = 'assignment-value';
+                    divEffort.textContent = assignment.effort_days || '';
+                    cellEffort.appendChild(divEffort);
+                    newRow.appendChild(cellEffort);
+
+                    newRow.appendChild(document.createElement('td'));
+                    newRow.appendChild(document.createElement('td'));
+                    newRow.appendChild(document.createElement('td'));
+
+                    lastElement.parentNode.insertBefore(newRow, lastElement.nextSibling);
+                    lastElement = newRow;
+                });
+            } else {
+                const noAssignmentsRow = document.createElement('tr');
+                noAssignmentsRow.className = 'task-assignment-row';
+                noAssignmentsRow.dataset.taskParent = taskId;
+                noAssignmentsRow.innerHTML = `<td colspan="8" style="text-align: center; color: #888; font-style: italic; padding: 4px 0;">Keine Zuweisungen vorhanden</td>`;
+                lastElement.parentNode.insertBefore(noAssignmentsRow, lastElement.nextSibling);
+            }
+        } catch (error) {
+            console.error(`Fehler beim Laden der Zuweisungen für Task ${taskId}:`, error);
+            taskRow.classList.remove('active-task');
+            toggleButton.innerHTML = '▼';
+            toggleButton.title = 'Zuweisungen anzeigen';
+        }
+    }
+
+
 </script>
 <style>
     .assigned-users-section {
@@ -440,6 +635,43 @@
     td .assignment-value:hover {
         background-color: #f8f9fa;
     }
+
+    .task-assignment-row td {
+        padding: 2px 8px; /* Reduziert den vertikalen und horizontalen Abstand in der Zelle */
+        line-height: 1.2; /* Verringert den Zeilenabstand */
+    }
+
+    .task-assignment-row .assignment-value {
+        font-size: 0.85em; /* Macht die Schrift etwas kleiner */
+        color: #333;      /* Etwas dunklere Schrift für bessere Lesbarkeit */
+    }
+
+    .task-item {
+        /* cursor: pointer; */ /* Nicht mehr die ganze Zeile ist klickbar */
+    }
+
+    /* Diese Regel kann bleiben oder entfernt werden, je nach Wunsch */
+    .task-item:hover {
+        background-color: #f8f9fa;
+    }
+
+    /* Hebt die aktive Zeile hervor, deren Details angezeigt werden */
+    .task-item.active-task {
+        background-color: #e9ecef;
+    }
+
+    /* --- NEU: Styling für den Toggle-Button --- */
+    .toggle-assignments-btn {
+        padding: 3px 8px;
+        line-height: 1;
+        min-width: 28px; /* Sorgt für eine einheitliche Breite */
+    }
+
+    .filter-group {
+    text-align: left;
+    /* Optional: Fügen Sie etwas Abstand nach oben hinzu, um es von anderen Elementen zu trennen */
+    margin-top: 1em;
+}
 </style>
 </body>
 </html>

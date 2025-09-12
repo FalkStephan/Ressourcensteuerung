@@ -64,6 +64,19 @@
             border-bottom: 2px solid #999 !important;
             text-align: left !important;
         }
+
+        .view-options {
+            display: flex;
+            gap: 1.5em; /* Abstand zwischen den Checkboxen */
+            margin-bottom: 1em; /* Abstand nach unten */
+            flex-wrap: wrap; /* Sorgt für Umbruch auf kleineren Bildschirmen */
+        }
+
+        .detail-row .highlight {
+            background-color: #dbd000; /* Ein leichtes Türkis als Hintergrund */
+            /* font-weight: bold; */
+            color: #8a8300;
+        }
     </style>
 </head>
 <body>
@@ -77,6 +90,13 @@
                     <button onclick="changeMonth(-1)" class="button">&lt; Vorheriger Monat</button>
                     <span id="currentMonth"></span>
                     <button onclick="changeMonth(1)" class="button">Nächster Monat &gt;</button>
+                </div>
+
+                <div class="view-options">
+                    <label><input type="checkbox" name="view" value="mak"> MAK-Kapazität</label>
+                    <label><input type="checkbox" name="view" value="availability"> Verfügbarkeit</label>
+                    <label><input type="checkbox" name="view" value="tasks"> Aufgaben</label>
+                    <label><input type="checkbox" name="view" value="remaining"> Rest-Verfügbarkeit</label>
                 </div>
 
                 <div class="calendar-container">
@@ -99,9 +119,12 @@
     <script>
         let currentDate = new Date();
         
+        // Event-Listener für alle Checkboxen hinzufügen
+        document.querySelector('input[value="mak"]').addEventListener('change', updateCalendar);
+
         function updateCalendarColors(colors) {
             // Debug-Ausgabe der Farben
-            console.log('Erhaltene Farben:', colors);
+            // console.log('Erhaltene Farben:', colors);
             
             // Farben für verschiedene Zelltypen
             const colorMap = {
@@ -122,59 +145,138 @@
             });
         }
 
+
+        /**
+        * Hilfsfunktion: Findet die gültige Kapazität für ein bestimmtes Datum.
+        * Geht davon aus, dass die Kapazitäten absteigend nach Datum sortiert sind.
+        * @param {Array} capacities - Die Kapazitätshistorie eines Mitarbeiters.
+        * @param {string} dateString - Das Datum des Kalendertages (z.B. "2025-09-10").
+        * @returns {number|null} Die Kapazität in Prozent oder null, wenn keine gültig ist.
+        */
+        function getCapacityForDate(capacities, dateString) {
+            // console.log('Info Employee.Tag:', dateString);
+            // Sicherheitsprüfung für den Fall, dass ungültige Daten übergeben werden
+            if (typeof dateString !== 'string' || !dateString || !capacities || capacities.length === 0) {
+                return null;
+            }
+
+            if (!capacities || capacities.length === 0) {
+                console.log(`Für Datum ${dateString}: Keine Kapazitätsdaten für diesen Mitarbeiter erhalten.`);
+                return null;
+            }
+
+            // Zerlegt "YYYY-MM-DD" in seine Teile [YYYY, MM, DD]
+            const [year, month, day] = dateString.split('-').map(Number);
+            // Erstellt das Datum sicher. Monat ist 0-basiert (Januar=0), daher month - 1.
+            // Die Uhrzeit wird auf 12:00 gesetzt, um Zeitzonenprobleme am Tageswechsel zu umgehen.
+            const currentDay = new Date(year, month - 1, day, 12, 0, 0);
+
+            let activeCapacity = null;
+
+
+            // console.log(`--- Suche Kapazität für Tag: `, currentDay);
+            // console.log(`--- Tag: `, dateString);
+            // Da die Liste absteigend sortiert ist, ist der erste passende Eintrag der richtige.
+            for (const capacity of capacities) {
+                
+                // console.log(`----> Schleife: `, capacity.start_date);
+
+                // Nur Einträge verarbeiten, die ein gültiges Datum haben
+                if (typeof capacity.start_date === 'string' && capacity.start_date) {
+                    const [capYear, capMonth, capDay] = capacity.start_date.split('-').map(Number);
+                    const validFromDate = new Date(capYear, capMonth - 1, capDay, 12, 0, 0);
+                    const highlight = false;
+                    
+                    // console.log(`-> validFromDate.......`, validFromDate);
+                    // console.log(`----> validFromDate: `, capacity.start_date);
+                    // Prüfen, ob das Datum gültig ist und in der Vergangenheit oder am selben Tag liegt
+                    if (capacity.start_date <= dateString) {
+                    // if (dateString <= capacity.start_date) {
+                        // Den korrekten Wert zurückgeben
+                        // return capacity.capacity_percent;
+                        activeCapacity = {
+                            value: capacity.capacity_percent,
+                            // Markieren, wenn das Startdatum der Kapazität genau auf den Kalendertag fällt.
+                            highlight: dateString === capacity.start_date
+                        };
+                        
+                        // console.log(`TREFFER: `, activeCapacity);
+                        return activeCapacity;
+                    } 
+                }
+
+
+            }
+            console.log(`-> KEIN TREFFER für diesen Tag gefunden.`);
+            return null; // Kein gültiger Kapazitätseintrag gefunden
+        }
+
+
+
         function updateCalendar() {
             fetch('${pageContext.request.contextPath}/calendar-overview/data?' + new URLSearchParams({
                 year: currentDate.getFullYear(),
                 month: currentDate.getMonth() + 1
             }))
             .then(response => {
-                console.log('Response Status:', response.status);
-                return response.json();
+                if (!response.ok) {
+                    throw new Error(`HTTP-Fehler! Status: ${response.status}`);
+                }
+                return response.text(); // Antwort zuerst als reinen Text lesen
+            })
+            .then(text => {
+                if (!text) {
+                    // Fall 1: Die Antwort ist komplett leer
+                    console.error("Leere Antwort vom Server erhalten. Möglicherweise ist ein Fehler im Servlet aufgetreten.");
+                    throw new Error("Leere Server-Antwort.");
+                }
+                try {
+                    // Fall 2: Die Antwort hat Inhalt, versuche sie zu parsen
+                    return JSON.parse(text);
+                } catch (e) {
+                    // Fall 3: Die Antwort ist kein gültiges JSON (z.B. eine HTML-Fehlerseite)
+                    console.error("Fehler beim Parsen der JSON-Antwort. Server-Antwort war:", text);
+                    throw new Error("Ungültige JSON-Antwort vom Server.");
+                }
             })
             .then(data => {
-                // Debug-Ausgabe der gesamten Daten
-                console.log('Erhaltene Daten:', data);
-                
-                const monthNames = ["Januar", "Februar", "März", "April", "Mai", "Juni",
-                                  "Juli", "August", "September", "Oktober", "November", "Dezember"];
-                
-                // Aktualisiere Monatsanzeige
-                document.getElementById('currentMonth').textContent = 
-                    monthNames[currentDate.getMonth()] + ' ' + currentDate.getFullYear();
-                
-                // Erstelle Tabellenkopf mit Tagen
+                const monthNames = ["Januar", "Februar", "März", "April", "Mai", "Juni", "Juli", "August", "September", "Oktober", "November", "Dezember"];
+                document.getElementById('currentMonth').textContent = monthNames[currentDate.getMonth()] + ' ' + currentDate.getFullYear();
+
                 const headerRow = document.querySelector('#calendarGrid thead tr');
                 headerRow.innerHTML = '<th class="employee-name">Mitarbeiter</th>';
-                
                 data.days.forEach(day => {
                     const th = document.createElement('th');
                     th.textContent = day.dayOfMonth;
                     if (day.isWeekend) th.classList.add('weekend');
                     headerRow.appendChild(th);
                 });
-                
-                // Erstelle Tabellenzeilen für Mitarbeiter, gruppiert nach Abteilungen
+
                 const tbody = document.querySelector('#calendarGrid tbody');
                 tbody.innerHTML = '';
-                
+
+                // Status der "MAK-Kapazität" Checkbox auslesen
+                const showMakCapacity = document.querySelector('input[value="mak"]').checked;
+
+                console.log('Vom Server erhaltene Daten:', data); 
+
                 Object.entries(data.departments).forEach(([department, employees]) => {
-                    // Abteilungsheader
                     const headerRow = document.createElement('tr');
                     headerRow.classList.add('department-header');
                     const headerCell = document.createElement('td');
                     headerCell.textContent = department;
-                    headerCell.colSpan = data.days.length + 1; // +1 für die Namensspalte
+                    headerCell.colSpan = data.days.length + 1;
                     headerRow.appendChild(headerCell);
                     tbody.appendChild(headerRow);
-                    
-                    // Mitarbeiter der Abteilung
+
                     employees.forEach(employee => {
+                        // 1. Hauptzeile für den Mitarbeiter erstellen (wie bisher)
                         const tr = document.createElement('tr');
                         const nameCell = document.createElement('td');
                         nameCell.textContent = employee.name;
                         nameCell.classList.add('employee-name');
                         tr.appendChild(nameCell);
-                        
+
                         data.days.forEach(day => {
                             const td = document.createElement('td');
                             if (day.isWeekend) {
@@ -189,12 +291,41 @@
                             }
                             tr.appendChild(td);
                         });
-                        
                         tbody.appendChild(tr);
+
+                        // 2. Wenn Checkbox aktiv ist, die Kapazitätszeile erstellen
+                        if (showMakCapacity) {
+                            const makRow = document.createElement('tr');
+                            makRow.classList.add('detail-row'); // Eigene Klasse für Styling
+                            // console.log('Info Employee.Kapa:', employee.capacities);
+                            // console.log('Info Employee.Abwesenheit:', employee.absences);
+
+                            const makNameCell = document.createElement('td');
+                            makNameCell.textContent = 'MAK-Kapazität';
+                            makNameCell.classList.add('employee-name', 'capacity-label');
+                            makRow.appendChild(makNameCell);
+
+                            data.days.forEach(day => {
+                                const td = document.createElement('td');
+                                const capacity = getCapacityForDate(employee.capacities, day.date);
+                                console.log('Info Employee.Kapa:', capacity);
+                                if (capacity !== null) {
+                                    // td.textContent = capacity + '%';
+                                    td.textContent = capacity.value + '%';
+                                    // Wenn das highlight-Flag gesetzt ist, die CSS-Klasse hinzufügen
+                                    if (capacity.highlight) {
+                                        td.classList.add('highlight');
+                                    }
+                                }
+                                // Hier können optional noch Klassen für Styling (weekend, etc.) hinzugefügt werden
+                                if (day.isWeekend) td.classList.add('weekend');
+                                makRow.appendChild(td);
+                            });
+                            tbody.appendChild(makRow);
+                        }
                     });
                 });
-                
-                // Farben aktualisieren nachdem alle Zellen erstellt wurden
+
                 if (data.colors) {
                     updateCalendarColors(data.colors);
                 }

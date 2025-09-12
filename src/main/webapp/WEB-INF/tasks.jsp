@@ -25,13 +25,13 @@
                             <c:out value="${status.name}"/>
                         </option>
                     </c:forEach>
+                    <div class="filter-group">
+                        <label>
+                            <input type="checkbox" id="showAssignments" onchange="updateTaskList()">
+                            alle Zuweisungen anzeigen
+                        </label>
+                    </div>
                 </select>
-                <div class="filter-group">
-                    <label>
-                        <input type="checkbox" id="showAssignments" onchange="updateTaskList()">
-                        Zuweisungen anzeigen
-                    </label>
-                </div>
             </form>
 
             
@@ -73,7 +73,7 @@
                                 </div>
                             </td>
                             <td style="display: flex; gap: 5px;">
-                                <button type="button" class="button small toggle-assignments-btn" title="alle Zuweisungen anzeigen" value="0" onclick="toggleTaskAssignments()">▼</button>
+                                <button type="button" class="button small toggle-assignments-btn" title="Zuweisungen anzeigen" value="0" onclick="toggleTaskAssignments()">▼</button>
                                 <a href="tasks?action=edit&id=${task.id}" class="button small">Bearbeiten</a>
                             </td>
                         </tr>
@@ -666,6 +666,12 @@
         line-height: 1;
         min-width: 28px; /* Sorgt für eine einheitliche Breite */
     }
+
+    .filter-group {
+    text-align: left;
+    /* Optional: Fügen Sie etwas Abstand nach oben hinzu, um es von anderen Elementen zu trennen */
+    margin-top: 1em;
+}
 </style>
 </body>
 </html>

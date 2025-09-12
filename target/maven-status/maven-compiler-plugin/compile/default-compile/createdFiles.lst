@@ -1,6 +1,8 @@
 com/example/ImportFeiertagServlet.class
 com/example/FeiertagServlet.class
 com/example/CalendarOverviewServlet.class
+com/example/CalendarOverviewServlet$1.class
+com/example/CalendarOverviewServlet$2.class
 com/example/TaskServlet.class
 com/example/LoginServlet.class
 com/example/UserServlet.class

@@ -10,6 +10,7 @@ import java.sql.Statement;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.temporal.TemporalAdjusters;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -1036,24 +1037,49 @@ public class DatabaseService {
         return users;
     }
     
-    
+    /**
+     * NEUE METHODE: Holt die Farb-Einstellungen für den Kalender aus der Datenbank.
+     * @return Eine Map mit den Farb-Einstellungsschlüsseln und deren Werten.
+     */
+    public static Map<String, String> getCalendarColors() throws SQLException {
+        Map<String, String> colors = new HashMap<>();
+        // Annahme: Die Einstellungen sind in einer 'settings'-Tabelle gespeichert
+        String sql = "SELECT setting_key, setting_value FROM settings WHERE setting_key LIKE 'calendar_color_%'";
 
-    public static Map<LocalDate, String> getHolidaysForMonth(int year, int month) throws SQLException {
-        Map<LocalDate, String> holidays = new HashMap<>();
-        String sql = "SELECT datum, bezeichnung FROM feiertage WHERE YEAR(datum) = ? AND MONTH(datum) = ?";
-        
         try (Connection conn = getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
-            
-            stmt.setInt(1, year);
-            stmt.setInt(2, month);
-            
-            try (ResultSet rs = stmt.executeQuery()) {
-                while (rs.next()) {
-                    LocalDate date = rs.getDate("datum").toLocalDate();
-                    String name = rs.getString("bezeichnung");
-                    holidays.put(date, name);
-                }
+            PreparedStatement stmt = conn.prepareStatement(sql);
+            ResultSet rs = stmt.executeQuery()) {
+
+            while (rs.next()) {
+                colors.put(rs.getString("setting_key"), rs.getString("setting_value"));
+            }
+        }
+        return colors;
+    }
+
+    /**
+     * KORRIGIERTE METHODE: Holt Feiertage aus der Tabelle 'feiertage'
+     * und verwendet die korrekten Spaltennamen 'datum' und 'bezeichnung'.
+     */
+    public static List<Map<String, Object>> getHolidaysForMonth(int year, int month) throws SQLException {
+        List<Map<String, Object>> holidays = new ArrayList<>();
+        // SQL-Anweisung an die korrekten Namen angepasst
+        String sql = "SELECT datum, bezeichnung FROM feiertage WHERE DATE_FORMAT(datum, '%Y') = ? AND DATE_FORMAT(datum, '%m') = ?";
+
+        try (Connection conn = getConnection();
+            PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setString(1, String.valueOf(year));
+            stmt.setString(2, String.format("%02d", month));
+
+            ResultSet rs = stmt.executeQuery();
+
+            while (rs.next()) {
+                Map<String, Object> holiday = new HashMap<>();
+                // Die Spaltennamen hier ebenfalls korrigiert
+                holiday.put("date", rs.getDate("datum").toLocalDate());
+                holiday.put("name", rs.getString("bezeichnung"));
+                holidays.add(holiday);
             }
         }
         return holidays;
@@ -1205,4 +1231,100 @@ public class DatabaseService {
         
         return assignments;
     }
+
+
+
+
+    /**
+     * NEUE METHODE 1: Holt alle Benutzer, die als aktiv markiert sind.
+     */
+    public static List<Map<String, Object>> getAllActiveUsers() throws SQLException {
+        List<Map<String, Object>> users = new ArrayList<>();
+        // Annahme: Die Spalte für den vollen Namen ist 'name'
+        String sql = "SELECT id, name, vorname, abteilung FROM users WHERE active = 1 ORDER BY abteilung, name, vorname";
+
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql);
+             ResultSet rs = stmt.executeQuery()) {
+
+            while (rs.next()) {
+                Map<String, Object> user = new HashMap<>();
+                user.put("id", rs.getInt("id"));
+                user.put("nachname", rs.getString("name"));
+                user.put("vorname", rs.getString("vorname"));
+                user.put("name", rs.getString("name") + ", " + rs.getString("vorname"));
+                user.put("abteilung", rs.getString("abteilung"));
+                users.add(user);
+            }
+        }
+        return users;
+    }
+
+    /**
+     * KORRIGIERTE METHODE: Holt alle Abwesenheitstage für einen Monat.
+     * Berücksichtigt jetzt Zeiträume (start_date, end_date) aus der Datenbank
+     * und teilt diese in einzelne Tage auf.
+     */
+    public static Map<Integer, List<String>> getAbsencesForMonth(int year, int month) throws SQLException {
+        Map<Integer, List<String>> allAbsences = new HashMap<>();
+
+        LocalDate monthStart = LocalDate.of(year, month, 1);
+        LocalDate monthEnd = monthStart.with(TemporalAdjusters.lastDayOfMonth());
+
+        // SQL-Anweisung an den korrekten Tabellennamen "user_absences" angepasst
+        String sql = "SELECT user_id, start_date, end_date FROM user_absences WHERE start_date <= ? AND end_date >= ?";
+
+        try (Connection conn = getConnection();
+            PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setDate(1, java.sql.Date.valueOf(monthEnd));
+            stmt.setDate(2, java.sql.Date.valueOf(monthStart));
+
+            ResultSet rs = stmt.executeQuery();
+
+            while (rs.next()) {
+                int userId = rs.getInt("user_id");
+                LocalDate startDate = rs.getDate("start_date").toLocalDate();
+                LocalDate endDate = rs.getDate("end_date").toLocalDate();
+
+                for (LocalDate date = startDate; !date.isAfter(endDate); date = date.plusDays(1)) {
+                    if (date.getYear() == year && date.getMonthValue() == month) {
+                        allAbsences.computeIfAbsent(userId, k -> new ArrayList<>()).add(date.toString());
+                    }
+                }
+            }
+        }
+        return allAbsences;
+    }
+
+    /**
+     * NEUE METHODE 3: Holt die gesamte Kapazitätshistorie für alle Benutzer.
+     * Gibt eine Map zurück, bei der der Schlüssel die user_id ist.
+     */
+    public static Map<Integer, List<Map<String, Object>>> getAllCapacities() throws SQLException {
+        Map<Integer, List<Map<String, Object>>> allCapacities = new HashMap<>();
+        String sql = "SELECT user_id, start_date, capacity_percent FROM user_capacities";
+        System.out.println("Kapazitäten abfragen: " + sql);
+
+
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql);
+             ResultSet rs = stmt.executeQuery()) {
+
+            while (rs.next()) {
+                int userId = rs.getInt("user_id");
+
+                Map<String, Object> capacity = new HashMap<>();
+                // Konvertiert das SQL-Datum in ein Java LocalDate-Objekt
+                capacity.put("start_date", rs.getDate("start_date").toLocalDate());
+                capacity.put("capacity_percent", rs.getInt("capacity_percent"));
+
+                allCapacities.computeIfAbsent(userId, k -> new ArrayList<>()).add(capacity);
+            }
+        }
+        return allCapacities;
+    }
+
+
+
 }
