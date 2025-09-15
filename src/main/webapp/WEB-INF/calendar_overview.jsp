@@ -131,6 +131,7 @@
                 <div class="view-options">
                     <label><input type="checkbox" name="view" value="mak"> MAK-Kapazität</label>
                     <label><input type="checkbox" name="view" value="availability"> Verfügbarkeit</label>
+                    <label><input type="checkbox" name="view" value="availability_percent"> Team-Verfügbarkeit</label>
                     <label><input type="checkbox" name="view" value="tasks"> Aufgaben</label>
                     <label><input type="checkbox" name="view" value="remaining"> Rest-Verfügbarkeit</label>
                 </div>
@@ -266,6 +267,27 @@
             return capacityInfo ? capacityInfo.value : 0; // Gehe von 0 aus, wenn keine Kapazität definiert ist
         }
 
+
+        /**
+        * NEUE HILFSFUNKTION: Berechnet eine Farbe für einen Prozentwert
+        * auf einer Skala von Rot (0%) über Gelb (50%) zu Grün (100%).
+        */
+        function getColorForPercentage(percent) {
+            if (typeof percent !== 'number') return ''; // Keine Farbe, wenn der Wert ungültig ist
+
+            // Begrenze den Wert auf den Bereich 0-100
+            const p = Math.max(0, Math.min(100, percent));
+            // console.log(`Farbinof p: `,p);
+
+            // Wir interpolieren die Farbe im HSL-Farbraum (Farbton, Sättigung, Helligkeit)
+            // Farbton (Hue): 0 ist Rot, 120 ist Grün.
+            const hue = (p * 1.2).toString(10);
+            const hueValue = "hsl(" + hue + ' ' + '90% 70%)';
+            // console.log(`Farbinof hue: `,hueValue);
+            // Sättigung und Helligkeit können wir konstant halten, um lebendige Farben zu erhalten.
+            return hueValue;
+        }
+
         function updateCalendar() {
             fetch('${pageContext.request.contextPath}/calendar-overview/data?' + new URLSearchParams({
                 year: currentDate.getFullYear(),
@@ -311,6 +333,7 @@
                 // Status der Checkboxen auslesen
                 const showMakCapacity = document.querySelector('input[value="mak"]').checked;
                 const showAvailability = document.querySelector('input[value="availability"]').checked;
+                const showAvailabilityPercent = document.querySelector('input[value="availability_percent"]').checked;
 
                 // console.log('Vom Server erhaltene Daten:', data); 
 
@@ -365,7 +388,7 @@
                                 // console.log('Info Employee.Kapa:', capacity);
                                 if (capacity !== null) {
                                     // td.textContent = capacity + '%';
-                                    td.textContent = capacity.value/100 ;
+                                    td.textContent = (capacity.value/100).toFixed(2);
                                     // Wenn das highlight-Flag gesetzt ist, die CSS-Klasse hinzufügen
                                     if (capacity.highlight) {
                                         td.classList.add('highlight');
@@ -390,7 +413,7 @@
                             data.days.forEach(day => {
                                 const td = document.createElement('td');
                                 const availability = getAvailabilityForDate(day, employee);
-                                td.textContent = availability/100;
+                                td.textContent = (availability/100).toFixed(2);
                                 if (day.isWeekend) td.classList.add('weekend');
                                 availabilityRow.appendChild(td);
                             });
@@ -402,12 +425,10 @@
 
                 const allEmployees = Object.values(data.departments).flat();
 
+                // #1: Zusammenfassung für MAK-Kapazität ---
                 if (showMakCapacity) {
                     // 1. Array für die Tagessummen initialisieren
                     const dailyTotals = Array(data.days.length).fill(0);
-
-                    // console.log('dailyTotals:', dailyTotals);
-                    // console.log('allEmployees:', allEmployees);
 
                     // 2. Durch jeden Tag des Monats iterieren
                     data.days.forEach((day, index) => {
@@ -436,7 +457,7 @@
                         // Summe nur anzeigen, wenn sie größer als 0 ist
                         // console.log('Summe:', 'Index = ' + index + ': ' + total);
                         if (total > 0) {
-                            td.textContent = total/100;
+                            td.textContent = (total/100).toFixed(2);
                         }
                         if (data.days[index].isWeekend) {
                             td.classList.add('weekend');
@@ -448,10 +469,12 @@
                     tbody.appendChild(summaryRow);
                 }
                 
-                // Zusammenfassung für Verfügbarkeit ---
+                // #2: Zusammenfassung für Verfügbarkeit ---
                 if (showAvailability) {
+                    // 1. Array für die Tagessummen initialisieren
                     const dailyAvailabilityTotals = Array(data.days.length).fill(0);
 
+                    // 2. Durch jeden Tag des Monats iterieren
                     data.days.forEach((day, index) => {
                         allEmployees.forEach(employee => {
                             const availability = getAvailabilityForDate(day, employee);
@@ -467,7 +490,7 @@
                     });
 
                     // console.log('Info zur Summe ', dailyAvailabilityTotals);
-
+                    // 3. Die Summenzeile erstellen
                     const summaryRow = document.createElement('tr');
                     summaryRow.classList.add('summary-row');
 
@@ -476,18 +499,72 @@
                     summaryLabelCell.classList.add('employee-name', 'summary-label');
                     summaryRow.appendChild(summaryLabelCell);
 
+                    // 4. Zellen für jede Tagessumme erstellen und füllen
                     dailyAvailabilityTotals.forEach((total, index) => {
                         const td = document.createElement('td');
                         if (total > 0) {
-                            td.textContent = total/100;
+                            td.textContent = (total/100).toFixed(2);
                         }
                         if (data.days[index].isWeekend) {
                             td.classList.add('weekend');
                         }
                         summaryRow.appendChild(td);
                     });
+
+                    // 5. Die fertige Zeile an die Tabelle anhängen
                     tbody.appendChild(summaryRow);
                 }
+
+
+
+                // #3: Zusammenfassung für Verfügbarkeit in % ---
+                if (showAvailabilityPercent) {
+                    // 1. Array für die Tagessummen initialisieren
+                    const dailyAvailabilitPercent = Array(data.days.length).fill(0);
+                    const dailyTotals = Array(data.days.length).fill(0);
+
+                    // 2. Durch jeden Tag des Monats iterieren
+                    data.days.forEach((day, index) => {
+                        allEmployees.forEach(employee => {
+                            const availabilityPercent = getAvailabilityForDate(day, employee);
+                            const capacityInfo = getCapacityForDate(employee.capacities, day.date);
+                            if (typeof availabilityPercent === 'number') {
+                                dailyAvailabilitPercent[index] += availabilityPercent;
+                            }
+                            if (capacityInfo && typeof capacityInfo.value === 'number') {
+                                dailyTotals[index] += capacityInfo.value;
+                            }
+                        });
+                    });
+
+                    // 3. Die Summenzeile erstellen
+                    const summaryRow = document.createElement('tr');
+                    summaryRow.classList.add('summary-row');
+
+                    const summaryLabelCell = document.createElement('td');
+                    summaryLabelCell.textContent = 'Team-Verfügbarkeit';
+                    summaryLabelCell.classList.add('employee-name', 'summary-label');
+                    summaryRow.appendChild(summaryLabelCell);
+
+                    // 4. Zellen für jede Tagessumme erstellen und füllen
+                    dailyAvailabilitPercent.forEach((total, index) => {
+                        const td = document.createElement('td');
+                        
+                        // if (total > 0) {
+                        if (!data.days[index].isWeekend && !data.days[index].isHoliday) {
+                            td.textContent = (total/dailyTotals[index]*100).toFixed(0) + '%';
+                            console.log('Farbe:', getColorForPercentage(total/dailyTotals[index]*100));
+                            td.style.backgroundColor = getColorForPercentage(total/dailyTotals[index]*100);
+                        }
+                        if (data.days[index].isWeekend) {
+                            td.classList.add('weekend');
+                        }
+                        summaryRow.appendChild(td);
+                    });
+
+                    // 5. Die fertige Zeile an die Tabelle anhängen
+                    tbody.appendChild(summaryRow);
+                }                
 
 
 
