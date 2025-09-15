@@ -60,18 +60,47 @@ public class CapacityServlet extends HttpServlet {
             return;
         }
         String actor = (String) user.get("username");
+        String action = req.getParameter("action");
 
         try {
-            int userId = Integer.parseInt(req.getParameter("userId"));
-            LocalDate startDate = LocalDate.parse(req.getParameter("startDate"));
-            int capacity = Integer.parseInt(req.getParameter("capacity"));
-            if (capacity < 0 || capacity > 100) {
-                throw new IllegalArgumentException("Kapazität muss zwischen 0 und 100 liegen.");
+            if ("delete".equals(action)) {
+                // Logik zum LÖSCHEN
+                String capacityIdStr = req.getParameter("capacityId");
+                if (capacityIdStr == null || capacityIdStr.trim().isEmpty()) {
+                    throw new IllegalArgumentException("Capacity ID für das Löschen fehlt.");
+                }
+                int capacityId = Integer.parseInt(capacityIdStr);
+                DatabaseService.deleteCapacity(capacityId, actor);
+
+            } else {
+                // Standard-Logik zum HINZUFÜGEN
+                String userIdStr = req.getParameter("userId");
+                String startDateStr = req.getParameter("startDate");
+                String capacityStr = req.getParameter("capacity");
+
+                // Validierung: Sicherstellen, dass keine Felder leer sind.
+                if (userIdStr == null || userIdStr.trim().isEmpty() ||
+                    startDateStr == null || startDateStr.trim().isEmpty() ||
+                    capacityStr == null || capacityStr.trim().isEmpty()) {
+                    throw new IllegalArgumentException("Bitte füllen Sie alle erforderlichen Felder aus (Benutzer, Datum, Kapazität).");
+                }
+
+                int userId = Integer.parseInt(userIdStr);
+                LocalDate startDate = LocalDate.parse(startDateStr);
+                int capacity = Integer.parseInt(capacityStr);
+
+                if (capacity < 0 || capacity > 100) {
+                    throw new IllegalArgumentException("Kapazität muss zwischen 0 und 100 liegen.");
+                }
+                DatabaseService.addCapacity(userId, startDate, capacity, actor);
             }
-            DatabaseService.addCapacity(userId, startDate, capacity, actor);
         } catch (Exception e) {
+            // Setzt eine Session-Variable, um eine Fehlermeldung auf der JSP anzuzeigen
+            session.setAttribute("errorMessage", "Ein Fehler ist aufgetreten: " + e.getMessage());
             e.printStackTrace();
         }
+        
+        // Nach der Aktion zurück zur Hauptseite umleiten
         resp.sendRedirect(req.getContextPath() + "/capacities");
     }
 }

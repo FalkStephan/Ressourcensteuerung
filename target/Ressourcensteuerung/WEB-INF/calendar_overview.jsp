@@ -72,10 +72,46 @@
             flex-wrap: wrap; /* Sorgt für Umbruch auf kleineren Bildschirmen */
         }
 
+
+        .detail-row {
+            padding: 2px 8px; /* Reduziert den vertikalen und horizontalen Abstand in der Zelle */
+            line-height: 1.2; /* Verringert den Zeilenabstand */     
+            font-size: 0.85em; /* Macht die Schrift etwas kleiner */
+            color: #333;      /* Etwas dunklere Schrift für bessere Lesbarkeit */     
+        }
+      
         .detail-row .highlight {
             background-color: #dbd000; /* Ein leichtes Türkis als Hintergrund */
             /* font-weight: bold; */
             color: #8a8300;
+        }
+
+        .detail-row-label {
+            font-style: italic;
+            font-weight: normal !important; /* WICHTIG: Überschreibt die fette Schrift */
+            text-align: right !important;
+            padding-right: 10px !important;
+        }
+
+        .summary-row {
+            border-top: 2px solid #333; /* Eine dicke Linie zur Abgrenzung */
+        }
+
+        .summary-row td {
+            font-weight: bold;
+            background-color: #e9ecef; /* Ein leichter Grauton */
+            padding: 2px 8px; /* Reduziert den vertikalen und horizontalen Abstand in der Zelle */
+            line-height: 1.2; /* Verringert den Zeilenabstand */     
+            font-size: 0.85em; /* Macht die Schrift etwas kleiner */
+            color: #333;      /* Etwas dunklere Schrift für bessere Lesbarkeit */    
+        }
+
+        .summary-label {
+            font-style: italic;
+            font-weight: normal;
+            font-size: 0.85em; /* Macht die Schrift etwas kleiner */
+            text-align: right !important;
+            padding-right: 10px !important;
         }
     </style>
 </head>
@@ -120,7 +156,9 @@
         let currentDate = new Date();
         
         // Event-Listener für alle Checkboxen hinzufügen
-        document.querySelector('input[value="mak"]').addEventListener('change', updateCalendar);
+        document.querySelectorAll('.view-options input[type="checkbox"]').forEach(checkbox => {
+            checkbox.addEventListener('change', updateCalendar);
+        });
 
         function updateCalendarColors(colors) {
             // Debug-Ausgabe der Farben
@@ -207,11 +245,26 @@
 
 
             }
-            console.log(`-> KEIN TREFFER für diesen Tag gefunden.`);
+            // console.log(`-> KEIN TREFFER für diesen Tag gefunden.`);
             return null; // Kein gültiger Kapazitätseintrag gefunden
         }
 
-
+        /**
+        * NEUE FUNKTION: Berechnet die Verfügbarkeit eines Mitarbeiters für einen bestimmten Tag.
+        */
+        function getAvailabilityForDate(day, employee) {
+            // Regel 1: Wenn es ein Feiertag ist, ist die Verfügbarkeit 0.
+            if (day.isHoliday) {
+                return 0;
+            }
+            // Regel 2: Wenn der Mitarbeiter abwesend ist, ist die Verfügbarkeit 0.
+            if (employee.absences && employee.absences.includes(day.date)) {
+                return 0;
+            }
+            // Ansonsten entspricht die Verfügbarkeit der gültigen MAK-Kapazität.
+            const capacityInfo = getCapacityForDate(employee.capacities, day.date);
+            return capacityInfo ? capacityInfo.value : 0; // Gehe von 0 aus, wenn keine Kapazität definiert ist
+        }
 
         function updateCalendar() {
             fetch('${pageContext.request.contextPath}/calendar-overview/data?' + new URLSearchParams({
@@ -255,10 +308,11 @@
                 const tbody = document.querySelector('#calendarGrid tbody');
                 tbody.innerHTML = '';
 
-                // Status der "MAK-Kapazität" Checkbox auslesen
+                // Status der Checkboxen auslesen
                 const showMakCapacity = document.querySelector('input[value="mak"]').checked;
+                const showAvailability = document.querySelector('input[value="availability"]').checked;
 
-                console.log('Vom Server erhaltene Daten:', data); 
+                // console.log('Vom Server erhaltene Daten:', data); 
 
                 Object.entries(data.departments).forEach(([department, employees]) => {
                     const headerRow = document.createElement('tr');
@@ -302,16 +356,16 @@
 
                             const makNameCell = document.createElement('td');
                             makNameCell.textContent = 'MAK-Kapazität';
-                            makNameCell.classList.add('employee-name', 'capacity-label');
+                            makNameCell.classList.add('employee-name', 'detail-row-label');
                             makRow.appendChild(makNameCell);
 
                             data.days.forEach(day => {
                                 const td = document.createElement('td');
                                 const capacity = getCapacityForDate(employee.capacities, day.date);
-                                console.log('Info Employee.Kapa:', capacity);
+                                // console.log('Info Employee.Kapa:', capacity);
                                 if (capacity !== null) {
                                     // td.textContent = capacity + '%';
-                                    td.textContent = capacity.value + '%';
+                                    td.textContent = capacity.value/100 ;
                                     // Wenn das highlight-Flag gesetzt ist, die CSS-Klasse hinzufügen
                                     if (capacity.highlight) {
                                         td.classList.add('highlight');
@@ -323,8 +377,78 @@
                             });
                             tbody.appendChild(makRow);
                         }
+                        // 3. Verfügbarkeit anzeigen ---
+                        if (showAvailability) {
+                            const availabilityRow = document.createElement('tr');
+                            availabilityRow.classList.add('detail-row');
+
+                            const availabilityLabelCell = document.createElement('td');
+                            availabilityLabelCell.textContent = 'Verfügbarkeit';
+                            availabilityLabelCell.classList.add('employee-name', 'detail-row-label');
+                            availabilityRow.appendChild(availabilityLabelCell);
+
+                            data.days.forEach(day => {
+                                const td = document.createElement('td');
+                                const availability = getAvailabilityForDate(day, employee);
+                                td.textContent = availability/100;
+                                if (day.isWeekend) td.classList.add('weekend');
+                                availabilityRow.appendChild(td);
+                            });
+                            tbody.appendChild(availabilityRow);
+                        }
                     });
                 });
+
+                if (showMakCapacity) {
+                    // 1. Array für die Tagessummen initialisieren
+                    const dailyTotals = Array(data.days.length).fill(0);
+                    const allEmployees = Object.values(data.departments).flat();
+
+                    // console.log('dailyTotals:', dailyTotals);
+                    // console.log('allEmployees:', allEmployees);
+
+                    // 2. Durch jeden Tag des Monats iterieren
+                    data.days.forEach((day, index) => {
+                        // Für jeden Tag die Kapazität aller Mitarbeiter aufaddieren
+                        allEmployees.forEach(employee => {
+                            const capacityInfo = getCapacityForDate(employee.capacities, day.date);
+                            // console.log('capacityInfo_2:', capacityInfo);
+                            if (capacityInfo && typeof capacityInfo.value === 'number') {
+                                dailyTotals[index] += capacityInfo.value;
+                            }
+                        });
+                    });
+
+                    // 3. Die Summenzeile erstellen
+                    const summaryRow = document.createElement('tr');
+                    summaryRow.classList.add('summary-row');
+
+                    const summaryLabelCell = document.createElement('td');
+                    summaryLabelCell.textContent = 'MAK-Kapazität';
+                    summaryLabelCell.classList.add('employee-name', 'summary-label');
+                    summaryRow.appendChild(summaryLabelCell);
+
+                    // 4. Zellen für jede Tagessumme erstellen und füllen
+                    dailyTotals.forEach((total, index) => {
+                        const td = document.createElement('td');
+                        // Summe nur anzeigen, wenn sie größer als 0 ist
+                        // console.log('Summe:', 'Index = ' + index + ': ' + total);
+                        if (total > 0) {
+                            td.textContent = total/100;
+                        }
+                        if (data.days[index].isWeekend) {
+                            td.classList.add('weekend');
+                        }
+                        summaryRow.appendChild(td);
+                    });
+
+                    // 5. Die fertige Zeile an die Tabelle anhängen
+                    tbody.appendChild(summaryRow);
+                }
+                // --- NEUER CODE-BLOCK ENDE ---
+            
+
+
 
                 if (data.colors) {
                     updateCalendarColors(data.colors);

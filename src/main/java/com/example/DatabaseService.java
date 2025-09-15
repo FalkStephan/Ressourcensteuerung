@@ -809,6 +809,52 @@ public class DatabaseService {
         return capacities;
     }
 
+    /**
+     * Holt einen einzelnen Kapazitätseintrag anhand seiner ID.
+     * Nützlich für das Logging vor dem Löschen.
+     */
+    public static Map<String, Object> getCapacityById(int id) throws SQLException {
+        String sql = "SELECT c.*, u.username FROM user_capacities c JOIN users u ON c.user_id = u.id WHERE c.id = ?";
+        try (Connection conn = getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setInt(1, id);
+            ResultSet rs = pstmt.executeQuery();
+            if (rs.next()) {
+                Map<String, Object> capacity = new HashMap<>();
+                capacity.put("id", rs.getInt("id"));
+                capacity.put("user_id", rs.getInt("user_id"));
+                capacity.put("username", rs.getString("username"));
+                capacity.put("start_date", rs.getObject("start_date", LocalDate.class));
+                capacity.put("capacity_percent", rs.getInt("capacity_percent"));
+                return capacity;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Löscht einen Kapazitätseintrag aus der Datenbank.
+     */
+    public static void deleteCapacity(int capacityId, String actor) throws SQLException {
+        Map<String, Object> oldCapacity = getCapacityById(capacityId);
+        if (oldCapacity == null) {
+            // Eintrag existiert nicht, nichts zu tun.
+            return;
+        }
+
+        String sql = "DELETE FROM user_capacities WHERE id = ?";
+        try (Connection conn = getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setInt(1, capacityId);
+            pstmt.executeUpdate();
+
+            // Logbuch-Eintrag erstellen
+            String desc = String.format("Kapazität für '%s' ab %s (%d%%) gelöscht.",
+                oldCapacity.get("username"),
+                oldCapacity.get("start_date"),
+                oldCapacity.get("capacity_percent"));
+            logAction(actor, "Löschen", desc);
+        }
+    }
+
     // ####################
     // Settings
     // ####################
