@@ -133,6 +133,7 @@
                     <label><input type="checkbox" name="view" value="availability"> Verfügbarkeit</label>
                     <label><input type="checkbox" name="view" value="availability_percent"> Team-Verfügbarkeit</label>
                     <label><input type="checkbox" name="view" value="tasks"> Aufgaben</label>
+                    <label><input type="checkbox" name="view" value="workload"> Auslastung</label>
                     <label><input type="checkbox" name="view" value="remaining"> Rest-Verfügbarkeit</label>
                 </div>
 
@@ -394,6 +395,7 @@
                 const showAvailability = document.querySelector('input[value="availability"]').checked;
                 const showAvailabilityPercent = document.querySelector('input[value="availability_percent"]').checked;
                 const showTasks = document.querySelector('input[value="tasks"]').checked;
+                const showWorkload = document.querySelector('input[value="workload"]').checked;
 
 
                 const holidays = data.days.filter(d => d.isHoliday);
@@ -508,6 +510,41 @@
                             });
                             tbody.appendChild(TaskRow);                            
                         }
+
+
+                        // 5. Auslastung (Workload) anzeigen
+                        if (showWorkload) {
+                            const WorkloadRow = document.createElement('tr');
+                            WorkloadRow.classList.add('detail-row');
+
+                            const WorkloadLabelCell = document.createElement('td');
+                            WorkloadLabelCell.textContent = 'Workload';
+                            WorkloadLabelCell.classList.add('employee-name', 'detail-row-label');
+                            WorkloadRow.appendChild(WorkloadLabelCell);
+
+                            data.days.forEach(day => {
+                                const td = document.createElement('td');
+                                const taskeffort = getTaskEffortForDate(day, employee, holidays);
+                                const availability = getAvailabilityForDate(day, employee);
+                                const workload = taskeffort / (availability/100)*100;
+                                if (!day.isWeekend && !day.isHoliday) {
+                                    if (!availability==0) {
+                                        td.textContent = (workload).toFixed(2);
+                                    }
+                                    else {
+                                        if (workload > 0) {
+                                            td.textContent = '999';
+                                        }
+                                        else
+                                        td.textContent = '';
+                                    }
+                                }
+                                if (day.isWeekend) td.classList.add('weekend');
+                                WorkloadRow.appendChild(td);
+                            });
+                            tbody.appendChild(WorkloadRow);                            
+                        }
+
                     });
                 });
 

@@ -91,6 +91,51 @@
                 </form>
             </div>
 
+
+
+
+            <!-- Auslastungsgrenzen -->
+            <div class="settings-section">
+                <h3>Auslastungsgrenzen</h3>
+                <!-- 
+                <form id="colorSettingsForm" method="post" action="${pageContext.request.contextPath}/settings">
+                    <input type="hidden" name="action" value="update_settings">
+                    -->
+                    <div class="settings-grid">
+                        <c:forEach var="setting" items="${settings}">
+                            <c:if test="${setting.key.startsWith('calendar_workload_color_')}">
+                                <div class="setting-item">
+                                    <label for="${setting.key}">${setting.description}:</label>
+                                    <div class="color-input-group">
+                                        <input type="color" 
+                                               id="${setting.key}" 
+                                               name="${setting.key}" 
+                                               value="${setting.value}"
+                                               onchange="updatePreview(this)">
+                                        <span class="color-preview" 
+                                              id="preview_${setting.key}" 
+                                              style="background-color: ${setting.value}">
+                                        </span>
+                                    </div>
+                                </div>
+                            </c:if>    
+                            <c:if test="${setting.key.startsWith('calendar_workload_value_')}">
+                                <div class="form-group">
+                                    <label for="${setting.key}">${setting.description}:</label>
+                                    <div class="color-input-group">
+                                        <input type="number" step="0.01" id="${setting.key}" name="${setting.key}" value="${setting.value}">
+                                    </div>
+                                </div>
+                            </c:if>
+                        </c:forEach>
+                    </div>
+                    <div style="margin-top: 1em;">
+                        <button type="submit" class="button create">Farben speichern</button>
+                    </div>
+                <!-- </form>  -->
+            </div>            
+
+
             <!-- Task-Status -->
             <div class="settings-section">
                 <h3>Status "Aufgaben"</h3>

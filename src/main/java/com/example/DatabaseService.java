@@ -78,7 +78,19 @@ public class DatabaseService {
                 try { stmt.execute("ALTER TABLE users ADD COLUMN can_manage_tasks BOOLEAN NOT NULL DEFAULT FALSE"); } catch (Exception e) { /* Spalte existiert evtl. schon */ }
                 try { stmt.execute("ALTER TABLE task_statuses ADD COLUMN color_code VARCHAR(7) DEFAULT '#FFFFFF'"); } catch (Exception e) { /* Spalte existiert evtl. schon */ }
                 try { stmt.execute("ALTER TABLE tasks ADD COLUMN abteilung VARCHAR(255)"); } catch (SQLException e) {}
-               
+                try (Statement settingsStmt = conn.createStatement()) {
+                    // Verwende INSERT IGNORE, um Fehler zu vermeiden, falls die Schlüssel bereits existieren
+                    settingsStmt.addBatch("INSERT IGNORE INTO settings (setting_key, setting_value, description) VALUES ('calendar_workload_color_low', '#82fb79', 'Farbe für Auslastung gering')");
+                    settingsStmt.addBatch("INSERT IGNORE INTO settings (setting_key, setting_value, description) VALUES ('calendar_workload_color_medium', '#fbf965', 'Farbe für Auslastung mittel')");
+                    settingsStmt.addBatch("INSERT IGNORE INTO settings (setting_key, setting_value, description) VALUES ('calendar_workload_color_high', '#fb8e8e', 'Farbe für Auslastung hoch')");
+                    settingsStmt.addBatch("INSERT IGNORE INTO settings (setting_key, setting_value, description) VALUES ('calendar_workload_value_medium', '0.25', 'Maximal-Wert für Auslastung mittel')");
+                    settingsStmt.addBatch("INSERT IGNORE INTO settings (setting_key, setting_value, description) VALUES ('calendar_workload_value_high', '0.8', 'Minimal-Wert für Auslastung hoch')");
+                    settingsStmt.executeBatch();
+                }
+                
+
+
+
                 String mitarbeiterSql = "CREATE TABLE IF NOT EXISTS mitarbeiter (" +
                         " id INTEGER PRIMARY KEY AUTO_INCREMENT," +
                         " name VARCHAR(255) NOT NULL," +

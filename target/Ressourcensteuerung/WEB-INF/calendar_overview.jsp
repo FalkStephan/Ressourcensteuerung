@@ -288,6 +288,65 @@
             return hueValue;
         }
 
+
+        function countWorkdays(startDateStr, endDateStr, holidays) {
+            /**
+            * HILFSFUNKTION: Zählt die Arbeitstage zwischen zwei Daten.
+            * Schließt Wochenenden und Feiertage aus.
+            */
+            let count = 0;
+            const holidaySet = new Set(holidays.map(h => h.date)); // Für schnellen Zugriff
+            let currentDate = new Date(startDateStr + "T12:00:00");
+            const endDate = new Date(endDateStr + "T12:00:00");
+
+            while (currentDate <= endDate) {
+                const dayOfWeek = currentDate.getDay();
+                const dateStr = currentDate.toISOString().split('T')[0];
+
+                if (dayOfWeek > 0 && dayOfWeek < 6 && !holidaySet.has(dateStr)) {
+                    count++;
+                }
+                currentDate.setDate(currentDate.getDate() + 1);
+            }
+            return count > 0 ? count : 1; // Division durch Null vermeiden
+        }
+
+        /**
+        * FUNKTION: Berechnet die tägliche Aufgabenlast für einen Mitarbeiter.
+        */
+        function getTaskEffortForDate(day, employee, holidays) {
+            // console.log(`--> Tag:   `,day);
+            // console.log(`User:      `,employee);
+            // console.log(`Feiertage: `,holidays);
+            let totalEffort = 0;
+            if (!employee.tasks) return 0;
+
+            const currentDay = new Date(day.date + "T12:00:00");
+
+            employee.tasks.forEach(task => {
+                const startDate = new Date(task.start_date + "T12:00:00");
+                const endDate = new Date(task.end_date + "T12:00:00");
+
+                // Prüfen, ob der aktuelle Kalendertag im Aufgabenzeitraum liegt
+                if (currentDay >= startDate && currentDay <= endDate) {
+                    const workdays = countWorkdays(task.start_date, task.end_date, holidays);
+                    const dailyEffort = task.effort_days / workdays;
+                    totalEffort += dailyEffort;
+                }
+            });
+
+            // console.log(`Effort: `,day.date + ' --> ' + totalEffort + ' (' + employee.name + ')');
+            // console.log(`User: `,employee);
+
+            return totalEffort;
+        }
+
+
+
+
+
+
+
         function updateCalendar() {
             fetch('${pageContext.request.contextPath}/calendar-overview/data?' + new URLSearchParams({
                 year: currentDate.getFullYear(),
@@ -334,6 +393,10 @@
                 const showMakCapacity = document.querySelector('input[value="mak"]').checked;
                 const showAvailability = document.querySelector('input[value="availability"]').checked;
                 const showAvailabilityPercent = document.querySelector('input[value="availability_percent"]').checked;
+                const showTasks = document.querySelector('input[value="tasks"]').checked;
+
+
+                const holidays = data.days.filter(d => d.isHoliday);
 
                 // console.log('Vom Server erhaltene Daten:', data); 
 
@@ -388,10 +451,12 @@
                                 // console.log('Info Employee.Kapa:', capacity);
                                 if (capacity !== null) {
                                     // td.textContent = capacity + '%';
-                                    td.textContent = (capacity.value/100).toFixed(2);
-                                    // Wenn das highlight-Flag gesetzt ist, die CSS-Klasse hinzufügen
-                                    if (capacity.highlight) {
-                                        td.classList.add('highlight');
+                                    if (!day.isWeekend && !day.isHoliday) {
+                                        td.textContent = (capacity.value/100).toFixed(2);
+                                        // Wenn das highlight-Flag gesetzt ist, die CSS-Klasse hinzufügen
+                                        if (capacity.highlight) {
+                                            td.classList.add('highlight');
+                                        }
                                     }
                                 }
                                 // Hier können optional noch Klassen für Styling (weekend, etc.) hinzugefügt werden
@@ -413,11 +478,35 @@
                             data.days.forEach(day => {
                                 const td = document.createElement('td');
                                 const availability = getAvailabilityForDate(day, employee);
-                                td.textContent = (availability/100).toFixed(2);
+                                if (!day.isWeekend && !day.isHoliday) {
+                                    td.textContent = (availability/100).toFixed(2);
+                                }
                                 if (day.isWeekend) td.classList.add('weekend');
                                 availabilityRow.appendChild(td);
                             });
                             tbody.appendChild(availabilityRow);
+                        }
+
+                        // 4. Aufgaben anzeigen
+                        if (showTasks) {
+                            const TaskRow = document.createElement('tr');
+                            TaskRow.classList.add('detail-row');
+
+                            const TaskLabelCell = document.createElement('td');
+                            TaskLabelCell.textContent = 'Aufgaben';
+                            TaskLabelCell.classList.add('employee-name', 'detail-row-label');
+                            TaskRow.appendChild(TaskLabelCell);
+
+                            data.days.forEach(day => {
+                                const td = document.createElement('td');
+                                const taskeffort = getTaskEffortForDate(day, employee, holidays);
+                                if (!day.isWeekend && !day.isHoliday) {
+                                    td.textContent = (taskeffort).toFixed(2);
+                                }
+                                if (day.isWeekend) td.classList.add('weekend');
+                                TaskRow.appendChild(td);
+                            });
+                            tbody.appendChild(TaskRow);                            
                         }
                     });
                 });
@@ -456,7 +545,8 @@
                         const td = document.createElement('td');
                         // Summe nur anzeigen, wenn sie größer als 0 ist
                         // console.log('Summe:', 'Index = ' + index + ': ' + total);
-                        if (total > 0) {
+                        // if (total > 0) {
+                        if (!data.days[index].isWeekend && !data.days[index].isHoliday && total > 0) {                            
                             td.textContent = (total/100).toFixed(2);
                         }
                         if (data.days[index].isWeekend) {
@@ -478,18 +568,14 @@
                     data.days.forEach((day, index) => {
                         allEmployees.forEach(employee => {
                             const availability = getAvailabilityForDate(day, employee);
-                            // console.log('Datum:', day);
-                            // console.log('Employee:', employee);
-                            // console.log('--> availability:', availability);
-                            // console.log('availability:', day.date + ' / ' + employee.nachname + ', ' + employee.vorname + ' --> ' + availability);
-                            if (typeof availability === 'number') {
+                            // if (typeof availability === 'number') {
+                            if (!data.days[index].isWeekend && !data.days[index].isHoliday && typeof availability === 'number') {         
                                 dailyAvailabilityTotals[index] += availability;
                             }
                             // console.log('Gesamt: ', index + ' --> ' + dailyAvailabilityTotals[index]);
                         });
                     });
 
-                    // console.log('Info zur Summe ', dailyAvailabilityTotals);
                     // 3. Die Summenzeile erstellen
                     const summaryRow = document.createElement('tr');
                     summaryRow.classList.add('summary-row');
@@ -565,6 +651,48 @@
                     // 5. Die fertige Zeile an die Tabelle anhängen
                     tbody.appendChild(summaryRow);
                 }                
+
+                // #4: Zusammenfassung für Aufgaben
+                if (showTasks) {
+                    // 1. Array für die Tagessummen initialisieren
+                    const TaskTotals = Array(data.days.length).fill(0);
+
+                    // 2. Durch jeden Tag des Monats iterieren
+                    data.days.forEach((day, index) => {
+                        allEmployees.forEach(employee => {
+                            const Tasks = getTaskEffortForDate(day, employee, data.days.filter(d => d.isHoliday));
+                            if (!data.days[index].isWeekend && !data.days[index].isHoliday) {         
+                                TaskTotals[index] += Tasks;
+                            }
+                        });
+                    });
+
+                    // 3. Die Summenzeile erstellen
+                    const summaryRow = document.createElement('tr');
+                    summaryRow.classList.add('summary-row');
+
+                    const summaryLabelCell = document.createElement('td');
+                    summaryLabelCell.textContent = 'Aufgaben';
+                    summaryLabelCell.classList.add('employee-name', 'summary-label');
+                    summaryRow.appendChild(summaryLabelCell);
+
+                    // 4. Zellen für jede Tagessumme erstellen und füllen
+                    TaskTotals.forEach((total, index) => {
+                        const td = document.createElement('td');
+                        if (total > 0) {
+                            td.textContent = total.toFixed(2);
+                        }
+                        if (data.days[index].isWeekend) {
+                            td.classList.add('weekend');
+                        }
+                        summaryRow.appendChild(td);
+                    });
+
+                    // 5. Die fertige Zeile an die Tabelle anhängen
+                    tbody.appendChild(summaryRow);
+                }
+
+
 
 
 
