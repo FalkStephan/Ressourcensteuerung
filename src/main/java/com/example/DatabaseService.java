@@ -10,6 +10,7 @@ import java.sql.Statement;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.DayOfWeek;
 import java.time.temporal.TemporalAdjusters;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -28,86 +29,6 @@ public class DatabaseService {
         );
     }
     
-    // Task Assignments
-    public static int getLastInsertedTaskId() throws SQLException {
-        try (Connection conn = getConnection();
-             PreparedStatement stmt = conn.prepareStatement("SELECT MAX(id) FROM tasks")) {
-            ResultSet rs = stmt.executeQuery();
-            if (rs.next()) {
-                return rs.getInt(1);
-            }
-            throw new SQLException("Keine Task-ID gefunden");
-        }
-    }
-
-    public static Map<String, Object> getTaskById(int id) throws SQLException {
-        String sql = "SELECT t.*, ts.name as status_name, ts.color_code as status_color " +
-                    "FROM tasks t " +
-                    "LEFT JOIN task_statuses ts ON t.status_id = ts.id " +
-                    "WHERE t.id = ?";
-                    
-        try (Connection conn = getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
-            
-            stmt.setInt(1, id);
-            ResultSet rs = stmt.executeQuery();
-            
-            if (rs.next()) {
-                Map<String, Object> task = new HashMap<>();
-                task.put("id", rs.getInt("id"));
-                task.put("name", rs.getString("name"));
-                task.put("start_date", rs.getObject("start_date", LocalDate.class));
-                task.put("end_date", rs.getObject("end_date", LocalDate.class));
-                task.put("effort_days", rs.getBigDecimal("effort_days"));
-                task.put("status_id", rs.getInt("status_id"));
-                task.put("status_name", rs.getString("status_name"));
-                task.put("status_color", rs.getString("status_color"));
-                task.put("progress_percent", rs.getInt("progress_percent"));
-                task.put("abteilung", rs.getString("abteilung"));
-                return task;
-            }
-            return null;
-        }
-    }
-
-    public static void updateTaskAssignments(int taskId, Map<Integer, Double> assignments) throws SQLException {
-        try (Connection conn = getConnection()) {
-            // Transaktion starten
-            conn.setAutoCommit(false);
-            
-            try {
-                // Erst alle bestehenden Zuweisungen für diese Aufgabe löschen
-                try (PreparedStatement deleteStmt = conn.prepareStatement(
-                        "DELETE FROM task_user_assignments WHERE task_id = ?")) {
-                    deleteStmt.setInt(1, taskId);
-                    deleteStmt.executeUpdate();
-                }
-                
-                // Dann die neuen Zuweisungen einfügen
-                if (!assignments.isEmpty()) {
-                    try (PreparedStatement insertStmt = conn.prepareStatement(
-                            "INSERT INTO task_user_assignments (task_id, user_id, effort_days) VALUES (?, ?, ?)")) {
-                        for (Map.Entry<Integer, Double> entry : assignments.entrySet()) {
-                            insertStmt.setInt(1, taskId);
-                            insertStmt.setInt(2, entry.getKey());
-                            insertStmt.setDouble(3, entry.getValue());
-                            insertStmt.executeUpdate();
-                        }
-                    }
-                }
-                
-                // Transaktion bestätigen
-                conn.commit();
-            } catch (SQLException e) {
-                // Bei Fehler Rollback durchführen
-                conn.rollback();
-                throw e;
-            } finally {
-                // Auto-Commit wieder aktivieren
-                conn.setAutoCommit(true);
-            }
-        }
-    }
 
     public static void init() {
         try {
@@ -246,6 +167,36 @@ public class DatabaseService {
         }
     }
 
+    
+    private static boolean equalsNullable(Object a, Object b) {
+        // Hilfsmethode für Nullable-Vergleich
+        if (a == null && b == null) return true;
+        if (a == null || b == null) return false;
+        return a.equals(b);
+    }
+
+    public static Map<String, String> getCalendarColors() throws SQLException {
+        /**
+        * Holt die Farb-Einstellungen für den Kalender aus der Datenbank.
+        * @return Eine Map mit den Farb-Einstellungsschlüsseln und deren Werten.
+        */
+        Map<String, String> colors = new HashMap<>();
+        // Annahme: Die Einstellungen sind in einer 'settings'-Tabelle gespeichert
+        String sql = "SELECT setting_key, setting_value FROM settings WHERE setting_key LIKE 'calendar_color_%'";
+
+        try (Connection conn = getConnection();
+            PreparedStatement stmt = conn.prepareStatement(sql);
+            ResultSet rs = stmt.executeQuery()) {
+
+            while (rs.next()) {
+                colors.put(rs.getString("setting_key"), rs.getString("setting_value"));
+            }
+        }
+        return colors;
+    }
+
+
+
 
     // ####################
     // USER
@@ -302,7 +253,6 @@ public class DatabaseService {
         } catch (SQLException e) { e.printStackTrace(); }
         return null;
     }
-
     
     public static List<Map<String, Object>> getAllUsers(Map<String, Object> currentUser) {
         List<Map<String, Object>> users = new ArrayList<>();
@@ -333,8 +283,33 @@ public class DatabaseService {
         }
         return users;
     }
-    
-   public static void addUser(String username, String password, String name, String vorname, String stelle, String team, String abteilung, boolean active, boolean isUser, boolean canManageUsers, boolean canViewLogbook, boolean canManageFeiertage, boolean seeAllUsers, boolean canManageCalendar, boolean canManageCapacities, boolean canManageSettings, boolean canManageTasks, boolean canManageCalendarOverview, String actor) throws SQLException {
+
+    public static List<Map<String, Object>> getAllActiveUsers() throws SQLException {
+        /**
+        * Holt alle Benutzer, die als aktiv markiert sind.
+        */
+        List<Map<String, Object>> users = new ArrayList<>();
+        // Annahme: Die Spalte für den vollen Namen ist 'name'
+        String sql = "SELECT id, name, vorname, abteilung FROM users WHERE active = 1 ORDER BY abteilung, name, vorname";
+
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql);
+             ResultSet rs = stmt.executeQuery()) {
+
+            while (rs.next()) {
+                Map<String, Object> user = new HashMap<>();
+                user.put("id", rs.getInt("id"));
+                user.put("nachname", rs.getString("name"));
+                user.put("vorname", rs.getString("vorname"));
+                user.put("name", rs.getString("name") + ", " + rs.getString("vorname"));
+                user.put("abteilung", rs.getString("abteilung"));
+                users.add(user);
+            }
+        }
+        return users;
+    }    
+
+    public static void addUser(String username, String password, String name, String vorname, String stelle, String team, String abteilung, boolean active, boolean isUser, boolean canManageUsers, boolean canViewLogbook, boolean canManageFeiertage, boolean seeAllUsers, boolean canManageCalendar, boolean canManageCapacities, boolean canManageSettings, boolean canManageTasks, boolean canManageCalendarOverview, String actor) throws SQLException {
         String sql = "INSERT INTO users(username, password_hash, name, vorname, stelle, team, abteilung, active, is_user, can_manage_users, can_view_logbook, can_manage_feiertage, see_all_users, can_manage_calendar, can_manage_capacities, can_manage_settings, can_manage_tasks, can_manage_calendar_overview) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         try (Connection conn = getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
             int i = 1;
@@ -422,98 +397,34 @@ public class DatabaseService {
         }
     }
 
-    public static void logAction(String username, String action, String description) throws SQLException {
-        String sql = "INSERT INTO logbook(timestamp, username, action, description) VALUES (?, ?, ?, ?)";
-        try (Connection conn = getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
-            pstmt.setTimestamp(1, Timestamp.from(Instant.now()));
-            pstmt.setString(2, username);
-            pstmt.setString(3, action);
-            pstmt.setString(4, description);
-            pstmt.executeUpdate();
-        }
-    }
-
-
-
- 
-    
-
-
-    // ####################
-    // Logbuch
-    // ####################
-
-    public static List<Map<String, Object>> getLogs(String search, int page, int limit) {
-        List<Map<String, Object>> logs = new ArrayList<>();
-        StringBuilder sql = new StringBuilder("SELECT timestamp, username, action, description FROM logbook");
+    // Benutzer nach Abteilung filtern
+    public static List<Map<String, Object>> getActiveUsersByDepartment(String abteilung) throws SQLException {
+        List<Map<String, Object>> users = new ArrayList<>();
+        String sql = "SELECT id, username, name, vorname, abteilung FROM users WHERE active = true " +
+                    (abteilung != null && !abteilung.isEmpty() ? "AND abteilung = ? " : "") +
+                    "ORDER BY abteilung, name, vorname";
         
-        if (search != null && !search.trim().isEmpty()) {
-            sql.append(" WHERE username LIKE ? OR action LIKE ? OR description LIKE ?");
-        }
-        
-        sql.append(" ORDER BY timestamp DESC LIMIT ? OFFSET ?");
-
         try (Connection conn = getConnection();
-             PreparedStatement pstmt = conn.prepareStatement(sql.toString())) {
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
             
-            int paramIndex = 1;
-            if (search != null && !search.trim().isEmpty()) {
-                String searchTerm = "%" + search + "%";
-                pstmt.setString(paramIndex++, searchTerm);
-                pstmt.setString(paramIndex++, searchTerm);
-                pstmt.setString(paramIndex++, searchTerm);
+            if (abteilung != null && !abteilung.isEmpty()) {
+                stmt.setString(1, abteilung);
             }
             
-            pstmt.setInt(paramIndex++, limit);
-            pstmt.setInt(paramIndex++, (page - 1) * limit);
-            
-            ResultSet rs = pstmt.executeQuery();
-            while (rs.next()) {
-                Map<String, Object> log = new HashMap<>();
-                log.put("timestamp", rs.getTimestamp("timestamp"));
-                log.put("username", rs.getString("username"));
-                log.put("action", rs.getString("action"));
-                log.put("description", rs.getString("description"));
-                logs.add(log);
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    Map<String, Object> user = new HashMap<>();
+                    user.put("id", rs.getInt("id"));
+                    user.put("username", rs.getString("username"));
+                    user.put("name", rs.getString("name"));
+                    user.put("vorname", rs.getString("vorname"));
+                    user.put("abteilung", rs.getString("abteilung"));
+                    users.add(user);
+                }
             }
-        } catch (Exception e) {
-            e.printStackTrace();
         }
-        return logs;
+        return users;
     }
-    
-    public static int getTotalLogCount(String search) {
-        StringBuilder sql = new StringBuilder("SELECT COUNT(*) FROM logbook");
-        if (search != null && !search.trim().isEmpty()) {
-            sql.append(" WHERE username LIKE ? OR action LIKE ? OR description LIKE ?");
-        }
-
-        try (Connection conn = getConnection();
-             PreparedStatement pstmt = conn.prepareStatement(sql.toString())) {
-            
-            if (search != null && !search.trim().isEmpty()) {
-                String searchTerm = "%" + search + "%";
-                pstmt.setString(1, searchTerm);
-                pstmt.setString(2, searchTerm);
-                pstmt.setString(3, searchTerm);
-            }
-
-            ResultSet rs = pstmt.executeQuery();
-            if (rs.next()) {
-                return rs.getInt(1);
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-        return 0;
-    }
-    
-
-    
-
-
-
-
 
     // --- Mitarbeiter-CRUD ---
  
@@ -630,7 +541,96 @@ public class DatabaseService {
         return list;
     } 
 
-    // --- NEUE METHODEN FÜR FEIERTAGE ---
+
+
+    // ####################
+    // Logbuch
+    // ####################
+
+    public static void logAction(String username, String action, String description) throws SQLException {
+        String sql = "INSERT INTO logbook(timestamp, username, action, description) VALUES (?, ?, ?, ?)";
+        try (Connection conn = getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setTimestamp(1, Timestamp.from(Instant.now()));
+            pstmt.setString(2, username);
+            pstmt.setString(3, action);
+            pstmt.setString(4, description);
+            pstmt.executeUpdate();
+        }
+    }    
+
+    public static List<Map<String, Object>> getLogs(String search, int page, int limit) {
+        List<Map<String, Object>> logs = new ArrayList<>();
+        StringBuilder sql = new StringBuilder("SELECT timestamp, username, action, description FROM logbook");
+        
+        if (search != null && !search.trim().isEmpty()) {
+            sql.append(" WHERE username LIKE ? OR action LIKE ? OR description LIKE ?");
+        }
+        
+        sql.append(" ORDER BY timestamp DESC LIMIT ? OFFSET ?");
+
+        try (Connection conn = getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql.toString())) {
+            
+            int paramIndex = 1;
+            if (search != null && !search.trim().isEmpty()) {
+                String searchTerm = "%" + search + "%";
+                pstmt.setString(paramIndex++, searchTerm);
+                pstmt.setString(paramIndex++, searchTerm);
+                pstmt.setString(paramIndex++, searchTerm);
+            }
+            
+            pstmt.setInt(paramIndex++, limit);
+            pstmt.setInt(paramIndex++, (page - 1) * limit);
+            
+            ResultSet rs = pstmt.executeQuery();
+            while (rs.next()) {
+                Map<String, Object> log = new HashMap<>();
+                log.put("timestamp", rs.getTimestamp("timestamp"));
+                log.put("username", rs.getString("username"));
+                log.put("action", rs.getString("action"));
+                log.put("description", rs.getString("description"));
+                logs.add(log);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return logs;
+    }
+    
+    public static int getTotalLogCount(String search) {
+        StringBuilder sql = new StringBuilder("SELECT COUNT(*) FROM logbook");
+        if (search != null && !search.trim().isEmpty()) {
+            sql.append(" WHERE username LIKE ? OR action LIKE ? OR description LIKE ?");
+        }
+
+        try (Connection conn = getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql.toString())) {
+            
+            if (search != null && !search.trim().isEmpty()) {
+                String searchTerm = "%" + search + "%";
+                pstmt.setString(1, searchTerm);
+                pstmt.setString(2, searchTerm);
+                pstmt.setString(3, searchTerm);
+            }
+
+            ResultSet rs = pstmt.executeQuery();
+            if (rs.next()) {
+                return rs.getInt(1);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return 0;
+    }
+    
+
+    
+
+
+
+    // ####################
+    // Feiertage
+    // ####################
 
     public static List<Map<String, Object>> getAllFeiertage() {
         List<Map<String, Object>> list = new ArrayList<>();
@@ -728,6 +728,35 @@ public class DatabaseService {
         }
     }
 
+    /**
+     * Holt Feiertage aus der Tabelle 'feiertage'
+     * und verwendet die korrekten Spaltennamen 'datum' und 'bezeichnung'.
+     */
+    public static List<Map<String, Object>> getHolidaysForMonth(int year, int month) throws SQLException {
+        List<Map<String, Object>> holidays = new ArrayList<>();
+        // SQL-Anweisung an die korrekten Namen angepasst
+        String sql = "SELECT datum, bezeichnung FROM feiertage WHERE DATE_FORMAT(datum, '%Y') = ? AND DATE_FORMAT(datum, '%m') = ?";
+
+        try (Connection conn = getConnection();
+            PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setString(1, String.valueOf(year));
+            stmt.setString(2, String.format("%02d", month));
+
+            ResultSet rs = stmt.executeQuery();
+
+            while (rs.next()) {
+                Map<String, Object> holiday = new HashMap<>();
+                // Die Spaltennamen hier ebenfalls korrigiert
+                holiday.put("date", rs.getDate("datum").toLocalDate());
+                holiday.put("name", rs.getString("bezeichnung"));
+                holidays.add(holiday);
+            }
+        }
+        return holidays;
+    }
+
+
     // ####################
     // Abwesenheiten
     // ####################
@@ -774,6 +803,64 @@ public class DatabaseService {
         return absences;
     }
     
+    public static List<LocalDate> getAbsencesForUser(int userId, LocalDate startDate, LocalDate endDate) throws SQLException {
+        List<LocalDate> absences = new ArrayList<>();
+        String sql = "SELECT datum FROM calendar WHERE user_id = ? AND datum BETWEEN ? AND ?";
+        
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            
+            stmt.setInt(1, userId);
+            stmt.setDate(2, java.sql.Date.valueOf(startDate));
+            stmt.setDate(3, java.sql.Date.valueOf(endDate));
+            
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    absences.add(rs.getDate("datum").toLocalDate());
+                }
+            }
+        }
+        return absences;
+    }
+
+        public static Map<Integer, List<String>> getAbsencesForMonth(int year, int month) throws SQLException {
+        /**
+         * Holt alle Abwesenheitstage für einen Monat.
+         * Berücksichtigt jetzt Zeiträume (start_date, end_date) aus der Datenbank
+         * und teilt diese in einzelne Tage auf.
+         */        
+        Map<Integer, List<String>> allAbsences = new HashMap<>();
+
+        LocalDate monthStart = LocalDate.of(year, month, 1);
+        LocalDate monthEnd = monthStart.with(TemporalAdjusters.lastDayOfMonth());
+
+        // SQL-Anweisung an den korrekten Tabellennamen "user_absences" angepasst
+        String sql = "SELECT user_id, start_date, end_date FROM user_absences WHERE start_date <= ? AND end_date >= ?";
+
+        try (Connection conn = getConnection();
+            PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setDate(1, java.sql.Date.valueOf(monthEnd));
+            stmt.setDate(2, java.sql.Date.valueOf(monthStart));
+
+            ResultSet rs = stmt.executeQuery();
+
+            while (rs.next()) {
+                int userId = rs.getInt("user_id");
+                LocalDate startDate = rs.getDate("start_date").toLocalDate();
+                LocalDate endDate = rs.getDate("end_date").toLocalDate();
+
+                for (LocalDate date = startDate; !date.isAfter(endDate); date = date.plusDays(1)) {
+                    if (date.getYear() == year && date.getMonthValue() == month) {
+                        allAbsences.computeIfAbsent(userId, k -> new ArrayList<>()).add(date.toString());
+                    }
+                }
+            }
+        }
+        return allAbsences;
+    }
+
+
     // ####################
     // Kapazitäten
     // ####################
@@ -855,9 +942,86 @@ public class DatabaseService {
         }
     }
 
+
+    public static Map<Integer, List<Map<String, Object>>> getAllCapacities() throws SQLException {
+        /**
+         * Holt die gesamte Kapazitätshistorie für alle Benutzer.
+         * Gibt eine Map zurück, bei der der Schlüssel die user_id ist.
+         */        
+        Map<Integer, List<Map<String, Object>>> allCapacities = new HashMap<>();
+        String sql = "SELECT user_id, start_date, capacity_percent FROM user_capacities";
+        System.out.println("Kapazitäten abfragen: " + sql);
+
+
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql);
+             ResultSet rs = stmt.executeQuery()) {
+
+            while (rs.next()) {
+                int userId = rs.getInt("user_id");
+
+                Map<String, Object> capacity = new HashMap<>();
+                // Konvertiert das SQL-Datum in ein Java LocalDate-Objekt
+                capacity.put("start_date", rs.getDate("start_date").toLocalDate());
+                capacity.put("capacity_percent", rs.getInt("capacity_percent"));
+
+                allCapacities.computeIfAbsent(userId, k -> new ArrayList<>()).add(capacity);
+            }
+        }
+        return allCapacities;
+    }
+
+
+
     // ####################
     // Settings
     // ####################
+
+    public static Map<String, String> getAllSettings() throws SQLException {
+        Map<String, String> settings = new HashMap<>();
+        String sql = "SELECT setting_key, setting_value FROM settings";
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql);
+             ResultSet rs = stmt.executeQuery()) {
+            while (rs.next()) {
+                settings.put(rs.getString("setting_key"), rs.getString("setting_value"));
+            }
+        }
+        return settings;
+    }
+
+    public static void updateSetting(String key, String value, String actor) throws SQLException {
+        String sql = "UPDATE settings SET setting_value = ? WHERE setting_key = ?";
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, value);
+            stmt.setString(2, key);
+            stmt.executeUpdate();
+            logAction(actor, "Einstellung ändern", "Setting '" + key + "' auf '" + value + "' geändert");
+        }
+    }
+
+    public static List<Map<String, Object>> getSettingsWithDescription() throws SQLException {
+        List<Map<String, Object>> settings = new ArrayList<>();
+        String sql = "SELECT setting_key, setting_value, description FROM settings ORDER BY setting_key";
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql);
+             ResultSet rs = stmt.executeQuery()) {
+            while (rs.next()) {
+                Map<String, Object> setting = new HashMap<>();
+                setting.put("key", rs.getString("setting_key"));
+                setting.put("value", rs.getString("setting_value"));
+                setting.put("description", rs.getString("description"));
+                settings.add(setting);
+            }
+        }
+        return settings;
+    }
+
+
+    // --------------------
+    // Aufgaben-Status
+    // --------------------
 
     public static List<Map<String, Object>> getAllTaskStatuses() {
         List<Map<String, Object>> statuses = new ArrayList<>();
@@ -1005,151 +1169,72 @@ public class DatabaseService {
         }
     }
 
-    // Hilfsmethode für Nullable-Vergleich
-    private static boolean equalsNullable(Object a, Object b) {
-        if (a == null && b == null) return true;
-        if (a == null || b == null) return false;
-        return a.equals(b);
-    }
-
-    // Settings
-    public static Map<String, String> getAllSettings() throws SQLException {
-        Map<String, String> settings = new HashMap<>();
-        String sql = "SELECT setting_key, setting_value FROM settings";
+    public static int getLastInsertedTaskId() throws SQLException {
         try (Connection conn = getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql);
-             ResultSet rs = stmt.executeQuery()) {
-            while (rs.next()) {
-                settings.put(rs.getString("setting_key"), rs.getString("setting_value"));
+             PreparedStatement stmt = conn.prepareStatement("SELECT MAX(id) FROM tasks")) {
+            ResultSet rs = stmt.executeQuery();
+            if (rs.next()) {
+                return rs.getInt(1);
             }
+            throw new SQLException("Keine Task-ID gefunden");
         }
-        return settings;
-    }
+    }    
 
-    public static void updateSetting(String key, String value, String actor) throws SQLException {
-        String sql = "UPDATE settings SET setting_value = ? WHERE setting_key = ?";
-        try (Connection conn = getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
-            stmt.setString(1, value);
-            stmt.setString(2, key);
-            stmt.executeUpdate();
-            logAction(actor, "Einstellung ändern", "Setting '" + key + "' auf '" + value + "' geändert");
-        }
-    }
 
-    public static List<Map<String, Object>> getSettingsWithDescription() throws SQLException {
-        List<Map<String, Object>> settings = new ArrayList<>();
-        String sql = "SELECT setting_key, setting_value, description FROM settings ORDER BY setting_key";
-        try (Connection conn = getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql);
-             ResultSet rs = stmt.executeQuery()) {
-            while (rs.next()) {
-                Map<String, Object> setting = new HashMap<>();
-                setting.put("key", rs.getString("setting_key"));
-                setting.put("value", rs.getString("setting_value"));
-                setting.put("description", rs.getString("description"));
-                settings.add(setting);
-            }
-        }
-        return settings;
-    }
+    public static Map<Integer, List<Map<String, Object>>> getActiveTaskAssignmentsForDateRange(LocalDate startDate, LocalDate endDate) throws SQLException {
+        /**
+         * Holt alle aktiven und einem Benutzer zugewiesenen Aufgaben, die
+         * in den angegebenen Zeitraum fallen.
+         * @return Eine Map, bei der der Schlüssel die user_id ist und der Wert eine Liste der Aufgaben.
+         */        
+        Map<Integer, List<Map<String, Object>>> userTasks = new HashMap<>();
 
-    // Benutzer nach Abteilung filtern
-    public static List<Map<String, Object>> getActiveUsersByDepartment(String abteilung) throws SQLException {
-        List<Map<String, Object>> users = new ArrayList<>();
-        String sql = "SELECT id, username, name, vorname, abteilung FROM users WHERE active = true " +
-                    (abteilung != null && !abteilung.isEmpty() ? "AND abteilung = ? " : "") +
-                    "ORDER BY abteilung, name, vorname";
-        
-        try (Connection conn = getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
-            
-            if (abteilung != null && !abteilung.isEmpty()) {
-                stmt.setString(1, abteilung);
-            }
-            
-            try (ResultSet rs = stmt.executeQuery()) {
-                while (rs.next()) {
-                    Map<String, Object> user = new HashMap<>();
-                    user.put("id", rs.getInt("id"));
-                    user.put("username", rs.getString("username"));
-                    user.put("name", rs.getString("name"));
-                    user.put("vorname", rs.getString("vorname"));
-                    user.put("abteilung", rs.getString("abteilung"));
-                    users.add(user);
-                }
-            }
-        }
-        return users;
-    }
-    
-    /**
-     * NEUE METHODE: Holt die Farb-Einstellungen für den Kalender aus der Datenbank.
-     * @return Eine Map mit den Farb-Einstellungsschlüsseln und deren Werten.
-     */
-    public static Map<String, String> getCalendarColors() throws SQLException {
-        Map<String, String> colors = new HashMap<>();
-        // Annahme: Die Einstellungen sind in einer 'settings'-Tabelle gespeichert
-        String sql = "SELECT setting_key, setting_value FROM settings WHERE setting_key LIKE 'calendar_color_%'";
-
-        try (Connection conn = getConnection();
-            PreparedStatement stmt = conn.prepareStatement(sql);
-            ResultSet rs = stmt.executeQuery()) {
-
-            while (rs.next()) {
-                colors.put(rs.getString("setting_key"), rs.getString("setting_value"));
-            }
-        }
-        return colors;
-    }
-
-    /**
-     * KORRIGIERTE METHODE: Holt Feiertage aus der Tabelle 'feiertage'
-     * und verwendet die korrekten Spaltennamen 'datum' und 'bezeichnung'.
-     */
-    public static List<Map<String, Object>> getHolidaysForMonth(int year, int month) throws SQLException {
-        List<Map<String, Object>> holidays = new ArrayList<>();
-        // SQL-Anweisung an die korrekten Namen angepasst
-        String sql = "SELECT datum, bezeichnung FROM feiertage WHERE DATE_FORMAT(datum, '%Y') = ? AND DATE_FORMAT(datum, '%m') = ?";
+        // Diese SQL-Abfrage verbindet Aufgaben, Zuweisungen und den Status,
+        // um nur aktive Aufgaben zu filtern, die im Zeitfenster liegen.
+        String sql = """
+            SELECT
+                tua.user_id,
+                t.id AS task_id,
+                t.start_date,
+                t.end_date,
+                tua.effort_days
+            FROM tasks t
+            JOIN task_user_assignments tua ON t.id = tua.task_id
+            JOIN task_statuses ts ON t.status_id = ts.id
+            WHERE
+                ts.active = TRUE
+                AND t.start_date <= ?
+                AND t.end_date >= ?
+        """;
 
         try (Connection conn = getConnection();
             PreparedStatement stmt = conn.prepareStatement(sql)) {
 
-            stmt.setString(1, String.valueOf(year));
-            stmt.setString(2, String.format("%02d", month));
+            stmt.setDate(1, java.sql.Date.valueOf(endDate));
+            stmt.setDate(2, java.sql.Date.valueOf(startDate));
 
             ResultSet rs = stmt.executeQuery();
 
             while (rs.next()) {
-                Map<String, Object> holiday = new HashMap<>();
-                // Die Spaltennamen hier ebenfalls korrigiert
-                holiday.put("date", rs.getDate("datum").toLocalDate());
-                holiday.put("name", rs.getString("bezeichnung"));
-                holidays.add(holiday);
+                int userId = rs.getInt("user_id");
+                Map<String, Object> task = new HashMap<>();
+                task.put("task_id", rs.getInt("task_id"));
+                task.put("start_date", rs.getDate("start_date").toLocalDate());
+                task.put("end_date", rs.getDate("end_date").toLocalDate());
+                task.put("effort_days", rs.getDouble("effort_days"));
+
+                userTasks.computeIfAbsent(userId, k -> new ArrayList<>()).add(task);
             }
         }
-        return holidays;
+        return userTasks;
     }
-    
-    public static List<LocalDate> getAbsencesForUser(int userId, LocalDate startDate, LocalDate endDate) throws SQLException {
-        List<LocalDate> absences = new ArrayList<>();
-        String sql = "SELECT datum FROM calendar WHERE user_id = ? AND datum BETWEEN ? AND ?";
-        
-        try (Connection conn = getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
-            
-            stmt.setInt(1, userId);
-            stmt.setDate(2, java.sql.Date.valueOf(startDate));
-            stmt.setDate(3, java.sql.Date.valueOf(endDate));
-            
-            try (ResultSet rs = stmt.executeQuery()) {
-                while (rs.next()) {
-                    absences.add(rs.getDate("datum").toLocalDate());
-                }
-            }
-        }
-        return absences;
-    }
+
+
+
+    // ####################
+    // Aufgaben-Zuordnungen zu Usern 
+    // ####################
+
 
     public static List<Map<String, Object>> getAssignedUsersForTask(int taskId) throws SQLException {
         List<Map<String, Object>> assignments = new ArrayList<>();
@@ -1278,99 +1363,74 @@ public class DatabaseService {
         return assignments;
     }
 
-
-
-
-    /**
-     * NEUE METHODE 1: Holt alle Benutzer, die als aktiv markiert sind.
-     */
-    public static List<Map<String, Object>> getAllActiveUsers() throws SQLException {
-        List<Map<String, Object>> users = new ArrayList<>();
-        // Annahme: Die Spalte für den vollen Namen ist 'name'
-        String sql = "SELECT id, name, vorname, abteilung FROM users WHERE active = 1 ORDER BY abteilung, name, vorname";
-
-        try (Connection conn = getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql);
-             ResultSet rs = stmt.executeQuery()) {
-
-            while (rs.next()) {
-                Map<String, Object> user = new HashMap<>();
-                user.put("id", rs.getInt("id"));
-                user.put("nachname", rs.getString("name"));
-                user.put("vorname", rs.getString("vorname"));
-                user.put("name", rs.getString("name") + ", " + rs.getString("vorname"));
-                user.put("abteilung", rs.getString("abteilung"));
-                users.add(user);
-            }
-        }
-        return users;
-    }
-
-    /**
-     * KORRIGIERTE METHODE: Holt alle Abwesenheitstage für einen Monat.
-     * Berücksichtigt jetzt Zeiträume (start_date, end_date) aus der Datenbank
-     * und teilt diese in einzelne Tage auf.
-     */
-    public static Map<Integer, List<String>> getAbsencesForMonth(int year, int month) throws SQLException {
-        Map<Integer, List<String>> allAbsences = new HashMap<>();
-
-        LocalDate monthStart = LocalDate.of(year, month, 1);
-        LocalDate monthEnd = monthStart.with(TemporalAdjusters.lastDayOfMonth());
-
-        // SQL-Anweisung an den korrekten Tabellennamen "user_absences" angepasst
-        String sql = "SELECT user_id, start_date, end_date FROM user_absences WHERE start_date <= ? AND end_date >= ?";
-
-        try (Connection conn = getConnection();
-            PreparedStatement stmt = conn.prepareStatement(sql)) {
-
-            stmt.setDate(1, java.sql.Date.valueOf(monthEnd));
-            stmt.setDate(2, java.sql.Date.valueOf(monthStart));
-
-            ResultSet rs = stmt.executeQuery();
-
-            while (rs.next()) {
-                int userId = rs.getInt("user_id");
-                LocalDate startDate = rs.getDate("start_date").toLocalDate();
-                LocalDate endDate = rs.getDate("end_date").toLocalDate();
-
-                for (LocalDate date = startDate; !date.isAfter(endDate); date = date.plusDays(1)) {
-                    if (date.getYear() == year && date.getMonthValue() == month) {
-                        allAbsences.computeIfAbsent(userId, k -> new ArrayList<>()).add(date.toString());
+    public static void updateTaskAssignments(int taskId, Map<Integer, Double> assignments) throws SQLException {
+        try (Connection conn = getConnection()) {
+            // Transaktion starten
+            conn.setAutoCommit(false);
+            
+            try {
+                // Erst alle bestehenden Zuweisungen für diese Aufgabe löschen
+                try (PreparedStatement deleteStmt = conn.prepareStatement(
+                        "DELETE FROM task_user_assignments WHERE task_id = ?")) {
+                    deleteStmt.setInt(1, taskId);
+                    deleteStmt.executeUpdate();
+                }
+                
+                // Dann die neuen Zuweisungen einfügen
+                if (!assignments.isEmpty()) {
+                    try (PreparedStatement insertStmt = conn.prepareStatement(
+                            "INSERT INTO task_user_assignments (task_id, user_id, effort_days) VALUES (?, ?, ?)")) {
+                        for (Map.Entry<Integer, Double> entry : assignments.entrySet()) {
+                            insertStmt.setInt(1, taskId);
+                            insertStmt.setInt(2, entry.getKey());
+                            insertStmt.setDouble(3, entry.getValue());
+                            insertStmt.executeUpdate();
+                        }
                     }
                 }
+                
+                // Transaktion bestätigen
+                conn.commit();
+            } catch (SQLException e) {
+                // Bei Fehler Rollback durchführen
+                conn.rollback();
+                throw e;
+            } finally {
+                // Auto-Commit wieder aktivieren
+                conn.setAutoCommit(true);
             }
         }
-        return allAbsences;
     }
 
-    /**
-     * NEUE METHODE 3: Holt die gesamte Kapazitätshistorie für alle Benutzer.
-     * Gibt eine Map zurück, bei der der Schlüssel die user_id ist.
-     */
-    public static Map<Integer, List<Map<String, Object>>> getAllCapacities() throws SQLException {
-        Map<Integer, List<Map<String, Object>>> allCapacities = new HashMap<>();
-        String sql = "SELECT user_id, start_date, capacity_percent FROM user_capacities";
-        System.out.println("Kapazitäten abfragen: " + sql);
-
-
+    public static Map<String, Object> getTaskById(int id) throws SQLException {
+        String sql = "SELECT t.*, ts.name as status_name, ts.color_code as status_color " +
+                    "FROM tasks t " +
+                    "LEFT JOIN task_statuses ts ON t.status_id = ts.id " +
+                    "WHERE t.id = ?";
+                    
         try (Connection conn = getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql);
-             ResultSet rs = stmt.executeQuery()) {
-
-            while (rs.next()) {
-                int userId = rs.getInt("user_id");
-
-                Map<String, Object> capacity = new HashMap<>();
-                // Konvertiert das SQL-Datum in ein Java LocalDate-Objekt
-                capacity.put("start_date", rs.getDate("start_date").toLocalDate());
-                capacity.put("capacity_percent", rs.getInt("capacity_percent"));
-
-                allCapacities.computeIfAbsent(userId, k -> new ArrayList<>()).add(capacity);
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            
+            stmt.setInt(1, id);
+            ResultSet rs = stmt.executeQuery();
+            
+            if (rs.next()) {
+                Map<String, Object> task = new HashMap<>();
+                task.put("id", rs.getInt("id"));
+                task.put("name", rs.getString("name"));
+                task.put("start_date", rs.getObject("start_date", LocalDate.class));
+                task.put("end_date", rs.getObject("end_date", LocalDate.class));
+                task.put("effort_days", rs.getBigDecimal("effort_days"));
+                task.put("status_id", rs.getInt("status_id"));
+                task.put("status_name", rs.getString("status_name"));
+                task.put("status_color", rs.getString("status_color"));
+                task.put("progress_percent", rs.getInt("progress_percent"));
+                task.put("abteilung", rs.getString("abteilung"));
+                return task;
             }
+            return null;
         }
-        return allCapacities;
     }
-
-
+    
 
 }

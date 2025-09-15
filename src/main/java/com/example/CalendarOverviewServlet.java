@@ -14,6 +14,7 @@ import java.io.PrintWriter;
 import java.sql.SQLException;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.time.temporal.TemporalAdjusters;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -121,9 +122,12 @@ public class CalendarOverviewServlet extends HttpServlet {
      * Holt Benutzer, Abwesenheiten und Kapazitäten und führt sie zusammen.
      */
     private Map<String, List<Map<String, Object>>> getAllUsersWithAbsencesAndDepartments(int year, int month) throws SQLException {
+        LocalDate monthStart = LocalDate.of(year, month, 1);
+        LocalDate monthEnd = monthStart.with(TemporalAdjusters.lastDayOfMonth());
         List<Map<String, Object>> users = DatabaseService.getAllActiveUsers();
         Map<Integer, List<String>> allAbsences = DatabaseService.getAbsencesForMonth(year, month);
         Map<Integer, List<Map<String, Object>>> allCapacities = DatabaseService.getAllCapacities();
+        Map<Integer, List<Map<String, Object>>> allTasks = DatabaseService.getActiveTaskAssignmentsForDateRange(monthStart, monthEnd);
 
         Map<String, List<Map<String, Object>>> departments = new LinkedHashMap<>();
         for (Map<String, Object> user : users) {
@@ -147,6 +151,8 @@ public class CalendarOverviewServlet extends HttpServlet {
             });
 
             user.put("capacities", userCapacities);
+
+            user.put("tasks", allTasks.getOrDefault(userId, new ArrayList<>()));
 
             String department = (String) user.get("abteilung");
             departments.computeIfAbsent(department != null ? department : "Ohne Abteilung", k -> new ArrayList<>()).add(user);

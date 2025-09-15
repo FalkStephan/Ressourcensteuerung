@@ -42,9 +42,9 @@
                                     <td><fmt:formatDate value="${cap.start_date}" type="date" pattern="dd.MM.yyyy"/></td>
                                     <td><c:out value="${cap.capacity_percent}"/> %</td>
                                     <td>
-                                        <form action="capacities" method="post" style="display:inline;" onsubmit="return confirm('Sind Sie sicher, dass Sie diesen Eintrag löschen möchten?');">
+                                        <form action="capacities" method="post" style="sind sie sicher:inline;" onsubmit="return confirm('Sind Sie sicher, dass Sie diesen Eintrag vom ${cap.start_date} löschen möchten?');">
                                             <input type="hidden" name="action" value="delete">
-                                            <input type="hidden" name="capacityId" value="${capacity.id}">
+                                            <input type="hidden" name="capacityId" value="${cap.id}">
                                             <button type="submit" class="button small delete">Löschen</button>
                                         </form>
                                     </td>

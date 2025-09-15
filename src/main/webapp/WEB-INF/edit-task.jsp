@@ -205,16 +205,20 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // Task-ID ermitteln
             let taskId = document.querySelector('input[name="id"]')?.value;
+            console.log('Task-ID: ', taskId);
+            console.log('Response-ID: ', jsonResponse.taskId);
             
             if (!taskId && jsonResponse.taskId) {
                 taskId = jsonResponse.taskId;
             }
+            console.log('Task-ID: ', taskId);
             
             if (!taskId) {
                 throw new Error('Keine Task-ID verfügbar');
             }
             
             // Benutzerzuweisungen speichern
+            // console.log('User: ', assignedUsers);
             if (assignedUsers.length > 0) {
                 const assignments = new URLSearchParams();
                 assignments.append('action', 'saveAssignments');
@@ -296,7 +300,6 @@ async function loadAssignedUsers(taskId) {
         console.error('Keine Task-ID angegeben');
         return;
     }
-
     try {
         const response = await fetch('tasks?action=getAssignedUsers&taskId=' + taskId);
         if (!response.ok) {
@@ -307,16 +310,18 @@ async function loadAssignedUsers(taskId) {
         if (!Array.isArray(users)) {
             throw new Error('Ungültiges Datenformat für zugewiesene Benutzer');
         }
-        
+        console.log('User:', users);
+
+
         assignedUsers = users.map(user => ({
-            id: user.id,
+            id: user.user_id,
             name: user.name || 'N/A',
             vorname: user.vorname || '',
             abteilung: user.abteilung || '',
             effort_days: user.effort_days || 0
         }));
         
-        console.log('Geladene Zuweisungen:', assignedUsers);
+        // console.log('Geladene Zuweisungen:', assignedUsers);
         updateAssignedUsersDisplay();
         
         
@@ -338,17 +343,21 @@ async function assignSelectedUser() {
     try {
         const select = document.getElementById('userSelect');
         const userId = select.value;
+
         
         if (!userId) {
             throw new Error('Bitte wählen Sie einen Benutzer aus');
         }
-        
         // Prüfen ob der Benutzer bereits zugewiesen ist
+        // console.log ('Prüfung1: ', userId);
+        // console.log ('Prüfung2: ', assignedUsers);
         if (assignedUsers.some(u => u.id.toString() === userId.toString())) {
-            alert('Dieser Benutzer ist bereits zugewiesen');
-            closeUserSelectDialog();
-            return;
-        }
+        // if (assignedUsers.some(u => u.id === userId)) {
+             alert('Dieser Benutzer ist bereits zugewiesen');
+             closeUserSelectDialog();
+             return;
+         }
+        
         
         // Füge den neuen Benutzer zur bestehenden Liste hinzu
         const selectedOption = select.options[select.selectedIndex];
@@ -393,7 +402,7 @@ function updateAssignedUsersDisplay() {
         const span = document.createElement('span');
         
         // Anzeige der Benutzerdaten
-        console.log('Zuweisung:', user.name + ', ' + user.vorname + ' (' + user.abteilung + ') -->' + user.effort_days);
+        // console.log('Zuweisung:', user.name + ', ' + user.vorname + ' (' + user.abteilung + ') -->' + user.effort_days);
         //if (user.vorname && user.abteilung) {
         //    span.textContent = `${user.name}, ${user.vorname} (${user.abteilung})`;
         // } else {
