@@ -93,6 +93,29 @@
             padding-right: 10px !important;
         }
 
+
+        /* Macht die Aufgaben-Zeile klickbar */
+        .task-row.expandable {
+            cursor: pointer;
+        }
+        .task-row.expandable:hover {
+            background-color: #f0e6c8;
+        }
+
+        /* Styling für die neuen Detailzeilen */
+        .task-detail-row td {
+            font-size: 0.75em;
+            padding: 1px 4px;
+            background-color: #fff;
+            border-bottom: 1px dotted #ccc;
+        }
+
+        .task-detail-name {
+            text-align: right !important;
+            padding-right: 15px !important;
+            color: #555;
+        }
+
         .summary-row {
             border-top: 2px solid #333; /* Eine dicke Linie zur Abgrenzung */
         }
@@ -161,6 +184,26 @@
         // Event-Listener für alle Checkboxen hinzufügen
         document.querySelectorAll('.view-options input[type="checkbox"]').forEach(checkbox => {
             checkbox.addEventListener('change', updateCalendar);
+        });
+        // KORREKTUR: Event-Listener wird sicher an den Tabellenkörper gehängt
+        document.addEventListener('DOMContentLoaded', function() {
+            const tableBody = document.querySelector('#calendarGrid tbody');
+            if (tableBody) {
+                tableBody.addEventListener('click', function(event) {
+                    // DEBUG 1: Prüfen, ob der Klick im Tabellenkörper überhaupt registriert wird.
+                    console.log("Klick im Tabellenkörper registriert. Geklicktes Element:", event.target);
+
+                    const expandableRow = event.target.closest('.task-row.expandable');
+
+                    // DEBUG 2: Prüfen, ob die korrekte klickbare Zeile gefunden wurde.
+                    if (expandableRow) {
+                        console.log("Klickbare 'Aufgaben'-Zeile gefunden. Blende Details ein/aus.", expandableRow);
+                        toggleTaskDetails(expandableRow);
+                    } else {
+                        console.log("Klick war nicht auf einer ausklappbaren 'Aufgaben'-Zeile.");
+                    }
+                });
+            }
         });
 
         function updateCalendarColors(colors) {
@@ -372,7 +415,59 @@
             return totalEffort;
         }
 
+        /**
+        * NEUE FUNKTION: Blendet die Aufgabendetails ein oder aus.
+        */
+        function toggleTaskDetails(taskRow) {
+            const employeeId = taskRow.dataset.employeeId;
+            const nextRow = taskRow.nextElementSibling;
 
+            // Wenn Details schon sichtbar sind, ausblenden
+            if (nextRow && nextRow.classList.contains('task-detail-row')) {
+                let currentRow = nextRow;
+                while (currentRow && currentRow.classList.contains('task-detail-row')) {
+                    let next = currentRow.nextElementSibling;
+                    currentRow.remove();
+                    currentRow = next;
+                }
+                clickedTaskRow.querySelector('.arrow-icon').innerHTML = '&#9662;'; // Pfeil nach unten
+                return;
+            }
+
+            // Details einblenden
+            const employee = employeeDataMap.get(employeeId);
+            const holidays = JSON.parse(clickedTaskRow.dataset.holidays);
+            let lastElement = clickedTaskRow;
+
+            employee.tasks.forEach(task => {
+                const detailRow = document.createElement('tr');
+                detailRow.classList.add('task-detail-row');
+
+                const nameCell = document.createElement('td');
+                nameCell.textContent = task.task_name;
+                nameCell.classList.add('employee-name', 'task-detail-name');
+                detailRow.appendChild(nameCell);
+
+                const workdays = countWorkdays(task.start_date, task.end_date, holidays);
+                const dailyEffort = task.effort_days / workdays;
+
+                JSON.parse(clickedTaskRow.dataset.days).forEach(day => {
+                    const td = document.createElement('td');
+                    const currentDay = new Date(day.date + "T12:00:00");
+                    const startDate = new Date(task.start_date + "T12:00:00");
+                    const endDate = new Date(task.end_date + "T12:00:00");
+
+                    if (currentDay >= startDate && currentDay <= endDate && !day.isWeekend && !day.isHoliday) {
+                        td.textContent = dailyEffort.toFixed(2) + ' PT';
+                    }
+                    if (day.isWeekend) td.classList.add('weekend');
+                    detailRow.appendChild(td);
+                });
+                lastElement.parentNode.insertBefore(detailRow, lastElement.nextSibling);
+                lastElement = detailRow;
+            });
+            clickedTaskRow.querySelector('.arrow-icon').innerHTML = '&#9652;'; // Pfeil nach oben
+        }
 
 
 
@@ -523,24 +618,30 @@
 
                         // 4. Aufgaben anzeigen
                         if (showTasks) {
-                            const TaskRow = document.createElement('tr');
-                            TaskRow.classList.add('detail-row');
+                            const employeeTaskRow = document.createElement('tr');
+                            employeeTaskRow.classList.add('detail-row', 'expandable');
+                            employeeTaskRow.dataset.employeeId = employee.id;
+                            // Speichern der Daten, die für die Detailansicht benötigt werden
+                            employeeTaskRow.dataset.holidays = JSON.stringify(holidays);
+                            employeeTaskRow.dataset.days = JSON.stringify(data.days);
 
                             const TaskLabelCell = document.createElement('td');
-                            TaskLabelCell.textContent = 'Aufgaben';
+                            TaskLabelCell.innerHTML = `<span class="arrow-icon">&#9662;</span> Aufgaben`;
+                            // TaskLabelCell.textContent = 'Aufgaben';
                             TaskLabelCell.classList.add('employee-name', 'detail-row-label');
-                            TaskRow.appendChild(TaskLabelCell);
+                            employeeTaskRow.appendChild(TaskLabelCell);
 
                             data.days.forEach(day => {
                                 const td = document.createElement('td');
                                 const taskeffort = getTaskEffortForDate(day, employee, holidays);
+                                // console.log ('Datum: ', day.date + ' --> ' + taskeffort + ' (' + employee.name + ')');
                                 if (!day.isWeekend && !day.isHoliday) {
                                     td.textContent = (taskeffort).toFixed(2);
                                 }
                                 if (day.isWeekend) td.classList.add('weekend');
-                                TaskRow.appendChild(td);
+                                employeeTaskRow.appendChild(td);
                             });
-                            tbody.appendChild(TaskRow);                            
+                            tbody.appendChild(employeeTaskRow);                            
                         }
 
 
@@ -628,6 +729,7 @@
 
 
                 const allEmployees = Object.values(data.departments).flat();
+                // console.log('Alle Mitarbeiter:', allEmployees);
 
                 // #1: Zusammenfassung für MAK-Kapazität ---
                 if (showMakCapacity) {

@@ -115,42 +115,41 @@ public class CalendarOverviewServlet extends HttpServlet {
         LocalDate monthStart = LocalDate.of(year, month, 1);
         LocalDate monthEnd = monthStart.with(TemporalAdjusters.lastDayOfMonth());
 
-        // WICHTIG: Den 'currentUser' hier weitergeben
-        List<Map<String, Object>> users = DatabaseService.getAllActiveUsers(currentUser);
+        // Schritt 1: Hole die korrekt gefilterte Liste der Benutzer
+        List<Map<String, Object>> visibleUsers = DatabaseService.getAllActiveUsers(currentUser);
+
+        // Schritt 2: Hole ALLE Abwesenheiten, Kapazitäten und Aufgaben für den Zeitraum
         Map<Integer, List<String>> allAbsences = DatabaseService.getAbsencesForMonth(year, month);
         Map<Integer, List<Map<String, Object>>> allCapacities = DatabaseService.getAllCapacities();
         Map<Integer, List<Map<String, Object>>> allTasks = DatabaseService.getActiveTaskAssignmentsForDateRange(monthStart, monthEnd);
 
+        // Schritt 3: Füge die Daten für die sichtbaren Benutzer zusammen
         Map<String, List<Map<String, Object>>> departments = new LinkedHashMap<>();
-        for (Map<String, Object> user : users) {
+        for (Map<String, Object> user : visibleUsers) {
             int userId = (Integer) user.get("id");
+
             user.put("absences", allAbsences.getOrDefault(userId, new ArrayList<>()));
 
             List<Map<String, Object>> userCapacities = allCapacities.getOrDefault(userId, new ArrayList<>());
 
-            // Kapazitäten absteigend sortieren
-            Collections.sort(userCapacities, new Comparator<Map<String, Object>>() {
-                @Override
-                public int compare(Map<String, Object> o1, Map<String, Object> o2) {
-                    Object dateObj1 = o1.get("start_date");
-                    Object dateObj2 = o2.get("start_date");
-
-                    if (dateObj1 instanceof LocalDate && dateObj2 instanceof LocalDate) {
-                        return ((LocalDate) dateObj2).compareTo((LocalDate) dateObj1);
-                    }
-                    return 0;
-                }
-            });
-
+            // FINALE KORREKTUR:
+            // 1. Verwendet den korrekten Schlüssel 'start_date'.
+            // 2. Ist sicher gegen null-Werte im Datum (Comparator.nullsLast).
+            userCapacities.sort(
+                Comparator.comparing(
+                    (Map<String, Object> m) -> (LocalDate) m.get("start_date"),
+                    Comparator.nullsLast(Comparator.reverseOrder())
+                )
+            );
+            
             user.put("capacities", userCapacities);
-
             user.put("tasks", allTasks.getOrDefault(userId, new ArrayList<>()));
 
             String department = (String) user.get("abteilung");
             departments.computeIfAbsent(department != null ? department : "Ohne Abteilung", k -> new ArrayList<>()).add(user);
         }
         return departments;
-    }
+    }     
 
     /**
      * Erstellt eine Liste aller Tage eines Monats mit Zusatzinformationen.

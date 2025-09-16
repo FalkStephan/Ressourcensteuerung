@@ -304,8 +304,8 @@ public class DatabaseService {
     public static List<Map<String, Object>> getAllActiveUsers(Map<String, Object> currentUser) throws SQLException {
         List<Map<String, Object>> users = new ArrayList<>();
         
-        // Basis-SQL-Abfrage
-        StringBuilder sql = new StringBuilder("SELECT id, name, vorname, abteilung FROM users WHERE active=true ");
+        // Basis-SQL-Anfrage
+        StringBuilder sql = new StringBuilder("SELECT id, name, vorname, abteilung FROM users WHERE active = TRUE ");
 
         // Prüfen, ob der Benutzer alle anderen sehen darf
         boolean canSeeAll = Boolean.TRUE.equals(currentUser.get("see_all_users"));
@@ -979,7 +979,7 @@ public class DatabaseService {
          */        
         Map<Integer, List<Map<String, Object>>> allCapacities = new HashMap<>();
         String sql = "SELECT user_id, start_date, capacity_percent FROM user_capacities";
-        System.out.println("Kapazitäten abfragen: " + sql);
+        // System.out.println("Kapazitäten abfragen: " + sql);
 
 
         try (Connection conn = getConnection();
@@ -1230,6 +1230,7 @@ public class DatabaseService {
             SELECT
                 tua.user_id,
                 t.id AS task_id,
+                t.name AS task_name,
                 t.start_date,
                 t.end_date,
                 tua.effort_days
@@ -1254,6 +1255,7 @@ public class DatabaseService {
                 int userId = rs.getInt("user_id");
                 Map<String, Object> task = new HashMap<>();
                 task.put("task_id", rs.getInt("task_id"));
+                task.put("task_name", rs.getString("task_name"));
                 task.put("start_date", rs.getDate("start_date").toLocalDate());
                 task.put("end_date", rs.getDate("end_date").toLocalDate());
                 task.put("effort_days", rs.getDouble("effort_days"));
