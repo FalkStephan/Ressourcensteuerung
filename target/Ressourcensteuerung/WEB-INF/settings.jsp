@@ -119,7 +119,7 @@
                                     </div>
                                 </div>
                             </c:if>    
-                            <c:if test="${setting.key.startsWith('calendar_workload_hi')}">
+                            <c:if test="${setting.key.startsWith('calendar_workload_value_')}">
                                 <div class="form-group">
                                     <label for="${setting.key}">${setting.description}:</label>
                                     <div class="color-input-group">
@@ -130,7 +130,7 @@
                         </c:forEach>
                     </div>
                     <div style="margin-top: 1em;">
-                        <button type="submit" class="button create">Farben speichern</button>
+                        <button type="submit" class="button create">Farben und Werte speichern</button>
                     </div>
                 <!-- </form>  -->
             </div>            

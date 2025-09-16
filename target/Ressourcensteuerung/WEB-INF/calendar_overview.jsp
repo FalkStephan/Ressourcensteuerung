@@ -133,6 +133,7 @@
                     <label><input type="checkbox" name="view" value="availability"> Verfügbarkeit</label>
                     <label><input type="checkbox" name="view" value="availability_percent"> Team-Verfügbarkeit</label>
                     <label><input type="checkbox" name="view" value="tasks"> Aufgaben</label>
+                    <label><input type="checkbox" name="view" value="workload"> Auslastung</label>
                     <label><input type="checkbox" name="view" value="remaining"> Rest-Verfügbarkeit</label>
                 </div>
 
@@ -289,6 +290,35 @@
         }
 
 
+        function getWorkloadColor(workload, settings) {
+            /**
+            * Gibt die passende Farbe für die Auslastung (Workload) zurück,
+            * basierend auf den Werten aus den Einstellungen.
+            */
+            if (typeof workload !== 'number' || workload <= 0) {
+                return ''; // Keine Farbe, wenn keine Auslastung vorhanden ist
+            }
+
+            // Werte aus den Settings holen und in Zahlen umwandeln
+            const mediumThreshold = parseFloat(settings.calendar_workload_value_medium); // z.B. 0.25
+            const highThreshold = parseFloat(settings.calendar_workload_value_high);   // z.B. 0.8
+
+            // console.log ('--> WL: ', workload);
+            // console.log ('medium: ', mediumThreshold);
+            // console.log ('high: ', highThreshold);
+            
+
+            if (workload/100 >= highThreshold) {
+                return settings.calendar_workload_color_high;
+            } else if (workload/100 > mediumThreshold) {
+                return settings.calendar_workload_color_medium;
+            } else {
+                return settings.calendar_workload_color_low;
+            }
+        }
+
+
+
         function countWorkdays(startDateStr, endDateStr, holidays) {
             /**
             * HILFSFUNKTION: Zählt die Arbeitstage zwischen zwei Daten.
@@ -394,6 +424,7 @@
                 const showAvailability = document.querySelector('input[value="availability"]').checked;
                 const showAvailabilityPercent = document.querySelector('input[value="availability_percent"]').checked;
                 const showTasks = document.querySelector('input[value="tasks"]').checked;
+                const showWorkload = document.querySelector('input[value="workload"]').checked;
 
 
                 const holidays = data.days.filter(d => d.isHoliday);
@@ -508,6 +539,48 @@
                             });
                             tbody.appendChild(TaskRow);                            
                         }
+
+
+                        // 5. Auslastung (Workload) anzeigen
+                        if (showWorkload) {
+                            const WorkloadRow = document.createElement('tr');
+                            WorkloadRow.classList.add('detail-row');
+
+                            const WorkloadLabelCell = document.createElement('td');
+                            WorkloadLabelCell.textContent = 'Workload';
+                            WorkloadLabelCell.classList.add('employee-name', 'detail-row-label');
+                            WorkloadRow.appendChild(WorkloadLabelCell);
+
+                            data.days.forEach(day => {
+                                const td = document.createElement('td');
+                                const taskeffort = getTaskEffortForDate(day, employee, holidays);
+                                const availability = getAvailabilityForDate(day, employee);
+                                const workload = taskeffort / (availability/100)*100;
+                                if (!day.isWeekend && !day.isHoliday) {
+                                    if (!availability==0) {
+                                        // td.textContent = (workload).toFixed(2);
+                                        td.style.backgroundColor = getWorkloadColor(workload, data.colors);
+                                    }
+                                    else {
+                                        if (workload > 0) {
+                                            // td.textContent = '999';
+                                            td.style.backgroundColor = getWorkloadColor(workload, data.colors);
+                                        }
+                                        else
+                                        td.textContent = '';
+                                    }
+                                }
+
+                                // const wlcolor = getWorkloadColor(workload, data.colors);
+
+                                // console.log ('Color: ', workload + ' / ' + wlcolor);
+                                // td.style.backgroundColor = getWorkloadColor(taskeffort, data.colors);
+                                if (day.isWeekend) td.classList.add('weekend');
+                                WorkloadRow.appendChild(td);
+                            });
+                            tbody.appendChild(WorkloadRow);                            
+                        }
+
                     });
                 });
 

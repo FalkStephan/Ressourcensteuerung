@@ -194,7 +194,7 @@ public class DatabaseService {
         */
         Map<String, String> colors = new HashMap<>();
         // Annahme: Die Einstellungen sind in einer 'settings'-Tabelle gespeichert
-        String sql = "SELECT setting_key, setting_value FROM settings WHERE setting_key LIKE 'calendar_color_%'";
+        String sql = "SELECT setting_key, setting_value FROM settings WHERE setting_key LIKE 'calendar_%'";
 
         try (Connection conn = getConnection();
             PreparedStatement stmt = conn.prepareStatement(sql);

@@ -40,62 +40,41 @@ public class SettingsServlet extends HttpServlet {
         }
     }
 
+
     @Override
     @SuppressWarnings("unchecked")
     protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
         HttpSession session = req.getSession(false);
         Map<String, Object> user = (session != null) ? (Map<String, Object>) session.getAttribute("user") : null;
 
+        // Berechtigungsprüfung
         if (user == null || !Boolean.TRUE.equals(user.get("can_manage_settings"))) {
             resp.sendError(HttpServletResponse.SC_FORBIDDEN, "Zugriff verweigert");
             return;
         }
         String actor = (String) user.get("username");
-        String action = req.getParameter("action");
 
         try {
-            switch (action) {
-                case "update_settings":
-                    // Alle settings aus der Datenbank holen
-                    Map<String, String> currentSettings = DatabaseService.getAllSettings();
-                    
-                    // Für jede Einstellung prüfen, ob sie geändert wurde
-                    for (String key : currentSettings.keySet()) {
-                        String newValue = req.getParameter(key);
-                        if (newValue != null && !newValue.equals(currentSettings.get(key))) {
-                            DatabaseService.updateSetting(key, newValue, actor);
-                        }
-                    }
-                    break;
+            // KORREKTUR: Iteriere durch alle Parameter, die vom Formular gesendet wurden.
+            // Das macht den Code flexibel für zukünftige neue Einstellungen.
+            for (Map.Entry<String, String[]> entry : req.getParameterMap().entrySet()) {
+                String key = entry.getKey();
+                String value = entry.getValue()[0]; // Hole den ersten Wert für diesen Schlüssel
 
-                case "add_status":
-                    DatabaseService.addTaskStatus(
-                        req.getParameter("name"),
-                        "on".equals(req.getParameter("active")),
-                        Integer.parseInt(req.getParameter("sort_order")),
-                        req.getParameter("color_code"),
-                        actor);
-                    break;
-                    
-                case "edit_status":
-                    DatabaseService.updateTaskStatus(
-                        Integer.parseInt(req.getParameter("id")),
-                        req.getParameter("name"),
-                        "on".equals(req.getParameter("active")),
-                        Integer.parseInt(req.getParameter("sort_order")),
-                        req.getParameter("color_code"),
-                        actor);
-                    break;
-                    
-                case "delete_status":
-                    DatabaseService.deleteTaskStatus(
-                        Integer.parseInt(req.getParameter("id")),
-                        actor);
-                    break;
+                // Rufe die update-Methode für jeden einzelnen Schlüssel-Wert-Paar auf.
+                DatabaseService.updateSetting(key, value, actor);
             }
-        } catch (SQLException | NumberFormatException e) {
-            e.printStackTrace(); // Fehlerbehandlung
+
+            // Erfolgsmeldung in die Session legen
+            session.setAttribute("successMessage", "Einstellungen erfolgreich gespeichert.");
+
+        } catch (SQLException e) {
+            // Fehlermeldung in die Session legen
+            session.setAttribute("errorMessage", "Fehler beim Speichern der Einstellungen: " + e.getMessage());
+            e.printStackTrace();
         }
+
+        // Zurück zur Einstellungsseite umleiten
         resp.sendRedirect(req.getContextPath() + "/settings");
     }
 }
