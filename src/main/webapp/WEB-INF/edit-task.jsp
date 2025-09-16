@@ -118,6 +118,23 @@
                         <label for="taskProgress">Fortschritt (%):</label>
                         <input type="number" name="progress_percent" id="taskProgress" value="${task.progress_percent}" min="0" max="100" required/>
                     </div>
+
+                    <div>
+                        <label for="task_options">Verfügbarkeits-Option</label>
+                        <select id="task_options" name="task_options" class="form-control">
+                            <option value="waiting" ${task.task_options == 'waiting' ? 'selected' : ''}>
+                                Aufgabe wartet auf Verfügbarkeit
+                            </option>
+                            <option value="continue" ${task.task_options == 'continue' ? 'selected' : ''}>
+                                Aufgabe fällt auch an, wenn keine Verfügbarkeit vorhanden
+                            </option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label for="description">Beschreibung:</label>
+                        <textarea id="description" name="description" class="form-control" rows="3" style="resize: vertical; width: 100%;"><c:out value="${task.description}"/></textarea>
+                    </div>
                 </div>
                 
                 <div class="assigned-users-section">
@@ -155,284 +172,303 @@
 </dialog>
 
 <script>
-let assignedUsers = [];
+    let assignedUsers = [];
 
-// Beim Laden der Seite
-document.addEventListener('DOMContentLoaded', function() {
-    // Wenn eine Task-ID vorhanden ist, lade die zugewiesenen Benutzer
-    const taskId = document.querySelector('input[name="id"]')?.value;
-    if (taskId) {
-        loadAssignedUsers(taskId);
-    }
-    
-    // Form Submit Handler ersetzen
-    document.getElementById('taskForm').addEventListener('submit', async function(e) {
-        e.preventDefault();
+    // Beim Laden der Seite
+    document.addEventListener('DOMContentLoaded', function() {
+        // Wenn eine Task-ID vorhanden ist, lade die zugewiesenen Benutzer
+        const taskId = document.querySelector('input[name="id"]')?.value;
+        // console.log('Aufruf der Seite.....');
+        if (taskId) {
+            // console.log('TaskId laden: ', taskId);
+            loadAssignedUsers(taskId);
+        }
+        else {
+            console.log('neue TaskId!');
+            // 1. Fortschritt auf 0 setzen
+            const progressInput = document.getElementById('taskProgress');
+            if (progressInput) {
+                progressInput.value = 0;
+            }
+
+            // 2. Start-Datum auf das heutige Datum setzen
+            const startDateInput = document.getElementById('taskStartDate');
+            if (startDateInput) {
+                const today = new Date();
+                // Formatiert das Datum in 'YYYY-MM-DD' für das <input type="date">-Feld
+                const formattedDate = today.getFullYear() + '-' + ('0' + (today.getMonth() + 1)).slice(-2) + '-' + ('0' + today.getDate()).slice(-2);
+                startDateInput.value = formattedDate;
+            }
+        }
         
-        try {
-            // FormData erstellen
-            const form = this;
-            const formData = new URLSearchParams(new FormData(form));
+        // Form Submit Handler ersetzen
+        document.getElementById('taskForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
             
-            // Debug-Ausgabe
-            console.log('Sende Task-Daten:', Object.fromEntries(formData));
-            
-            // Task speichern
-            const response = await fetch('tasks', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                    'Accept': 'application/json'
-                },
-                body: formData.toString()
-            });
-            
-            const responseText = await response.text();
-            console.log('Server-Antwort (Text):', responseText);
-            
-            let jsonResponse;
             try {
-                jsonResponse = JSON.parse(responseText);
-            } catch (e) {
-                console.error('Fehler beim JSON-Parsen:', e);
-                throw new Error('Ungültige Server-Antwort');
-            }
-            
-            if (!response.ok) {
-                throw new Error('Fehler beim Speichern der Aufgabe: ' + 
-                              (jsonResponse.error || responseText));
-            }
-            
-            // Task-ID ermitteln
-            let taskId = document.querySelector('input[name="id"]')?.value;
-            console.log('Task-ID: ', taskId);
-            console.log('Response-ID: ', jsonResponse.taskId);
-            
-            if (!taskId && jsonResponse.taskId) {
-                taskId = jsonResponse.taskId;
-            }
-            console.log('Task-ID: ', taskId);
-            
-            if (!taskId) {
-                throw new Error('Keine Task-ID verfügbar');
-            }
-            
-            // Benutzerzuweisungen speichern
-            // console.log('User: ', assignedUsers);
-            if (assignedUsers.length > 0) {
-                const assignments = new URLSearchParams();
-                assignments.append('action', 'saveAssignments');
-                assignments.append('taskId', taskId);
-                assignments.append('count', assignedUsers.length.toString());
+                // FormData erstellen
+                const form = this;
+                const formData = new URLSearchParams(new FormData(form));
                 
-                // Korrekte Indizierung für jeden Benutzer
-                assignedUsers.forEach((user, index) => {
-                    assignments.append(`userId_${index}`, user.id.toString());
-                    assignments.append(`effortDays_${index}`, user.effort_days.toString());
-                });
+                // Debug-Ausgabe
+                console.log('Sende Task-Daten:', Object.fromEntries(formData));
                 
-                console.log('Sende Zuweisungen:', Object.fromEntries(assignments));
-                
-                const assignmentResponse = await fetch('tasks', {
+                // Task speichern
+                const response = await fetch('tasks', {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/x-www-form-urlencoded'
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                        'Accept': 'application/json'
                     },
-                    body: assignments.toString()
+                    body: formData.toString()
                 });
                 
-                const assignmentText = await assignmentResponse.text();
-                console.log('Server-Antwort für Zuweisungen:', assignmentText);
+                const responseText = await response.text();
+                console.log('Server-Antwort (Text):', responseText);
+                
+                let jsonResponse;
+                try {
+                    jsonResponse = JSON.parse(responseText);
+                } catch (e) {
+                    console.error('Fehler beim JSON-Parsen:', e);
+                    throw new Error('Ungültige Server-Antwort');
+                }
+                
+                if (!response.ok) {
+                    throw new Error('Fehler beim Speichern der Aufgabe: ' + 
+                                (jsonResponse.error || responseText));
+                }
+                
+                // Task-ID ermitteln
+                let taskId = document.querySelector('input[name="id"]')?.value;
+                console.log('Task-ID: ', taskId);
+                console.log('Response-ID: ', jsonResponse.taskId);
+                
+                if (!taskId && jsonResponse.taskId) {
+                    taskId = jsonResponse.taskId;
+                }
+                console.log('Task-ID: ', taskId);
+                
+                if (!taskId) {
+                    throw new Error('Keine Task-ID verfügbar');
+                }
+                
+                // Benutzerzuweisungen speichern
+                // console.log('User: ', assignedUsers);
+                if (assignedUsers.length > 0) {
+                    const assignments = new URLSearchParams();
+                    assignments.append('action', 'saveAssignments');
+                    assignments.append('taskId', taskId);
+                    assignments.append('count', assignedUsers.length.toString());
+                    
+                    // Korrekte Indizierung für jeden Benutzer
+                    assignedUsers.forEach((user, index) => {
+                        assignments.append(`userId_${index}`, user.id.toString());
+                        assignments.append(`effortDays_${index}`, user.effort_days.toString());
+                    });
+                    
+                    console.log('Sende Zuweisungen:', Object.fromEntries(assignments));
+                    
+                    const assignmentResponse = await fetch('tasks', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/x-www-form-urlencoded'
+                        },
+                        body: assignments.toString()
+                    });
+                    
+                    const assignmentText = await assignmentResponse.text();
+                    console.log('Server-Antwort für Zuweisungen:', assignmentText);
+                }
+                
+                // Erfolgreiche Speicherung
+                window.location.href = 'tasks';
+                
+            } catch (error) {
+                console.error('Fehler beim Speichern:', error);
+                alert(error.message);
+            }
+        });
+    });
+
+    async function loadUserDetails(userId) {
+        try {
+            if (!userId || userId === 'undefined' || userId === 'null' || userId === '') {
+                throw new Error('Keine Benutzer-ID angegeben');
             }
             
-            // Erfolgreiche Speicherung
-            window.location.href = 'tasks';
+            const userIdStr = userId.toString().trim();
+            
+            if (!/^\d+$/.test(userIdStr)) {
+                throw new Error('Ungültige Benutzer-ID: ' + userIdStr);
+            }
+            
+            console.log('Lade Details für Benutzer:', userIdStr);
+            
+            const response = await fetch('tasks?action=getUserDetails&userId=' + userIdStr);
+            
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.error || 'Fehler beim Laden der Benutzerdaten');
+            }
+            
+            const data = await response.json();
+            
+            if (!data || typeof data !== 'object' || !data.id) {
+                throw new Error('Ungültige Benutzerdaten empfangen');
+            }
+            
+            return {
+                id: data.id,
+                name: data.name || 'N/A',
+                vorname: data.vorname || '',
+                abteilung: data.abteilung || ''
+            };
             
         } catch (error) {
-            console.error('Fehler beim Speichern:', error);
+            console.error('Fehler in loadUserDetails:', error);
+            throw error;
+        }
+    }
+
+    async function loadAssignedUsers(taskId) {
+        if (!taskId) {
+            console.error('Keine Task-ID angegeben');
+            return;
+        }
+        try {
+            const response = await fetch('tasks?action=getAssignedUsers&taskId=' + taskId);
+            if (!response.ok) {
+                throw new Error('Fehler beim Laden der zugewiesenen Benutzer');
+            }
+            const users = await response.json();
+            
+            if (!Array.isArray(users)) {
+                throw new Error('Ungültiges Datenformat für zugewiesene Benutzer');
+            }
+            console.log('User:', users);
+
+
+            assignedUsers = users.map(user => ({
+                id: user.user_id,
+                name: user.name || 'N/A',
+                vorname: user.vorname || '',
+                abteilung: user.abteilung || '',
+                effort_days: user.effort_days || 0
+            }));
+            
+            // console.log('Geladene Zuweisungen:', assignedUsers);
+            updateAssignedUsersDisplay();
+            
+            
+        } catch (error) {
+            console.error('Fehler beim Laden der zugewiesenen Benutzer:', error);
+            alert('Fehler beim Laden der zugewiesenen Benutzer: ' + error.message);
+        }
+    }
+
+    function showUserSelectDialog() {
+        document.getElementById('userSelectDialog').showModal();
+    }
+
+    function closeUserSelectDialog() {
+        document.getElementById('userSelectDialog').close();
+    }
+
+    async function assignSelectedUser() {
+        try {
+            const select = document.getElementById('userSelect');
+            const userId = select.value;
+
+            
+            if (!userId) {
+                throw new Error('Bitte wählen Sie einen Benutzer aus');
+            }
+            // Prüfen ob der Benutzer bereits zugewiesen ist
+            // console.log ('Prüfung1: ', userId);
+            // console.log ('Prüfung2: ', assignedUsers);
+            if (assignedUsers.some(u => u.id.toString() === userId.toString())) {
+            // if (assignedUsers.some(u => u.id === userId)) {
+                alert('Dieser Benutzer ist bereits zugewiesen');
+                closeUserSelectDialog();
+                return;
+            }
+            
+            
+            // Füge den neuen Benutzer zur bestehenden Liste hinzu
+            const selectedOption = select.options[select.selectedIndex];
+            const [name, vorname] = selectedOption.text.split(', ');
+            const abteilung = selectedOption.text.match(/\((.*?)\)/)?.[1] || '';
+            
+            assignedUsers.push({
+                id: userId,
+                name: name,
+                vorname: vorname.replace(/ \(.*\)$/, ''), // Entferne die Abteilung aus dem Vornamen
+                abteilung: abteilung,
+                effort_days: 0
+            });
+            
+            updateAssignedUsersDisplay();
+            closeUserSelectDialog();
+            
+        } catch (error) {
+            console.error('Fehler beim Zuweisen des Benutzers:', error);
             alert(error.message);
         }
-    });
-});
-
-async function loadUserDetails(userId) {
-    try {
-        if (!userId || userId === 'undefined' || userId === 'null' || userId === '') {
-            throw new Error('Keine Benutzer-ID angegeben');
-        }
-        
-        const userIdStr = userId.toString().trim();
-        
-        if (!/^\d+$/.test(userIdStr)) {
-            throw new Error('Ungültige Benutzer-ID: ' + userIdStr);
-        }
-        
-        console.log('Lade Details für Benutzer:', userIdStr);
-        
-        const response = await fetch('tasks?action=getUserDetails&userId=' + userIdStr);
-        
-        if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}));
-            throw new Error(errorData.error || 'Fehler beim Laden der Benutzerdaten');
-        }
-        
-        const data = await response.json();
-        
-        if (!data || typeof data !== 'object' || !data.id) {
-            throw new Error('Ungültige Benutzerdaten empfangen');
-        }
-        
-        return {
-            id: data.id,
-            name: data.name || 'N/A',
-            vorname: data.vorname || '',
-            abteilung: data.abteilung || ''
-        };
-        
-    } catch (error) {
-        console.error('Fehler in loadUserDetails:', error);
-        throw error;
     }
-}
 
-async function loadAssignedUsers(taskId) {
-    if (!taskId) {
-        console.error('Keine Task-ID angegeben');
-        return;
-    }
-    try {
-        const response = await fetch('tasks?action=getAssignedUsers&taskId=' + taskId);
-        if (!response.ok) {
-            throw new Error('Fehler beim Laden der zugewiesenen Benutzer');
-        }
-        const users = await response.json();
-        
-        if (!Array.isArray(users)) {
-            throw new Error('Ungültiges Datenformat für zugewiesene Benutzer');
-        }
-        console.log('User:', users);
-
-
-        assignedUsers = users.map(user => ({
-            id: user.user_id,
-            name: user.name || 'N/A',
-            vorname: user.vorname || '',
-            abteilung: user.abteilung || '',
-            effort_days: user.effort_days || 0
-        }));
-        
-        // console.log('Geladene Zuweisungen:', assignedUsers);
+    function removeAssignedUser(userId) {
+        assignedUsers = assignedUsers.filter(user => user.id != userId);
         updateAssignedUsersDisplay();
-        
-        
-    } catch (error) {
-        console.error('Fehler beim Laden der zugewiesenen Benutzer:', error);
-        alert('Fehler beim Laden der zugewiesenen Benutzer: ' + error.message);
     }
-}
 
-function showUserSelectDialog() {
-    document.getElementById('userSelectDialog').showModal();
-}
-
-function closeUserSelectDialog() {
-    document.getElementById('userSelectDialog').close();
-}
-
-async function assignSelectedUser() {
-    try {
-        const select = document.getElementById('userSelect');
-        const userId = select.value;
-
+    function updateAssignedUsersDisplay() {
+        const container = document.getElementById('assignedUsersContainer');
+        container.innerHTML = '';
         
-        if (!userId) {
-            throw new Error('Bitte wählen Sie einen Benutzer aus');
+        if (assignedUsers.length === 0) {
+            container.innerHTML = '<p>Keine Benutzer zugewiesen</p>';
+            return;
         }
-        // Prüfen ob der Benutzer bereits zugewiesen ist
-        // console.log ('Prüfung1: ', userId);
-        // console.log ('Prüfung2: ', assignedUsers);
-        if (assignedUsers.some(u => u.id.toString() === userId.toString())) {
-        // if (assignedUsers.some(u => u.id === userId)) {
-             alert('Dieser Benutzer ist bereits zugewiesen');
-             closeUserSelectDialog();
-             return;
-         }
         
-        
-        // Füge den neuen Benutzer zur bestehenden Liste hinzu
-        const selectedOption = select.options[select.selectedIndex];
-        const [name, vorname] = selectedOption.text.split(', ');
-        const abteilung = selectedOption.text.match(/\((.*?)\)/)?.[1] || '';
-        
-        assignedUsers.push({
-            id: userId,
-            name: name,
-            vorname: vorname.replace(/ \(.*\)$/, ''), // Entferne die Abteilung aus dem Vornamen
-            abteilung: abteilung,
-            effort_days: 0
+        assignedUsers.forEach(user => {
+            const div = document.createElement('div');
+            div.className = 'assigned-user';
+            
+            const span = document.createElement('span');
+            
+            // Anzeige der Benutzerdaten
+            // console.log('Zuweisung:', user.name + ', ' + user.vorname + ' (' + user.abteilung + ') -->' + user.effort_days);
+            //if (user.vorname && user.abteilung) {
+            //    span.textContent = `${user.name}, ${user.vorname} (${user.abteilung})`;
+            // } else {
+            //     span.textContent = user.name;
+            //}
+            span.textContent = user.name + ', ' + user.vorname + ' (' + user.abteilung + ')';
+            div.appendChild(span);
+            
+            // Aufwand Input-Feld
+            const effortInput = document.createElement('input');
+            effortInput.type = 'number';
+            effortInput.step = '0.5';
+            effortInput.min = '0';
+            effortInput.value = user.effort_days || 0;
+            effortInput.style.width = '80px';
+            effortInput.onchange = (e) => {
+                user.effort_days = parseFloat(e.target.value) || 0;
+            };
+            div.appendChild(effortInput);
+            
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = 'button small delete';
+            button.onclick = () => removeAssignedUser(user.id);
+            button.textContent = 'Benutzer Entfernen';
+            div.appendChild(button);
+            
+            container.appendChild(div);
         });
-        
-        updateAssignedUsersDisplay();
-        closeUserSelectDialog();
-        
-    } catch (error) {
-        console.error('Fehler beim Zuweisen des Benutzers:', error);
-        alert(error.message);
     }
-}
-
-function removeAssignedUser(userId) {
-    assignedUsers = assignedUsers.filter(user => user.id != userId);
-    updateAssignedUsersDisplay();
-}
-
-function updateAssignedUsersDisplay() {
-    const container = document.getElementById('assignedUsersContainer');
-    container.innerHTML = '';
-    
-    if (assignedUsers.length === 0) {
-        container.innerHTML = '<p>Keine Benutzer zugewiesen</p>';
-        return;
-    }
-    
-    assignedUsers.forEach(user => {
-        const div = document.createElement('div');
-        div.className = 'assigned-user';
-        
-        const span = document.createElement('span');
-        
-        // Anzeige der Benutzerdaten
-        // console.log('Zuweisung:', user.name + ', ' + user.vorname + ' (' + user.abteilung + ') -->' + user.effort_days);
-        //if (user.vorname && user.abteilung) {
-        //    span.textContent = `${user.name}, ${user.vorname} (${user.abteilung})`;
-        // } else {
-        //     span.textContent = user.name;
-        //}
-        span.textContent = user.name + ', ' + user.vorname + ' (' + user.abteilung + ')';
-        div.appendChild(span);
-        
-        // Aufwand Input-Feld
-        const effortInput = document.createElement('input');
-        effortInput.type = 'number';
-        effortInput.step = '0.5';
-        effortInput.min = '0';
-        effortInput.value = user.effort_days || 0;
-        effortInput.style.width = '80px';
-        effortInput.onchange = (e) => {
-            user.effort_days = parseFloat(e.target.value) || 0;
-        };
-        div.appendChild(effortInput);
-        
-        const button = document.createElement('button');
-        button.type = 'button';
-        button.className = 'button small delete';
-        button.onclick = () => removeAssignedUser(user.id);
-        button.textContent = 'Benutzer Entfernen';
-        div.appendChild(button);
-        
-        container.appendChild(div);
-    });
-}
 </script>
 
 </body>

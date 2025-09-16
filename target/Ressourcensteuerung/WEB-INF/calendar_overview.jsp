@@ -135,6 +135,7 @@
                     <label><input type="checkbox" name="view" value="tasks"> Aufgaben</label>
                     <label><input type="checkbox" name="view" value="workload"> Auslastung</label>
                     <label><input type="checkbox" name="view" value="remaining"> Rest-Verfügbarkeit</label>
+                    <label><input type="checkbox" name="view" value="remainingTeam"> Rest-Verfügbarkeit (Team)</label>
                 </div>
 
                 <div class="calendar-container">
@@ -201,7 +202,7 @@
             }
 
             if (!capacities || capacities.length === 0) {
-                console.log(`Für Datum ${dateString}: Keine Kapazitätsdaten für diesen Mitarbeiter erhalten.`);
+                // console.log(`Für Datum ${dateString}: Keine Kapazitätsdaten für diesen Mitarbeiter erhalten.`);
                 return null;
             }
 
@@ -425,6 +426,8 @@
                 const showAvailabilityPercent = document.querySelector('input[value="availability_percent"]').checked;
                 const showTasks = document.querySelector('input[value="tasks"]').checked;
                 const showWorkload = document.querySelector('input[value="workload"]').checked;
+                const showRemaining = document.querySelector('input[value="remaining"]').checked;
+                const showRemainingTeam = document.querySelector('input[value="remainingTeam"]').checked;
 
 
                 const holidays = data.days.filter(d => d.isHoliday);
@@ -547,7 +550,7 @@
                             WorkloadRow.classList.add('detail-row');
 
                             const WorkloadLabelCell = document.createElement('td');
-                            WorkloadLabelCell.textContent = 'Workload';
+                            WorkloadLabelCell.textContent = 'Auslastung';
                             WorkloadLabelCell.classList.add('employee-name', 'detail-row-label');
                             WorkloadRow.appendChild(WorkloadLabelCell);
 
@@ -579,6 +582,45 @@
                                 WorkloadRow.appendChild(td);
                             });
                             tbody.appendChild(WorkloadRow);                            
+                        }
+
+
+
+                        // #6 Rest-Verfügbarkeit anzeigen
+                        if (showRemaining) {
+                            const RemainingRow = document.createElement('tr');
+                            RemainingRow.classList.add('detail-row');
+
+                            const RemainingLabelCell = document.createElement('td');
+                            RemainingLabelCell.textContent = 'Rest-Verfügbarkeit (MAK)';
+                            RemainingLabelCell.classList.add('employee-name', 'detail-row-label');
+                            RemainingRow.appendChild(RemainingLabelCell);
+
+                            data.days.forEach(day => {
+                                const td = document.createElement('td');
+                                const taskeffort = getTaskEffortForDate(day, employee, holidays);
+                                const availability = getAvailabilityForDate(day, employee);
+                                const remaining = (availability/100) - taskeffort;  
+                                if (remaining < 0) {
+                                    td.style.color  = 'red'; // Hellrot für negative Werte
+                                } 
+                                else if (remaining > 0) {
+                                    td.style.color  = 'green'; // Grün für positive Werte
+                                } 
+                                else {
+                                    td.style.color  = 'grey'; // Schwarz für Null
+                                }
+
+
+                                if (!day.isWeekend && !day.isHoliday) {
+                                    td.textContent = (remaining).toFixed(2);                                   
+                                }
+
+                                // td.style.backgroundColor = getWorkloadColor(taskeffort, data.colors);
+                                if (day.isWeekend) td.classList.add('weekend');
+                                RemainingRow.appendChild(td);
+                            });
+                            tbody.appendChild(RemainingRow);                            
                         }
 
                     });
@@ -712,8 +754,18 @@
                         // if (total > 0) {
                         if (!data.days[index].isWeekend && !data.days[index].isHoliday) {
                             td.textContent = (total/dailyTotals[index]*100).toFixed(0) + '%';
-                            console.log('Farbe:', getColorForPercentage(total/dailyTotals[index]*100));
+                            // console.log('Farbe:', getColorForPercentage(total/dailyTotals[index]*100));
                             td.style.backgroundColor = getColorForPercentage(total/dailyTotals[index]*100);
+                            // const PercentValue = 100 - total/dailyTotals[index]*100;
+                            // console.log (PercentValue);
+                            // if (PercentValue >= 100) {
+                            //     td.style.backgroundColor = getWorkloadColor(100, data.colors);
+                            // }
+                            // else {
+                                
+                            //     td.style.backgroundColor = getWorkloadColor(PercentValue, data.colors);
+                            // }
+                            
                         }
                         if (data.days[index].isWeekend) {
                             td.classList.add('weekend');
@@ -758,6 +810,73 @@
                         if (data.days[index].isWeekend) {
                             td.classList.add('weekend');
                         }
+                        summaryRow.appendChild(td);
+                    });
+
+                    // 5. Die fertige Zeile an die Tabelle anhängen
+                    tbody.appendChild(summaryRow);
+                }
+
+
+                // #5: Zusammenfassung für Rest-Verfügbarkeit
+                if (showRemaining  || showRemainingTeam) {
+                    // 1. Array für die Tagessummen initialisieren
+                    const TaskTotals = Array(data.days.length).fill(0);
+                    const dailyAvailabilityTotals = Array(data.days.length).fill(0);
+
+                    // 2. Durch jeden Tag des Monats iterieren
+                    data.days.forEach((day, index) => {
+                        allEmployees.forEach(employee => {
+                            const Tasks = getTaskEffortForDate(day, employee, data.days.filter(d => d.isHoliday));
+                            if (!data.days[index].isWeekend && !data.days[index].isHoliday) {         
+                                TaskTotals[index] += Tasks;
+                            }
+
+                            const availability = getAvailabilityForDate(day, employee);
+                            if (!data.days[index].isWeekend && !data.days[index].isHoliday && typeof availability === 'number') {         
+                                dailyAvailabilityTotals[index] += availability;
+                            }
+                        });
+                    });
+
+                    // 3. Die Summenzeile erstellen
+                    const summaryRow = document.createElement('tr');
+                    summaryRow.classList.add('summary-row');
+
+                    const summaryLabelCell = document.createElement('td');
+                    summaryLabelCell.textContent = 'Rest-Verfügbarkeit (MAK)';
+                    summaryLabelCell.classList.add('employee-name', 'summary-label');
+                    summaryRow.appendChild(summaryLabelCell);
+
+                    // 4. Zellen für jede Tagessumme erstellen und füllen
+                    TaskTotals.forEach((total, index) => {
+                        const td = document.createElement('td');
+                        const RemainValue = dailyAvailabilityTotals[index]/100 - total;
+                        const RemainValuePercent = RemainValue / (RemainValue + total);
+                        // console.log ('Remaining:   ', ' --> ' + RemainValue ); 
+                        // console.log ('Total:       ', ' --> ' + total ); 
+                        // console.log ('Remaining_%: ', ' ----> ' + RemainValuePercent ); 
+                        
+                        if (data.days[index].isWeekend) {
+                            td.classList.add('weekend');
+                        }
+                        else {
+                            td.textContent = RemainValue.toFixed(2);
+                        }
+                            
+                        if (RemainValue < 0) {
+                            td.style.color  = 'red'; // Hellrot für negative Werte
+                            td.style.backgroundColor = data.colors.calendar_workload_color_high;
+                        } 
+                        else if (RemainValue > 0) {
+                            td.style.color  = 'green'; // Grün für positive Werte
+                            td.style.backgroundColor = getColorForPercentage(100-RemainValue, data.colors);
+                        } 
+                        else {
+                            td.style.color  = 'grey'; // Schwarz für Null
+                            td.style.backgroundColor = getColorForPercentage(100-RemainValue, data.colors);
+                        }
+                        
                         summaryRow.appendChild(td);
                     });
 

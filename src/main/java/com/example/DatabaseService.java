@@ -141,8 +141,13 @@ public class DatabaseService {
                         " status_id INTEGER," +
                         " progress_percent INTEGER DEFAULT 0," +
                         " abteilung VARCHAR(255)," +
+                        " task_options TEXT, " +
+                        " description TEXT, " +
                         " FOREIGN KEY(status_id) REFERENCES task_statuses(id));";
                 stmt.execute(taskSql);
+                try { stmt.execute("ALTER TABLE tasks ADD COLUMN task_options TEXT"); } catch (Exception e) { /* Spalte existiert evtl. schon */ }
+                try { stmt.execute("ALTER TABLE tasks ADD COLUMN description TEXT"); } catch (Exception e) { /* Spalte existiert evtl. schon */ }
+                
                 
 
 
@@ -1142,6 +1147,8 @@ public class DatabaseService {
                 task.put("status_color", rs.getString("status_color")); 
                 task.put("progress_percent", rs.getInt("progress_percent"));
                 task.put("abteilung", rs.getString("abteilung"));
+                task.put("task_options", rs.getString("task_options"));
+                task.put("description", rs.getString("description"));
                 tasks.add(task);
             }
         } catch (SQLException e) {
@@ -1150,8 +1157,8 @@ public class DatabaseService {
         return tasks;
     }
 
-    public static void addTask(String name, LocalDate startDate, LocalDate endDate, double effortDays, int statusId, int progress, String abteilung, String actor) throws SQLException {
-        String sql = "INSERT INTO tasks(name, start_date, end_date, effort_days, status_id, progress_percent, abteilung) VALUES (?, ?, ?, ?, ?, ?, ?)";
+    public static void addTask(String name, LocalDate startDate, LocalDate endDate, double effortDays, int statusId, int progress, String abteilung, String taskOptions, String description, String actor) throws SQLException {
+        String sql = "INSERT INTO tasks(name, start_date, end_date, effort_days, status_id, progress_percent, abteilung, task_options, description) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
         try (Connection conn = getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setString(1, name);
             pstmt.setDate(2, startDate != null ? Date.valueOf(startDate) : null);
@@ -1160,13 +1167,15 @@ public class DatabaseService {
             pstmt.setInt(5, statusId);
             pstmt.setInt(6, progress);
             pstmt.setString(7, abteilung);
+            pstmt.setString(8, taskOptions);
+            pstmt.setString(9, description);
             pstmt.executeUpdate();
             logAction(actor, "Erstellen", "Neue Aufgabe erstellt: " + name);
         }
     }
 
-    public static void updateTask(int id, String name, LocalDate startDate, LocalDate endDate, double effortDays, int statusId, int progress, String abteilung, String actor) throws SQLException {
-        String sql = "UPDATE tasks SET name = ?, start_date = ?, end_date = ?, effort_days = ?, status_id = ?, progress_percent = ?, abteilung = ? WHERE id = ?";
+    public static void updateTask(int id, String name, LocalDate startDate, LocalDate endDate, double effortDays, int statusId, int progress, String abteilung, String taskOptions, String description, String actor) throws SQLException {
+        String sql = "UPDATE tasks SET name = ?, start_date = ?, end_date = ?, effort_days = ?, status_id = ?, progress_percent = ?, abteilung = ?, task_options = ?, description = ? WHERE id = ?";
          try (Connection conn = getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setString(1, name);
             pstmt.setDate(2, startDate != null ? Date.valueOf(startDate) : null);
@@ -1175,7 +1184,9 @@ public class DatabaseService {
             pstmt.setInt(5, statusId);
             pstmt.setInt(6, progress);
             pstmt.setString(7, abteilung);
-            pstmt.setInt(8, id);
+            pstmt.setString(8, taskOptions);
+            pstmt.setString(9, description);
+            pstmt.setInt(10, id);
             pstmt.executeUpdate();
             logAction(actor, "Bearbeiten", "Aufgabe (ID: " + id + ") aktualisiert.");
         }
@@ -1437,6 +1448,8 @@ public class DatabaseService {
                 task.put("status_name", rs.getString("status_name"));
                 task.put("status_color", rs.getString("status_color"));
                 task.put("progress_percent", rs.getInt("progress_percent"));
+                task.put("task_options", rs.getString("task_options"));
+                task.put("description", rs.getString("description"));
                 task.put("abteilung", rs.getString("abteilung"));
                 return task;
             }

@@ -6,6 +6,7 @@
 <head>
     <c:set var="title" value="Aufgaben" scope="request"/>
     <jsp:include page="/WEB-INF/_header.jsp"/>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 </head>
 <body>
 <div class="layout-wrapper">
@@ -56,7 +57,18 @@
                             <td><c:out value="${task.abteilung}"/></td>
                             <td><fmt:formatDate value="${task.start_date}" type="date" pattern="dd.MM.yyyy"/></td>
                             <td><fmt:formatDate value="${task.end_date}" type="date" pattern="dd.MM.yyyy"/></td>
-                            <td><c:out value="${task.effort_days}"/></td>
+                            <td>
+                                <%-- Den Aufwandswert davor anzeigen --%>
+                                <c:out value="${task.effort_days}"/>
+
+                                <%-- Icon basierend auf task_options anzeigen --%>
+                                <c:if test="${task.task_options == 'waiting'}">
+                                    <i class="fas fa-hourglass-half" title="Aufgabe wartet auf Verfügbarkeit" style="margin-right: 8px;"></i>
+                                </c:if>
+                                <c:if test="${task.task_options == 'continue'}">
+                                    <i class="fas fa-fast-forward" title="Aufgabe fällt auch an, wenn keine Verfügbarkeit vorhanden" style="margin-right: 8px;"></i>
+                                </c:if>
+                            </td>
                             <td>
                                 <c:if test="${not empty task.status_name}">
                                     <span style="background-color: ${not empty task.status_color ? task.status_color : '#FFFFFF'}; padding: 3px 10px; border-radius: 999px; border: 1px solid #ccc; font-size: 0.9em;">

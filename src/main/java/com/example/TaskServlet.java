@@ -245,6 +245,8 @@ public class TaskServlet extends HttpServlet {
             String startDateStr = req.getParameter("start_date");
             String endDateStr = req.getParameter("end_date");
             String abteilung = req.getParameter("abteilung");
+            String taskOptions = req.getParameter("task_options");
+            String description = req.getParameter("description");
             
             LocalDate startDate = (startDateStr == null || startDateStr.isEmpty()) ? null : LocalDate.parse(startDateStr);
             LocalDate endDate = (endDateStr == null || endDateStr.isEmpty()) ? null : LocalDate.parse(endDateStr);
@@ -260,11 +262,11 @@ public class TaskServlet extends HttpServlet {
 
             // Aktion ausführen
             if ("add".equals(action)) {
-                DatabaseService.addTask(name, startDate, endDate, effortDays, statusId, progress, abteilung, actor);
+                DatabaseService.addTask(name, startDate, endDate, effortDays, statusId, progress, abteilung, taskOptions, description, actor);
                 out.print("{\"success\": true, \"message\": \"Task erfolgreich erstellt\"}");
             } else if ("edit".equals(action)) {
                 int id = Integer.parseInt(req.getParameter("id"));
-                DatabaseService.updateTask(id, name, startDate, endDate, effortDays, statusId, progress, abteilung, actor);
+                DatabaseService.updateTask(id, name, startDate, endDate, effortDays, statusId, progress, abteilung, taskOptions, description, actor);
                 out.print("{\"success\": true, \"message\": \"Task erfolgreich aktualisiert\"}");
             } else {
                 resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);

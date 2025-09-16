@@ -97,10 +97,8 @@
             <!-- Auslastungsgrenzen -->
             <div class="settings-section">
                 <h3>Auslastungsgrenzen</h3>
-                <!-- 
                 <form id="colorSettingsForm" method="post" action="${pageContext.request.contextPath}/settings">
                     <input type="hidden" name="action" value="update_settings">
-                    -->
                     <div class="settings-grid">
                         <c:forEach var="setting" items="${settings}">
                             <c:if test="${setting.key.startsWith('calendar_workload_color_')}">
@@ -132,7 +130,7 @@
                     <div style="margin-top: 1em;">
                         <button type="submit" class="button create">Farben und Werte speichern</button>
                     </div>
-                <!-- </form>  -->
+                </form>
             </div>            
 
 

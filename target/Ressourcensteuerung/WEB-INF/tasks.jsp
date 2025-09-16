@@ -56,7 +56,20 @@
                             <td><c:out value="${task.abteilung}"/></td>
                             <td><fmt:formatDate value="${task.start_date}" type="date" pattern="dd.MM.yyyy"/></td>
                             <td><fmt:formatDate value="${task.end_date}" type="date" pattern="dd.MM.yyyy"/></td>
-                            <td><c:out value="${task.effort_days}"/></td>
+                            <td style="display: flex; align-items: center; gap: 8px;">
+                                <%-- Icon basierend auf task_options anzeigen --%>
+                                <c:choose>
+                                    <c:when test="${task.task_options == 'waiting'}">
+                                        <i class="fas fa-hourglass-half" title="Aufgabe wartet auf Verfügbarkeit"></i>
+                                    </c:when>
+                                    <c:when test="${task.task_options == 'continue'}">
+                                        <i class="fas fa-fast-forward" title="Aufgabe fällt auch an, wenn keine Verfügbarkeit vorhanden"></i>
+                                    </c:when>
+                                </c:choose>
+
+                                <%-- Den Aufwandswert daneben anzeigen --%>
+                                <span><c:out value="${task.effort_days}"/></span>
+                            </td>
                             <td>
                                 <c:if test="${not empty task.status_name}">
                                     <span style="background-color: ${not empty task.status_color ? task.status_color : '#FFFFFF'}; padding: 3px 10px; border-radius: 999px; border: 1px solid #ccc; font-size: 0.9em;">
