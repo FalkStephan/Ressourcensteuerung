@@ -301,30 +301,42 @@ public class DatabaseService {
         return users;
     }
 
-    public static List<Map<String, Object>> getAllActiveUsers() throws SQLException {
-        /**
-        * Holt alle Benutzer, die als aktiv markiert sind.
-        */
+    public static List<Map<String, Object>> getAllActiveUsers(Map<String, Object> currentUser) throws SQLException {
         List<Map<String, Object>> users = new ArrayList<>();
-        // Annahme: Die Spalte für den vollen Namen ist 'name'
-        String sql = "SELECT id, name, vorname, abteilung FROM users WHERE active = 1 ORDER BY abteilung, name, vorname";
+        
+        // Basis-SQL-Abfrage
+        StringBuilder sql = new StringBuilder("SELECT id, name, vorname, abteilung FROM users WHERE active=true ");
+
+        // Prüfen, ob der Benutzer alle anderen sehen darf
+        boolean canSeeAll = Boolean.TRUE.equals(currentUser.get("see_all_users"));
+
+        // Wenn nicht, nach Abteilung filtern
+        if (!canSeeAll) {
+            sql.append("AND abteilung = ? ");
+        }
+        
+        sql.append("ORDER BY abteilung, name, vorname");
 
         try (Connection conn = getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql);
-             ResultSet rs = stmt.executeQuery()) {
+            PreparedStatement pstmt = conn.prepareStatement(sql.toString())) {
+            
+            if (!canSeeAll) {
+                pstmt.setString(1, (String) currentUser.get("abteilung"));
+            }
 
+            ResultSet rs = pstmt.executeQuery();
             while (rs.next()) {
                 Map<String, Object> user = new HashMap<>();
                 user.put("id", rs.getInt("id"));
-                user.put("nachname", rs.getString("name"));
-                user.put("vorname", rs.getString("vorname"));
-                user.put("name", rs.getString("name") + ", " + rs.getString("vorname"));
+                String nachname = rs.getString("name");
+                String vorname = rs.getString("vorname");
+                user.put("name", nachname + ", " + vorname);
                 user.put("abteilung", rs.getString("abteilung"));
                 users.add(user);
             }
         }
         return users;
-    }    
+    }
 
     public static void addUser(String username, String password, String name, String vorname, String stelle, String team, String abteilung, boolean active, boolean isUser, boolean canManageUsers, boolean canViewLogbook, boolean canManageFeiertage, boolean seeAllUsers, boolean canManageCalendar, boolean canManageCapacities, boolean canManageSettings, boolean canManageTasks, boolean canManageCalendarOverview, String actor) throws SQLException {
         String sql = "INSERT INTO users(username, password_hash, name, vorname, stelle, team, abteilung, active, is_user, can_manage_users, can_view_logbook, can_manage_feiertage, see_all_users, can_manage_calendar, can_manage_capacities, can_manage_settings, can_manage_tasks, can_manage_calendar_overview) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";

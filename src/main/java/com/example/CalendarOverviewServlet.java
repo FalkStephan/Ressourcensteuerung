@@ -8,6 +8,7 @@ import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
 
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -66,53 +67,42 @@ public class CalendarOverviewServlet extends HttpServlet {
         resp.setContentType("application/json");
         resp.setCharacterEncoding("UTF-8");
 
+        // Den aktuell angemeldeten Benutzer aus der Session holen
+        HttpSession session = req.getSession(false);
+        @SuppressWarnings("unchecked")
+        Map<String, Object> currentUser = (session != null) ? (Map<String, Object>) session.getAttribute("user") : null;
+
+        if (currentUser == null) {
+            resp.setStatus(HttpServletResponse.SC_FORBIDDEN);
+            try (PrintWriter out = resp.getWriter()) {
+                out.print("{\"error\": \"Zugriff verweigert.\"}");
+            }
+            return;
+        }
+
+        // KORREKTUR: PrintWriter außerhalb des Haupt-try-Blocks deklarieren,
+        // um im catch-Block darauf zugreifen zu können.
         try (PrintWriter out = resp.getWriter()) {
-            int year = Integer.parseInt(req.getParameter("year"));
-            int month = Integer.parseInt(req.getParameter("month"));
-
-            Map<String, Object> responseData = new HashMap<>();
-            
-            // --- Schritt 1: Tage und Feiertage abrufen ---
             try {
+                int year = Integer.parseInt(req.getParameter("year"));
+                int month = Integer.parseInt(req.getParameter("month"));
+
+                Map<String, Object> responseData = new HashMap<>();
                 responseData.put("days", getDaysOfMonth(year, month));
-            } catch (Exception e) {
-                resp.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
-                out.print("{\"error\": \"Fehler beim Abrufen der Tage und Feiertage: " + e.getMessage().replace("\"", "'") + "\"}");
-                e.printStackTrace();
-                return; // Wichtig: Ausführung hier beenden
-            }
-
-            // --- Schritt 2: Benutzer, Abwesenheiten und Kapazitäten abrufen ---
-            try {
-                responseData.put("departments", getAllUsersWithAbsencesAndDepartments(year, month));
-            } catch (Exception e) {
-                resp.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
-                out.print("{\"error\": \"Fehler beim Abrufen der Benutzerdaten: " + e.getMessage().replace("\"", "'") + "\"}");
-                e.printStackTrace();
-                return;
-            }
-
-            // --- Schritt 3: Kalenderfarben abrufen ---
-            try {
+                responseData.put("departments", getAllUsersWithAbsencesAndDepartments(year, month, currentUser));
                 responseData.put("colors", DatabaseService.getCalendarColors());
+
+                String jsonResponse = gson.toJson(responseData);
+                out.print(jsonResponse);
+
             } catch (Exception e) {
                 resp.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
-                out.print("{\"error\": \"Fehler beim Abrufen der Kalenderfarben: " + e.getMessage().replace("\"", "'") + "\"}");
-                e.printStackTrace();
-                return;
+                // Sende eine gültige JSON-Fehlermeldung
+                out.print("{\"error\": \"Serverfehler: " + e.getMessage().replace("\"", "'") + "\"}");
+                e.printStackTrace(); // Wichtig für die Fehlersuche auf dem Server
             }
-
-            // Wenn alles erfolgreich war, die vollständige Antwort senden
-            String jsonResponse = gson.toJson(responseData);
-            out.print(jsonResponse);
-
-        } catch (NumberFormatException e) {
-            resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-            resp.getWriter().write("{\"error\": \"Ungültige Jahres- oder Monatsangabe.\"}");
-        } catch (Exception e) {
-            // Dieser Block fängt allgemeine Fehler ab, z.B. wenn getWriter() fehlschlägt
-            resp.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
-            resp.getWriter().write("{\"error\": \"Allgemeiner Serverfehler: " + e.getMessage().replace("\"", "'") + "\"}");
+        } catch (IOException e) {
+            // Fängt Fehler ab, falls resp.getWriter() fehlschlägt
             e.printStackTrace();
         }
     }
@@ -121,10 +111,12 @@ public class CalendarOverviewServlet extends HttpServlet {
      * Stellt die Daten für die Kalenderübersicht zusammen.
      * Holt Benutzer, Abwesenheiten und Kapazitäten und führt sie zusammen.
      */
-    private Map<String, List<Map<String, Object>>> getAllUsersWithAbsencesAndDepartments(int year, int month) throws SQLException {
+    private Map<String, List<Map<String, Object>>> getAllUsersWithAbsencesAndDepartments(int year, int month, Map<String, Object> currentUser) throws SQLException {
         LocalDate monthStart = LocalDate.of(year, month, 1);
         LocalDate monthEnd = monthStart.with(TemporalAdjusters.lastDayOfMonth());
-        List<Map<String, Object>> users = DatabaseService.getAllActiveUsers();
+
+        // WICHTIG: Den 'currentUser' hier weitergeben
+        List<Map<String, Object>> users = DatabaseService.getAllActiveUsers(currentUser);
         Map<Integer, List<String>> allAbsences = DatabaseService.getAbsencesForMonth(year, month);
         Map<Integer, List<Map<String, Object>>> allCapacities = DatabaseService.getAllCapacities();
         Map<Integer, List<Map<String, Object>>> allTasks = DatabaseService.getActiveTaskAssignmentsForDateRange(monthStart, monthEnd);
