@@ -1215,7 +1215,6 @@ public class DatabaseService {
         }
     }    
 
-
     public static Map<Integer, List<Map<String, Object>>> getActiveTaskAssignmentsForDateRange(LocalDate startDate, LocalDate endDate) throws SQLException {
         /**
          * Holt alle aktiven und einem Benutzer zugewiesenen Aufgaben, die
@@ -1233,6 +1232,7 @@ public class DatabaseService {
                 t.name AS task_name,
                 t.start_date,
                 t.end_date,
+                t.task_options,
                 tua.effort_days
             FROM tasks t
             JOIN task_user_assignments tua ON t.id = tua.task_id
@@ -1259,6 +1259,7 @@ public class DatabaseService {
                 task.put("start_date", rs.getDate("start_date").toLocalDate());
                 task.put("end_date", rs.getDate("end_date").toLocalDate());
                 task.put("effort_days", rs.getDouble("effort_days"));
+                task.put("task_options", rs.getString("task_options"));
 
                 userTasks.computeIfAbsent(userId, k -> new ArrayList<>()).add(task);
             }
@@ -1266,6 +1267,37 @@ public class DatabaseService {
         return userTasks;
     }
 
+    public static void deleteTask(int taskId, String actor) throws SQLException {
+        try (Connection conn = getConnection()) {
+            conn.setAutoCommit(false);
+            try {
+                // Zuerst die Zuweisungen löschen
+                try (PreparedStatement deleteAssignmentsStmt = conn.prepareStatement(
+                        "DELETE FROM task_user_assignments WHERE task_id = ?")) {
+                    deleteAssignmentsStmt.setInt(1, taskId);
+                    deleteAssignmentsStmt.executeUpdate();
+                }
+
+                // Dann die Aufgabe selbst löschen
+                try (PreparedStatement deleteTaskStmt = conn.prepareStatement(
+                        "DELETE FROM tasks WHERE id = ?")) {
+                    deleteTaskStmt.setInt(1, taskId);
+                    int affectedRows = deleteTaskStmt.executeUpdate();
+                    if (affectedRows == 0) {
+                        throw new SQLException("Das Löschen der Aufgabe ist fehlgeschlagen, keine Zeile betroffen.");
+                    }
+                }
+
+                conn.commit();
+                logAction(actor, "Löschen", "Aufgabe (ID: " + taskId + ") und zugehörige Zuweisungen gelöscht.");
+            } catch (SQLException e) {
+                conn.rollback();
+                throw e;
+            } finally {
+                conn.setAutoCommit(true);
+            }
+        }
+    }
 
 
     // ####################

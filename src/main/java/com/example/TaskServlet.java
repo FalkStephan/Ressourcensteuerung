@@ -268,6 +268,24 @@ public class TaskServlet extends HttpServlet {
                 int id = Integer.parseInt(req.getParameter("id"));
                 DatabaseService.updateTask(id, name, startDate, endDate, effortDays, statusId, progress, abteilung, taskOptions, description, actor);
                 out.print("{\"success\": true, \"message\": \"Task erfolgreich aktualisiert\"}");
+            
+            } else if ("delete".equals(action)) {
+                try {
+                    int taskId = Integer.parseInt(req.getParameter("taskId"));
+                    // HttpSession session = req.getSession(false);
+                    Map<String, Object> user = (Map<String, Object>) session.getAttribute("user");
+                    String username = (user != null) ? (String) user.get("username") : "unbekannt";
+                    
+                    DatabaseService.deleteTask(taskId, username);
+                    resp.sendRedirect(req.getContextPath() + "/tasks");
+                } catch (NumberFormatException e) {
+                    // Ungültige ID
+                    resp.sendError(HttpServletResponse.SC_BAD_REQUEST, "Ungültige Aufgaben-ID.");
+                } catch (SQLException e) {
+                    e.printStackTrace();
+                    // Datenbankfehler
+                    resp.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Fehler beim Löschen der Aufgabe.");
+                }
             } else {
                 resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
                 out.print("{\"error\": \"Ungültige Aktion: " + action + "\"}");

@@ -87,6 +87,12 @@
                             <td style="display: flex; gap: 5px;">
                                 <button type="button" class="button small toggle-assignments-btn" title="Zuweisungen anzeigen" value="0" onclick="toggleTaskAssignments()">▼</button>
                                 <a href="tasks?action=edit&id=${task.id}" class="button small">Bearbeiten</a>
+                                <form action="${pageContext.request.contextPath}/tasks" method="post" onsubmit="return confirm('Sind Sie sicher, dass Sie diese Aufgabe löschen möchten?');" style="display:inline;">
+                                    <input type="hidden" name="action" value="delete">
+                                    <input type="hidden" name="taskId" value="${task.id}">
+                                    <input type="hidden" name="name" value="${user.name}">
+                                    <button type="submit" class="button small delete">Löschen</button>
+                                </form>
                             </td>
                         </tr>
                     </c:forEach>

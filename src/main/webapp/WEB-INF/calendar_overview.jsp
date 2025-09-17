@@ -156,9 +156,10 @@
                 <div class="view-options">
                     <label><input type="checkbox" name="view" value="mak"> MAK-Kapazität</label>
                     <label><input type="checkbox" name="view" value="availability"> Verfügbarkeit</label>
-                    <label><input type="checkbox" name="view" value="availability_percent"> Team-Verfügbarkeit</label>
+                    <label><input type="checkbox" name="view" value="availability_percent"> Verfügbarkeit (Team)</label>
                     <label><input type="checkbox" name="view" value="tasks"> Aufgaben</label>
                     <label><input type="checkbox" name="view" value="workload"> Auslastung</label>
+                    <label><input type="checkbox" name="view" value="workload_team"> Auslastung (Team)</label>
                     <label><input type="checkbox" name="view" value="remaining"> Rest-Verfügbarkeit</label>
                     <label><input type="checkbox" name="view" value="remainingTeam"> Rest-Verfügbarkeit (Team)</label>
                 </div>
@@ -207,7 +208,7 @@
                 });
             }
             // Initialen Kalender beim ersten Laden der Seite aufbauen
-            updateCalendar();
+            // updateCalendar();
             });
 
         function updateCalendarColors(colors) {
@@ -367,50 +368,111 @@
 
 
 
-        function countWorkdays(startDateStr, endDateStr, holidays) {
+        function countWorkdays(startDateStr, endDateStr, holidays, absences = []) {
             /**
             * HILFSFUNKTION: Zählt die Arbeitstage zwischen zwei Daten.
             * Schließt Wochenenden und Feiertage aus.
             */
             let count = 0;
             const holidaySet = new Set(holidays.map(h => h.date)); // Für schnellen Zugriff
+            const absenceSet = new Set(absences); // Für schnellen Zugriff
             let currentDate = new Date(startDateStr + "T12:00:00");
             const endDate = new Date(endDateStr + "T12:00:00");
+            // console.log(' - Zeitraum: ', currentDate + ' bis ' + endDate);
+            // console.log(' - Holiday: ', holidaySet);
+            // console.log(' - Absence: ', absenceSet);
 
             while (currentDate <= endDate) {
                 const dayOfWeek = currentDate.getDay();
                 const dateStr = currentDate.toISOString().split('T')[0];
 
-                if (dayOfWeek > 0 && dayOfWeek < 6 && !holidaySet.has(dateStr)) {
+                if (dayOfWeek > 0 && dayOfWeek < 6 && !holidaySet.has(dateStr) && !absenceSet.has(dateStr)) {
                     count++;
                 }
                 currentDate.setDate(currentDate.getDate() + 1);
             }
+            // console.log(' - Dauer: ', count);
             return count > 0 ? count : 1; // Division durch Null vermeiden
         }
 
-        /**
-        * FUNKTION: Berechnet die tägliche Aufgabenlast für einen Mitarbeiter.
-        */
+        
         function getTaskEffortForDate(day, employee, holidays) {
+            /**
+            * FUNKTION: Berechnet die tägliche Aufgabenlast für einen Mitarbeiter.
+            */
             // console.log(`--> Tag:   `,day);
             // console.log(`User:      `,employee);
             // console.log(`Feiertage: `,holidays);
             let totalEffort = 0;
             if (!employee.tasks) return 0;
-
             const currentDay = new Date(day.date + "T12:00:00");
+            const absenceSet = new Set(employee.absences); // Für schnellen Zugriff
+            // console.log(`User_Abs:      `,absenceSet);
 
             employee.tasks.forEach(task => {
                 const startDate = new Date(task.start_date + "T12:00:00");
                 const endDate = new Date(task.end_date + "T12:00:00");
-
+                
+                let workdays;
                 // Prüfen, ob der aktuelle Kalendertag im Aufgabenzeitraum liegt
                 if (currentDay >= startDate && currentDay <= endDate) {
-                    const workdays = countWorkdays(task.start_date, task.end_date, holidays);
+                    // prüfen, ob der Mitarbeiter an diesem Tag abwesend ist
+                    if (employee.absences && employee.absences.includes(day.date)) {
+                        // abwesend
+                        if (task.task_options === 'waiting') {
+                            // abwesend und Aufgabe = waiting
+                            // workdays = countWorkdays(task.start_date, task.end_date, holidays, absenceSet);    
+                            workdays = 0;                    
+                        } else { 
+                            // abwesend und Aufgabe = 'continue' or undefined
+                            workdays = countWorkdays(task.start_date, task.end_date, holidays);
+                        }
+
+
+                    } else {
+                        // anwesend
+                        if (task.task_options === 'waiting') {
+                            // anwesend und Aufgabe = waiting
+                            workdays = countWorkdays(task.start_date, task.end_date, holidays, absenceSet);                        
+                        } else { 
+                            // anwesend und Aufgabe = 'continue' or undefined
+                            workdays = countWorkdays(task.start_date, task.end_date, holidays);
+                        }
+
+                    }
+
+                    // console.log('Workdays: ', workdays);
+                    let dailyEffort;
+                    if (workdays >0) {
+                        dailyEffort = task.effort_days / workdays;    
+                    } else {
+                        dailyEffort = 0;
+                    }
+                    
+                    // const dailyEffort = task.effort_days / workdays;
+                    // console.log('Workdays: ', workdays + ' // ' + day.date + ' : ' + employee.name + ' // ' +  task.task_name + ' // ' + task.task_options + ' // ' + dailyEffort);
+                    totalEffort += dailyEffort;
+                }
+
+
+
+
+                /**
+                if (currentDay >= startDate && currentDay <= endDate) {
+                    let workdays;
+                    // console.log('Tag: ', day.date + ' : ' + employee.name + ' // ' +  task.task_name + ' // ' + task.task_options);
+                    if (task.task_options === 'waiting') {
+                        workdays = countWorkdays(task.start_date, task.end_date, holidays, employee.absences);
+                    } else { // 'continue' or undefined
+                        workdays = countWorkdays(task.start_date, task.end_date, holidays);
+                    }
                     const dailyEffort = task.effort_days / workdays;
                     totalEffort += dailyEffort;
                 }
+                */
+
+
+
             });
 
             // console.log(`Effort: `,day.date + ' --> ' + totalEffort + ' (' + employee.name + ')');
@@ -437,9 +499,10 @@
                 return;
             }
 
-            // KORREKTUR: Daten direkt aus dem 'data-*'-Attribut der angeklickten Zeile holen
+            // Daten direkt aus dem 'data-*'-Attribut der angeklickten Zeile holen
             const tasks = JSON.parse(clickedRow.dataset.tasks);
             const holidays = JSON.parse(clickedRow.dataset.holidays);
+            const absences = JSON.parse(clickedRow.dataset.absences);
             
             if (!tasks || tasks.length === 0) {
                 const noTasksRow = document.createElement('tr');
@@ -460,7 +523,12 @@
                 nameCell.classList.add('employee-name', 'task-detail-name');
                 detailRow.appendChild(nameCell);
 
-                const workdays = countWorkdays(task.start_date, task.end_date, holidays);
+                let workdays;
+                if (task.task_options === 'waiting') {
+                    workdays = countWorkdays(task.start_date, task.end_date, holidays, absences);
+                } else { // 'continue' or undefined
+                    workdays = countWorkdays(task.start_date, task.end_date, holidays);
+                }
                 const dailyEffort = task.effort_days / workdays;
 
                 JSON.parse(clickedRow.dataset.days).forEach(day => {
@@ -468,8 +536,16 @@
                     const currentDay = new Date(day.date + "T12:00:00");
                     const startDate = new Date(task.start_date + "T12:00:00");
                     const endDate = new Date(task.end_date + "T12:00:00");
+
+                    if (task.task_options === 'waiting') {
+                        if (currentDay >= startDate && currentDay <= endDate && !day.isWeekend && !day.isHoliday && !absences.includes(day.date)) {
+                            td.textContent = dailyEffort.toFixed(2);
+                        }
+                    } else { // 'continue' or undefined
                     if (currentDay >= startDate && currentDay <= endDate && !day.isWeekend && !day.isHoliday) {
-                        td.textContent = dailyEffort.toFixed(2);
+                            td.textContent = dailyEffort.toFixed(2);    
+                            // console.log('Datum: ',day.date);
+                        }
                     }
                     if (day.isWeekend) td.classList.add('weekend');
                     detailRow.appendChild(td);
@@ -532,6 +608,7 @@
                 const showAvailabilityPercent = document.querySelector('input[value="availability_percent"]').checked;
                 const showTasks = document.querySelector('input[value="tasks"]').checked;
                 const showWorkload = document.querySelector('input[value="workload"]').checked;
+                const showWorkloadTeam = document.querySelector('input[value="workload_team"]').checked;
                 const showRemaining = document.querySelector('input[value="remaining"]').checked;
                 const showRemainingTeam = document.querySelector('input[value="remainingTeam"]').checked;
 
@@ -635,6 +712,7 @@
                             employeeTaskRow.dataset.holidays = JSON.stringify(holidays);
                             employeeTaskRow.dataset.days = JSON.stringify(data.days);
                             employeeTaskRow.dataset.tasks = JSON.stringify(employee.tasks || []); // Wichtig: Leeres Array als Fallback
+                            employeeTaskRow.dataset.absences = JSON.stringify(employee.absences || []);
 
                             const TaskLabelCell = document.createElement('td');
                             TaskLabelCell.innerHTML = `<span class="arrow-icon">&#9662;</span> Aufgaben`;
@@ -673,12 +751,12 @@
                                 const workload = taskeffort / (availability/100)*100;
                                 if (!day.isWeekend && !day.isHoliday) {
                                     if (!availability==0) {
-                                        // td.textContent = (workload).toFixed(2);
+                                        td.textContent = (workload).toFixed(0) + '%';
                                         td.style.backgroundColor = getWorkloadColor(workload, data.colors);
                                     }
                                     else {
                                         if (workload > 0) {
-                                            // td.textContent = '999';
+                                            td.textContent = '∞';
                                             td.style.backgroundColor = getWorkloadColor(workload, data.colors);
                                         }
                                         else
@@ -827,15 +905,14 @@
 
                     // 5. Die fertige Zeile an die Tabelle anhängen
                     tbody.appendChild(summaryRow);
-                }
-
-
+                }      
 
                 // #3: Zusammenfassung für Verfügbarkeit in % ---
                 if (showAvailabilityPercent) {
                     // 1. Array für die Tagessummen initialisieren
                     const dailyAvailabilitPercent = Array(data.days.length).fill(0);
                     const dailyTotals = Array(data.days.length).fill(0);
+                    // console.log('dailyAvailabilitPercent:', dailyAvailabilitPercent);
 
                     // 2. Durch jeden Tag des Monats iterieren
                     data.days.forEach((day, index) => {
@@ -856,7 +933,7 @@
                     summaryRow.classList.add('summary-row');
 
                     const summaryLabelCell = document.createElement('td');
-                    summaryLabelCell.textContent = 'Team-Verfügbarkeit';
+                    summaryLabelCell.textContent = 'Verfügbarkeit (Team)';
                     summaryLabelCell.classList.add('employee-name', 'summary-label');
                     summaryRow.appendChild(summaryLabelCell);
 
@@ -888,13 +965,16 @@
 
                     // 5. Die fertige Zeile an die Tabelle anhängen
                     tbody.appendChild(summaryRow);
-                }                
+                }     
+
+
+
 
                 // #4: Zusammenfassung für Aufgaben
                 if (showTasks) {
                     // 1. Array für die Tagessummen initialisieren
                     const TaskTotals = Array(data.days.length).fill(0);
-
+                    
                     // 2. Durch jeden Tag des Monats iterieren
                     data.days.forEach((day, index) => {
                         allEmployees.forEach(employee => {
@@ -929,6 +1009,66 @@
                     // 5. Die fertige Zeile an die Tabelle anhängen
                     tbody.appendChild(summaryRow);
                 }
+
+
+                // #4: Zusammenfassung für Workload (Team)
+                if (showWorkloadTeam) {
+                    // 1. Array für die Tagessummen initialisieren
+                    const dailyAvailabilityTotals = Array(data.days.length).fill(0);
+                    const TaskTotals = Array(data.days.length).fill(0);
+
+                    // 2. Durch jeden Tag des Monats iterieren
+                    data.days.forEach((day, index) => {
+                        allEmployees.forEach(employee => {
+                            const availability = getAvailabilityForDate(day, employee);
+                            // if (typeof availability === 'number') {
+                            if (!data.days[index].isWeekend && !data.days[index].isHoliday && typeof availability === 'number') {         
+                                dailyAvailabilityTotals[index] += availability;
+                            }
+                            
+                            const Tasks = getTaskEffortForDate(day, employee, data.days.filter(d => d.isHoliday));
+                            if (!data.days[index].isWeekend && !data.days[index].isHoliday) {         
+                                TaskTotals[index] += Tasks;
+                            }
+                        });
+                    });
+
+                    // 3. Die Summenzeile erstellen
+                    const summaryRow = document.createElement('tr');
+                    summaryRow.classList.add('summary-row');
+
+                    const summaryLabelCell = document.createElement('td');
+                    summaryLabelCell.textContent = 'Auslastung (Team)';
+                    summaryLabelCell.classList.add('employee-name', 'summary-label');
+                    summaryRow.appendChild(summaryLabelCell);
+
+                    // 4. Zellen für jede Tagessumme erstellen und füllen
+                    // console.log('dailyAvailabilityTotals', dailyAvailabilityTotals);
+                    // console.log('TaskTotals', TaskTotals);
+                    let ergebnis;
+
+                    dailyAvailabilityTotals.forEach((total, index) => {
+                        const td = document.createElement('td');
+                        ergebnis = (TaskTotals[index] *100 / dailyAvailabilityTotals[index]);
+                        // console.log('ergebnis (', index + ') ' + ergebnis);
+                        if (ergebnis > 0) {
+                            td.textContent = (ergebnis*100).toFixed(0) + '%';
+                            td.style.backgroundColor = getColorForPercentage(100 - ergebnis*100, data.colors);
+                        }
+                        if (data.days[index].isWeekend) {
+                            td.classList.add('weekend');
+                        }
+                        summaryRow.appendChild(td);
+                    });
+
+                    // 5. Die fertige Zeile an die Tabelle anhängen
+                    tbody.appendChild(summaryRow);
+                }
+
+
+                
+
+                     
 
 
                 // #5: Zusammenfassung für Rest-Verfügbarkeit
