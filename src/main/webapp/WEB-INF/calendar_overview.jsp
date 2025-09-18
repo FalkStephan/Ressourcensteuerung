@@ -267,7 +267,8 @@
             * @param {string} dateString - Das Datum des Kalendertages (z.B. "2025-09-10").
             * @returns {number|null} Die Kapazität in Prozent oder null, wenn keine gültig ist.
             */
-            // console.log('Info Employee.Tag:', dateString);
+            // console.log('getCapacityForDate Tag:        ', dateString);
+            // console.log('getCapacityForDate capacities: ', capacities);
             // Sicherheitsprüfung für den Fall, dass ungültige Daten übergeben werden
             if (typeof dateString !== 'string' || !dateString || !capacities || capacities.length === 0) {
                 return null;
@@ -313,7 +314,7 @@
                             highlight: dateString === capacity.start_date
                         };
                         
-                        // console.log(`TREFFER: `, activeCapacity);
+                        // onsole.log(`TREFFER: `, activeCapacity);
                         return activeCapacity;
                     } 
                 }
@@ -675,6 +676,8 @@
                     thead.appendChild(monthHeaderRow);
                     thead.appendChild(weekHeaderRow);
 
+
+                    /**
                     Object.entries(data.departments).forEach(([department, employees]) => {
                         const departmentRow = document.createElement('tr');
                         departmentRow.classList.add('department-header');
@@ -698,6 +701,7 @@
                             tbody.appendChild(tr);
                         });
                     });
+                    */
 
                 } else {
                     // Zeile für den Monatsnamen über die gesamte Breite
@@ -726,13 +730,19 @@
                     const holidays = data.days.filter(d => d.isHoliday);
 
                     // console.log('Vom Server erhaltene Daten:', data); 
+                }
 
                     Object.entries(data.departments).forEach(([department, employees]) => {
                         const headerRow = document.createElement('tr');
                         headerRow.classList.add('department-header');
                         const headerCell = document.createElement('td');
                         headerCell.textContent = department;
-                        headerCell.colSpan = data.days.length + 1;
+                        if (viewType === 'weeks') {
+                            headerCell.colSpan = 21; // Mitarbeiter + 20 Wochen
+                        } else {    
+                            headerCell.colSpan = data.days.length + 1;
+                        }
+                        
                         headerRow.appendChild(headerCell);
                         tbody.appendChild(headerRow);
 
@@ -744,20 +754,23 @@
                             nameCell.classList.add('employee-name');
                             tr.appendChild(nameCell);
 
-                            data.days.forEach(day => {
-                                const td = document.createElement('td');
-                                if (day.isWeekend) {
-                                    td.classList.add('weekend');
-                                } else if (day.isHoliday) {
-                                    td.classList.add('holiday');
-                                    td.title = day.holidayName;
-                                } else if (employee.absences.includes(day.date)) {
-                                    td.classList.add('absence');
-                                } else {
-                                    td.classList.add('workday');
-                                }
-                                tr.appendChild(td);
-                            });
+                            if (viewType === 'days') {
+                                data.days.forEach(day => {
+                                    const td = document.createElement('td');
+                                    if (day.isWeekend) {
+                                        td.classList.add('weekend');
+                                    } else if (day.isHoliday) {
+                                        td.classList.add('holiday');
+                                        td.title = day.holidayName;
+                                    } else if (employee.absences.includes(day.date)) {
+                                        td.classList.add('absence');
+                                    } else {
+                                        td.classList.add('workday');
+                                    }
+                                    tr.appendChild(td);
+                                });
+                            }
+
                             tbody.appendChild(tr);
 
                             // 2. Wenn Checkbox aktiv ist, die Kapazitätszeile erstellen
@@ -772,24 +785,68 @@
                                 makNameCell.classList.add('employee-name', 'detail-row-label');
                                 makRow.appendChild(makNameCell);
 
-                                data.days.forEach(day => {
-                                    const td = document.createElement('td');
-                                    const capacity = getCapacityForDate(employee.capacities, day.date);
-                                    // console.log('Info Employee.Kapa:', capacity);
-                                    if (capacity !== null) {
-                                        // td.textContent = capacity + '%';
-                                        if (!day.isWeekend && !day.isHoliday) {
-                                            td.textContent = (capacity.value/100).toFixed(2);
-                                            // Wenn das highlight-Flag gesetzt ist, die CSS-Klasse hinzufügen
-                                            if (capacity.highlight) {
-                                                td.classList.add('highlight');
+                                if (viewType === 'days') {
+                                    data.days.forEach(day => {
+                                        const td = document.createElement('td');
+                                        const capacity = getCapacityForDate(employee.capacities, day.date);
+                                        // console.log('Info Employee.Kapa:', capacity);
+                                        if (capacity !== null) {
+                                            // td.textContent = capacity + '%';
+                                            if (!day.isWeekend && !day.isHoliday) {
+                                                td.textContent = (capacity.value/100).toFixed(2);
+                                                // Wenn das highlight-Flag gesetzt ist, die CSS-Klasse hinzufügen
+                                                if (capacity.highlight) {
+                                                    td.classList.add('highlight');
+                                                }
                                             }
                                         }
+                                        // Hier können optional noch Klassen für Styling (weekend, etc.) hinzugefügt werden
+                                        if (day.isWeekend) td.classList.add('weekend');
+                                        makRow.appendChild(td);
+                                    });
+                                } else if (viewType === 'weeks') {
+                                    // Wochenansicht: Durchschnittliche Kapazität pro Woche berechnen
+                                    let firstDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+                                    for (let i = 0; i < 20; i++) {
+                                        let weekDate = new Date(firstDayOfMonth.getTime()); 
+                                        weekDate.setDate(weekDate.getDate() + (i * 7));
+                                        // Berechne Start- und Enddatum der Woche (Montag bis Sonntag)
+                                        let weekStart = new Date(weekDate);
+                                        weekStart.setDate(weekStart.getDate() - weekStart.getDay() + 2); // Montag
+                                        let weekEnd = new Date(weekStart);
+                                        weekEnd.setDate(weekEnd.getDate() + 6); // Sonntag
+                                        
+                                        let daysInWeek;
+                                        for (let j = 0; j < 7; j++) {
+                                            let dDate = new Date(weekStart);
+                                            dDate.setDate(dDate.getDate() + j);
+                                            let dDateStr = dDate.toISOString().split('T')[0];
+                                            let dayInfo = data.days.find(d => d.date === dDateStr);
+                                            if (dDateStr) {
+                                                if (!daysInWeek) daysInWeek = [];   
+                                                daysInWeek.push(dDateStr);
+                                            }
+                                        }
+                                        
+                                        // Berechne die durchschnittliche Kapazität für diese Tage
+                                        let totalCapacity = 0;
+                                        let count = 0;
+                                        daysInWeek.forEach(day => {
+                                            let cap = getCapacityForDate(employee.capacities, day);
+                                            if (cap !== null) {
+                                                totalCapacity += cap.value;
+                                                count++;
+                                            }
+                                        });
+
+                                        const avgCapacity = count > 0 ? (totalCapacity / count) : null;
+                                        const td = document.createElement('td');
+                                        if (avgCapacity !== null) {
+                                            td.textContent = (avgCapacity/100).toFixed(2);
+                                        }
+                                        makRow.appendChild(td);
                                     }
-                                    // Hier können optional noch Klassen für Styling (weekend, etc.) hinzugefügt werden
-                                    if (day.isWeekend) td.classList.add('weekend');
-                                    makRow.appendChild(td);
-                                });
+                                }
                                 tbody.appendChild(makRow);
                             }
                             // 3. Verfügbarkeit anzeigen ---
@@ -925,7 +982,7 @@
 
                         });
                     });
-                }
+                
 
                 const allEmployees = Object.values(data.departments).flat();
                 // console.log('Alle Mitarbeiter:', allEmployees);
