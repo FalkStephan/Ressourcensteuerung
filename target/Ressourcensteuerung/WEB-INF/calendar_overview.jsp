@@ -151,6 +151,11 @@
                     <button onclick="changeMonth(-1)" class="button">&lt; Vorheriger Monat</button>
                     <span id="currentMonth"></span>
                     <button onclick="changeMonth(1)" class="button">Nächster Monat &gt;</button>
+
+                    <div class="view-options">
+                        <label><input type="radio" name="view" value="days" checked> Tage/Monat</label>
+                        <label><input type="radio" name="view" value="weeks"> Wochen/Halbjahr</label>
+                    </div>
                 </div>
 
                 <div class="view-options">
@@ -188,7 +193,13 @@
         document.querySelectorAll('.view-options input[type="checkbox"]').forEach(checkbox => {
             checkbox.addEventListener('change', updateCalendar);
         });
-        // KORREKTUR: Event-Listener wird sicher an den Tabellenkörper gehängt
+
+        // Event-Listener für die Radio-Buttons hinzufügen
+        document.querySelectorAll('input[name="view"]').forEach(radio => {
+            radio.addEventListener('change', updateCalendar);
+        });
+
+        // Event-Listener wird sicher an den Tabellenkörper gehängt
         document.addEventListener('DOMContentLoaded', function() {
             const tableBody = document.querySelector('#calendarGrid tbody');
             if (tableBody) {
@@ -209,7 +220,21 @@
             }
             // Initialen Kalender beim ersten Laden der Seite aufbauen
             // updateCalendar();
-            });
+        });
+
+        function changeMonth(delta) {
+            currentDate.setMonth(currentDate.getMonth() + delta);
+            updateCalendar();
+        }
+
+        function getWeekNumber(d) {
+            // Hilfsfunktion zur Berechnung der Kalenderwoche
+            d = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+            d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay()||7));
+            var yearStart = new Date(Date.UTC(d.getUTCFullYear(),0,1));
+            var weekNo = Math.ceil(( ( (d - yearStart) / 86400000) + 1)/7);
+            return weekNo;
+        }
 
         function updateCalendarColors(colors) {
             // Debug-Ausgabe der Farben
@@ -234,16 +259,16 @@
             });
         }
 
-
-        /**
-        * Hilfsfunktion: Findet die gültige Kapazität für ein bestimmtes Datum.
-        * Geht davon aus, dass die Kapazitäten absteigend nach Datum sortiert sind.
-        * @param {Array} capacities - Die Kapazitätshistorie eines Mitarbeiters.
-        * @param {string} dateString - Das Datum des Kalendertages (z.B. "2025-09-10").
-        * @returns {number|null} Die Kapazität in Prozent oder null, wenn keine gültig ist.
-        */
         function getCapacityForDate(capacities, dateString) {
-            // console.log('Info Employee.Tag:', dateString);
+            /**
+            * Hilfsfunktion: Findet die gültige Kapazität für ein bestimmtes Datum.
+            * Geht davon aus, dass die Kapazitäten absteigend nach Datum sortiert sind.
+            * @param {Array} capacities - Die Kapazitätshistorie eines Mitarbeiters.
+            * @param {string} dateString - Das Datum des Kalendertages (z.B. "2025-09-10").
+            * @returns {number|null} Die Kapazität in Prozent oder null, wenn keine gültig ist.
+            */
+            // console.log('getCapacityForDate Tag:        ', dateString);
+            // console.log('getCapacityForDate capacities: ', capacities);
             // Sicherheitsprüfung für den Fall, dass ungültige Daten übergeben werden
             if (typeof dateString !== 'string' || !dateString || !capacities || capacities.length === 0) {
                 return null;
@@ -289,7 +314,7 @@
                             highlight: dateString === capacity.start_date
                         };
                         
-                        // console.log(`TREFFER: `, activeCapacity);
+                        // onsole.log(`TREFFER: `, activeCapacity);
                         return activeCapacity;
                     } 
                 }
@@ -299,30 +324,34 @@
             // console.log(`-> KEIN TREFFER für diesen Tag gefunden.`);
             return null; // Kein gültiger Kapazitätseintrag gefunden
         }
-
-        /**
-        * NEUE FUNKTION: Berechnet die Verfügbarkeit eines Mitarbeiters für einen bestimmten Tag.
-        */
+      
         function getAvailabilityForDate(day, employee) {
+            /**
+            * Berechnet die Verfügbarkeit eines Mitarbeiters für einen bestimmten Tag.
+            */
+            // console.log('.    - getAvailabilityForDate (day):      ',day);
+            // console.log('.    - getAvailabilityForDate (employee): ',employee);
             // Regel 1: Wenn es ein Feiertag ist, ist die Verfügbarkeit 0.
             if (day.isHoliday) {
+                // console.log('.    - getAvailabilityForDate (return) = feiertag');
                 return 0;
             }
             // Regel 2: Wenn der Mitarbeiter abwesend ist, ist die Verfügbarkeit 0.
             if (employee.absences && employee.absences.includes(day.date)) {
+                // console.log('.    - getAvailabilityForDate (return) = abwesend');
                 return 0;
             }
             // Ansonsten entspricht die Verfügbarkeit der gültigen MAK-Kapazität.
             const capacityInfo = getCapacityForDate(employee.capacities, day.date);
+            // console.log('.    - getAvailabilityForDate (return) = ', capacityInfo);
             return capacityInfo ? capacityInfo.value : 0; // Gehe von 0 aus, wenn keine Kapazität definiert ist
         }
-
-
-        /**
-        * NEUE HILFSFUNKTION: Berechnet eine Farbe für einen Prozentwert
-        * auf einer Skala von Rot (0%) über Gelb (50%) zu Grün (100%).
-        */
+       
         function getColorForPercentage(percent) {
+            /**
+            * NEUE HILFSFUNKTION: Berechnet eine Farbe für einen Prozentwert
+            * auf einer Skala von Rot (0%) über Gelb (50%) zu Grün (100%).
+            */
             if (typeof percent !== 'number') return ''; // Keine Farbe, wenn der Wert ungültig ist
 
             // Begrenze den Wert auf den Bereich 0-100
@@ -337,7 +366,6 @@
             // Sättigung und Helligkeit können wir konstant halten, um lebendige Farben zu erhalten.
             return hueValue;
         }
-
 
         function getWorkloadColor(workload, settings) {
             /**
@@ -366,8 +394,6 @@
             }
         }
 
-
-
         function countWorkdays(startDateStr, endDateStr, holidays, absences = []) {
             /**
             * HILFSFUNKTION: Zählt die Arbeitstage zwischen zwei Daten.
@@ -394,7 +420,6 @@
             // console.log(' - Dauer: ', count);
             return count > 0 ? count : 1; // Division durch Null vermeiden
         }
-
         
         function getTaskEffortForDate(day, employee, holidays) {
             /**
@@ -480,11 +505,11 @@
 
             return totalEffort;
         }
-
-        /**
-        * Blendet die Aufgabendetails ein oder aus.
-        */
+     
         function toggleTaskDetails(clickedRow) {
+            /**
+            * Blendet die Aufgabendetails ein oder aus.
+            */
             const nextRow = clickedRow.nextElementSibling;
 
             // Wenn Details schon sichtbar sind, ausblenden
@@ -557,10 +582,12 @@
         }
 
 
+        
 
 
 
         function updateCalendar() {
+            const viewType = document.querySelector('input[name="view"]:checked').value;
             fetch('${pageContext.request.contextPath}/calendar-overview/data?' + new URLSearchParams({
                 year: currentDate.getFullYear(),
                 month: currentDate.getMonth() + 1
@@ -588,19 +615,10 @@
             })
             .then(data => {
                 const monthNames = ["Januar", "Februar", "März", "April", "Mai", "Juni", "Juli", "August", "September", "Oktober", "November", "Dezember"];
-                document.getElementById('currentMonth').textContent = monthNames[currentDate.getMonth()] + ' ' + currentDate.getFullYear();
+                const currentMonthText = monthNames[currentDate.getMonth()] + ' ' + currentDate.getFullYear();
+                document.getElementById('currentMonth').textContent = currentMonthText;
+                console.log('Data: ',data);
 
-                const headerRow = document.querySelector('#calendarGrid thead tr');
-                headerRow.innerHTML = '<th class="employee-name">Mitarbeiter</th>';
-                data.days.forEach(day => {
-                    const th = document.createElement('th');
-                    th.textContent = day.dayOfMonth;
-                    if (day.isWeekend) th.classList.add('weekend');
-                    headerRow.appendChild(th);
-                });
-
-                const tbody = document.querySelector('#calendarGrid tbody');
-                tbody.innerHTML = '';
 
                 // Status der Checkboxen auslesen
                 const showMakCapacity = document.querySelector('input[value="mak"]').checked;
@@ -610,301 +628,510 @@
                 const showWorkload = document.querySelector('input[value="workload"]').checked;
                 const showWorkloadTeam = document.querySelector('input[value="workload_team"]').checked;
                 const showRemaining = document.querySelector('input[value="remaining"]').checked;
-                const showRemainingTeam = document.querySelector('input[value="remainingTeam"]').checked;
+                const showRemainingTeam = document.querySelector('input[value="remainingTeam"]').checked;                
+
+                const thead = document.querySelector('#calendarGrid thead');
+                const tbody = document.querySelector('#calendarGrid tbody');
+
+                // Stellt sicher, dass die Tabellenteile existieren, bevor sie geleert werden
+                if (!thead || !tbody) {
+                    console.error("Fehler: <thead> oder <tbody> wurde in der Tabelle nicht gefunden.");
+                    return;
+                }
+                thead.innerHTML = '';
+                tbody.innerHTML = '';
+
+                
 
 
-                const holidays = data.days.filter(d => d.isHoliday);
+                if (viewType === 'weeks') {
+                    // --- Wochenansicht ---
+                    // fullWidthMonthCell.colSpan = 21; // Mitarbeiter + 20 Wochen
 
-                // console.log('Vom Server erhaltene Daten:', data); 
+                    const monthHeaderRow = document.createElement('tr');
+                    monthHeaderRow.innerHTML = '<th class="employee-name" style="border:0;"></th>';
 
-                Object.entries(data.departments).forEach(([department, employees]) => {
-                    const headerRow = document.createElement('tr');
-                    headerRow.classList.add('department-header');
-                    const headerCell = document.createElement('td');
-                    headerCell.textContent = department;
-                    headerCell.colSpan = data.days.length + 1;
-                    headerRow.appendChild(headerCell);
-                    tbody.appendChild(headerRow);
+                    const weekHeaderRow = document.createElement('tr');
+                    weekHeaderRow.innerHTML = '<th class="employee-name">KW</th>';
 
-                    employees.forEach(employee => {
-                        // 1. Hauptzeile für den Mitarbeiter erstellen (wie bisher)
-                        const tr = document.createElement('tr');
-                        const nameCell = document.createElement('td');
-                        nameCell.textContent = employee.name;
-                        nameCell.classList.add('employee-name');
-                        tr.appendChild(nameCell);
+                    let firstDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+                    let monthMap = new Map();
 
-                        data.days.forEach(day => {
-                            const td = document.createElement('td');
-                            if (day.isWeekend) {
-                                td.classList.add('weekend');
-                            } else if (day.isHoliday) {
-                                td.classList.add('holiday');
-                                td.title = day.holidayName;
-                            } else if (employee.absences.includes(day.date)) {
-                                td.classList.add('absence');
-                            } else {
-                                td.classList.add('workday');
+                    for (let i = 0; i < 20; i++) {
+                        let weekDate = new Date(firstDayOfMonth.getTime());
+                        weekDate.setDate(weekDate.getDate() + (i * 7));
+                        const month = monthNames[weekDate.getMonth()];
+                        if (!monthMap.has(month)) {
+                            monthMap.set(month, 0);
+                        }
+                        monthMap.set(month, monthMap.get(month) + 1);
+
+                        const th = document.createElement('th');
+                        th.textContent = getWeekNumber(weekDate);
+                        weekHeaderRow.appendChild(th);
+                    }
+
+                    monthMap.forEach((colSpan, month) => {
+                        const th = document.createElement('th');
+                        th.colSpan = colSpan;
+                        th.textContent = month;
+                        monthHeaderRow.appendChild(th);
+                    });
+
+                    thead.appendChild(monthHeaderRow);
+                    thead.appendChild(weekHeaderRow);
+
+
+                    /**
+                    Object.entries(data.departments).forEach(([department, employees]) => {
+                        const departmentRow = document.createElement('tr');
+                        departmentRow.classList.add('department-header');
+                        const departmentCell = document.createElement('td');
+                        departmentCell.textContent = department;
+                        departmentCell.colSpan = 21;
+                        departmentRow.appendChild(departmentCell);
+                        tbody.appendChild(departmentRow);
+
+                        employees.forEach(employee => {
+                            const tr = document.createElement('tr');
+                            const nameCell = document.createElement('td');
+                            nameCell.textContent = employee.name;
+                            nameCell.classList.add('employee-name');
+                            tr.appendChild(nameCell);
+
+                            for (let i = 0; i < 20; i++) {
+                                const td = document.createElement('td');
+                                tr.appendChild(td);
                             }
-                            tr.appendChild(td);
+                            tbody.appendChild(tr);
                         });
-                        tbody.appendChild(tr);
+                    });
+                    */
 
-                        // 2. Wenn Checkbox aktiv ist, die Kapazitätszeile erstellen
-                        if (showMakCapacity) {
-                            const makRow = document.createElement('tr');
-                            makRow.classList.add('detail-row'); // Eigene Klasse für Styling
-                            // console.log('Info Employee.Kapa:', employee.capacities);
-                            // console.log('Info Employee.Abwesenheit:', employee.absences);
+                } else {
+                    // Zeile für den Monatsnamen über die gesamte Breite
+                    const fullWidthMonthRow = document.createElement('tr');
+                    const fullWidthMonthCell = document.createElement('th');
+                    fullWidthMonthCell.textContent = currentMonthText;
+                    fullWidthMonthCell.style.textAlign = 'center';
+                    fullWidthMonthRow.appendChild(fullWidthMonthCell);
+                    thead.appendChild(fullWidthMonthRow);
 
-                            const makNameCell = document.createElement('td');
-                            makNameCell.textContent = 'MAK-Kapazität';
-                            makNameCell.classList.add('employee-name', 'detail-row-label');
-                            makRow.appendChild(makNameCell);
 
-                            data.days.forEach(day => {
-                                const td = document.createElement('td');
-                                const capacity = getCapacityForDate(employee.capacities, day.date);
-                                // console.log('Info Employee.Kapa:', capacity);
-                                if (capacity !== null) {
-                                    // td.textContent = capacity + '%';
-                                    if (!day.isWeekend && !day.isHoliday) {
-                                        td.textContent = (capacity.value/100).toFixed(2);
-                                        // Wenn das highlight-Flag gesetzt ist, die CSS-Klasse hinzufügen
-                                        if (capacity.highlight) {
-                                            td.classList.add('highlight');
+                    // --- Tagesansicht (Originalfunktionalität) ---
+                    fullWidthMonthCell.colSpan = data.days.length + 1;
+
+                    const dayHeaderRow = document.createElement('tr');
+                    dayHeaderRow.innerHTML = '<th class="employee-name">Tag</th>';
+                    data.days.forEach(day => {
+                        const th = document.createElement('th');
+                        th.textContent = day.dayOfMonth;
+                        if (day.isWeekend) th.classList.add('weekend');
+                        dayHeaderRow.appendChild(th);
+                    });
+                    thead.appendChild(dayHeaderRow);
+
+
+                    const holidays = data.days.filter(d => d.isHoliday);
+
+                    // console.log('Vom Server erhaltene Daten:', data); 
+                }
+
+                    Object.entries(data.departments).forEach(([department, employees]) => {
+                        const headerRow = document.createElement('tr');
+                        headerRow.classList.add('department-header');
+                        const headerCell = document.createElement('td');
+                        headerCell.textContent = department;
+                        if (viewType === 'weeks') {
+                            headerCell.colSpan = 21; // Mitarbeiter + 20 Wochen
+                        } else {    
+                            headerCell.colSpan = data.days.length + 1;
+                        }
+                        
+                        headerRow.appendChild(headerCell);
+                        tbody.appendChild(headerRow);
+
+                        employees.forEach(employee => {
+                            // 1. Hauptzeile für den Mitarbeiter erstellen (wie bisher)
+                            const tr = document.createElement('tr');
+                            const nameCell = document.createElement('td');
+                            nameCell.textContent = employee.name;
+                            nameCell.classList.add('employee-name');
+                            tr.appendChild(nameCell);
+
+                            if (viewType === 'days') {
+                                data.days.forEach(day => {
+                                    const td = document.createElement('td');
+                                    if (day.isWeekend) {
+                                        td.classList.add('weekend');
+                                    } else if (day.isHoliday) {
+                                        td.classList.add('holiday');
+                                        td.title = day.holidayName;
+                                    } else if (employee.absences.includes(day.date)) {
+                                        td.classList.add('absence');
+                                    } else {
+                                        td.classList.add('workday');
+                                    }
+                                    tr.appendChild(td);
+                                });
+                            }
+
+                            tbody.appendChild(tr);
+
+                            // 2. Wenn Checkbox aktiv ist, die Kapazitätszeile erstellen
+                            if (showMakCapacity) {
+                                const makRow = document.createElement('tr');
+                                makRow.classList.add('detail-row'); // Eigene Klasse für Styling
+                                // console.log('Info Employee.Kapa:', employee.capacities);
+                                // console.log('Info Employee.Abwesenheit:', employee.absences);
+
+                                const makNameCell = document.createElement('td');
+                                makNameCell.textContent = 'MAK-Kapazität';
+                                makNameCell.classList.add('employee-name', 'detail-row-label');
+                                makRow.appendChild(makNameCell);
+
+                                if (viewType === 'days') {
+                                    data.days.forEach(day => {
+                                        const td = document.createElement('td');
+                                        const capacity = getCapacityForDate(employee.capacities, day.date);
+                                        // console.log('Info Employee.Kapa:', capacity);
+                                        if (capacity !== null) {
+                                            // td.textContent = capacity + '%';
+                                            if (!day.isWeekend && !day.isHoliday) {
+                                                td.textContent = (capacity.value/100).toFixed(2);
+                                                // Wenn das highlight-Flag gesetzt ist, die CSS-Klasse hinzufügen
+                                                if (capacity.highlight) {
+                                                    td.classList.add('highlight');
+                                                }
+                                            }
                                         }
+                                        // Hier können optional noch Klassen für Styling (weekend, etc.) hinzugefügt werden
+                                        if (day.isWeekend) td.classList.add('weekend');
+                                        makRow.appendChild(td);
+                                    });
+                                } else if (viewType === 'weeks') {
+                                    // Wochenansicht: Durchschnittliche Kapazität pro Woche berechnen
+                                    let firstDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+                                    for (let i = 0; i < 20; i++) {
+                                        let weekDate = new Date(firstDayOfMonth.getTime()); 
+                                        weekDate.setDate(weekDate.getDate() + (i * 7));
+                                        // Berechne Start- und Enddatum der Woche (Montag bis Sonntag)
+                                        let weekStart = new Date(weekDate);
+                                        weekStart.setDate(weekStart.getDate() - weekStart.getDay() + 2); // Montag
+                                        let weekEnd = new Date(weekStart);
+                                        weekEnd.setDate(weekEnd.getDate() + 6); // Sonntag
+                                        
+                                        let daysInWeek;
+                                        for (let j = 0; j < 7; j++) {
+                                            let dDate = new Date(weekStart);
+                                            dDate.setDate(dDate.getDate() + j);
+                                            let dDateStr = dDate.toISOString().split('T')[0];
+                                            let dayInfo = data.days.find(d => d.date === dDateStr);
+                                            if (dDateStr) {
+                                                if (!daysInWeek) daysInWeek = [];   
+                                                daysInWeek.push(dDateStr);
+                                            }
+                                        }
+                                        
+                                        // Berechne die durchschnittliche Kapazität für diese Tage
+                                        let totalCapacity = 0;
+                                        let count = 0;
+                                        daysInWeek.forEach(day => {
+                                            let cap = getCapacityForDate(employee.capacities, day);
+                                            if (cap !== null) {
+                                                totalCapacity += cap.value;
+                                                count++;
+                                            }
+                                        });
+
+                                        const avgCapacity = count > 0 ? (totalCapacity / count) : null;
+                                        const td = document.createElement('td');
+                                        if (avgCapacity !== null) {
+                                            td.textContent = (avgCapacity/100).toFixed(2);
+                                        }
+                                        makRow.appendChild(td);
                                     }
                                 }
-                                // Hier können optional noch Klassen für Styling (weekend, etc.) hinzugefügt werden
-                                if (day.isWeekend) td.classList.add('weekend');
-                                makRow.appendChild(td);
-                            });
-                            tbody.appendChild(makRow);
-                        }
-                        // 3. Verfügbarkeit anzeigen ---
-                        if (showAvailability) {
-                            const availabilityRow = document.createElement('tr');
-                            availabilityRow.classList.add('detail-row');
+                                tbody.appendChild(makRow);
+                            }
+                            // 3. Verfügbarkeit anzeigen ---
+                            if (showAvailability) {
+                                const availabilityRow = document.createElement('tr');
+                                availabilityRow.classList.add('detail-row');
 
-                            const availabilityLabelCell = document.createElement('td');
-                            availabilityLabelCell.textContent = 'Verfügbarkeit';
-                            availabilityLabelCell.classList.add('employee-name', 'detail-row-label');
-                            availabilityRow.appendChild(availabilityLabelCell);
+                                const availabilityLabelCell = document.createElement('td');
+                                availabilityLabelCell.textContent = 'Verfügbarkeit';
+                                availabilityLabelCell.classList.add('employee-name', 'detail-row-label');
+                                availabilityRow.appendChild(availabilityLabelCell);
 
-                            data.days.forEach(day => {
-                                const td = document.createElement('td');
-                                const availability = getAvailabilityForDate(day, employee);
-                                if (!day.isWeekend && !day.isHoliday) {
-                                    td.textContent = (availability/100).toFixed(2);
-                                }
-                                if (day.isWeekend) td.classList.add('weekend');
-                                availabilityRow.appendChild(td);
-                            });
-                            tbody.appendChild(availabilityRow);
-                        }
-
-                        // 4. Aufgaben anzeigen
-                        if (showTasks) {
-                            const employeeTaskRow = document.createElement('tr');
-                            employeeTaskRow.classList.add('detail-row', 'expandable');
-                            employeeTaskRow.dataset.employeeId = employee.id;
-                            employeeTaskRow.dataset.holidays = JSON.stringify(holidays);
-                            employeeTaskRow.dataset.days = JSON.stringify(data.days);
-                            employeeTaskRow.dataset.tasks = JSON.stringify(employee.tasks || []); // Wichtig: Leeres Array als Fallback
-                            employeeTaskRow.dataset.absences = JSON.stringify(employee.absences || []);
-
-                            const TaskLabelCell = document.createElement('td');
-                            TaskLabelCell.innerHTML = `<span class="arrow-icon">&#9662;</span> Aufgaben`;
-                            // TaskLabelCell.textContent = 'Aufgaben';
-                            TaskLabelCell.classList.add('employee-name', 'detail-row-label');
-                            employeeTaskRow.appendChild(TaskLabelCell);
-
-                            data.days.forEach(day => {
-                                const td = document.createElement('td');
-                                const taskeffort = getTaskEffortForDate(day, employee, holidays);
-                                // console.log ('Datum: ', day.date + ' --> ' + taskeffort + ' (' + employee.name + ')');
-                                if (!day.isWeekend && !day.isHoliday) {
-                                    td.textContent = (taskeffort).toFixed(2);
-                                }
-                                if (day.isWeekend) td.classList.add('weekend');
-                                employeeTaskRow.appendChild(td);
-                            });
-                            tbody.appendChild(employeeTaskRow);                            
-                        }
+                                if (viewType === 'days') {
+                                    data.days.forEach(day => {
+                                        const td = document.createElement('td');
+                                        const availability = getAvailabilityForDate(day, employee);
+                                        if (!day.isWeekend && !day.isHoliday) {
+                                            td.textContent = (availability/100).toFixed(2);
+                                        }
+                                        if (day.isWeekend) td.classList.add('weekend');
+                                        availabilityRow.appendChild(td);
+                                    });
+                                    tbody.appendChild(availabilityRow);
+                                } else if (viewType === 'weeks') {
+                                    // Wochenansicht
+                                    let firstDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+                                    for (let i = 0; i < 20; i++) {
+                                        let weekDate = new Date(firstDayOfMonth.getTime()); 
+                                        weekDate.setDate(weekDate.getDate() + (i * 7));
+                                        // Berechne Start- und Enddatum der Woche (Montag bis Sonntag)
+                                        let weekStart = new Date(weekDate);
+                                        weekStart.setDate(weekStart.getDate() - weekStart.getDay() + 2); // Montag
+                                        let weekEnd = new Date(weekStart);
+                                        weekEnd.setDate(weekEnd.getDate() + 6); // Sonntag
+                                        
+                                        let daysInWeek;
+                                        for (let j = 0; j < 7; j++) {
+                                            let dDate = new Date(weekStart);
+                                            dDate.setDate(dDate.getDate() + j);
+                                            let dDateStr = dDate.toISOString().split('T')[0];
+                                            let dayInfo = data.daysinweeks.find(d => d.date === dDateStr);
+                                            console.log(' DayInfo: ',dayInfo);
+                                            if (dDateStr) {
+                                                if (!daysInWeek) daysInWeek = [];   
+                                                daysInWeek.push(dayInfo);
+                                            }
+                                        }
+                                        
+                                        console.log ('.  Woche: ',daysInWeek);
 
 
-                        // 5. Auslastung (Workload) anzeigen
-                        if (showWorkload) {
-                            const WorkloadRow = document.createElement('tr');
-                            WorkloadRow.classList.add('detail-row');
+                                        // Berechne die Summe der Woche
+                                        let total = 0;
+                                        daysInWeek.forEach(day => {
+                                            // let cap = getCapacityForDate(employee.capacities, day);
+                                            console.log('läuft am ', day.date + ' für ' + employee.name);
+                                            let availability = getAvailabilityForDate(day, employee);
+                                            console.log('  Verfügbarkeit = ', availability);
+                                            if (availability !== null && day.isholiday !== true && day.isWeekend !== true) {
+                                                total += availability;
+                                            }
+                                            // console.log('  Total = ', total);
+                                        });
 
-                            const WorkloadLabelCell = document.createElement('td');
-                            WorkloadLabelCell.textContent = 'Auslastung';
-                            WorkloadLabelCell.classList.add('employee-name', 'detail-row-label');
-                            WorkloadRow.appendChild(WorkloadLabelCell);
-
-                            data.days.forEach(day => {
-                                const td = document.createElement('td');
-                                const taskeffort = getTaskEffortForDate(day, employee, holidays);
-                                const availability = getAvailabilityForDate(day, employee);
-                                const workload = taskeffort / (availability/100)*100;
-                                if (!day.isWeekend && !day.isHoliday) {
-                                    if (!availability==0) {
-                                        td.textContent = (workload).toFixed(0) + '%';
-                                        td.style.backgroundColor = getWorkloadColor(workload, data.colors);
+                                        const td = document.createElement('td');
+                                        if (total !== null) {
+                                            td.textContent = (total/100).toFixed(2);
+                                        }
+                                        availabilityRow.appendChild(td);
+                                        tbody.appendChild(availabilityRow);
                                     }
-                                    else {
-                                        if (workload > 0) {
-                                            td.textContent = '∞';
+                                
+                                }
+                            }
+
+                            // 4. Aufgaben anzeigen
+                            if (showTasks) {
+                                const employeeTaskRow = document.createElement('tr');
+                                employeeTaskRow.classList.add('detail-row', 'expandable');
+                                employeeTaskRow.dataset.employeeId = employee.id;
+                                employeeTaskRow.dataset.holidays = JSON.stringify(holidays);
+                                employeeTaskRow.dataset.days = JSON.stringify(data.days);
+                                employeeTaskRow.dataset.tasks = JSON.stringify(employee.tasks || []); // Wichtig: Leeres Array als Fallback
+                                employeeTaskRow.dataset.absences = JSON.stringify(employee.absences || []);
+
+                                const TaskLabelCell = document.createElement('td');
+                                TaskLabelCell.innerHTML = `<span class="arrow-icon">&#9662;</span> Aufgaben`;
+                                // TaskLabelCell.textContent = 'Aufgaben';
+                                TaskLabelCell.classList.add('employee-name', 'detail-row-label');
+                                employeeTaskRow.appendChild(TaskLabelCell);
+
+                                data.days.forEach(day => {
+                                    const td = document.createElement('td');
+                                    const taskeffort = getTaskEffortForDate(day, employee, holidays);
+                                    // console.log ('Datum: ', day.date + ' --> ' + taskeffort + ' (' + employee.name + ')');
+                                    if (!day.isWeekend && !day.isHoliday) {
+                                        td.textContent = (taskeffort).toFixed(2);
+                                    }
+                                    if (day.isWeekend) td.classList.add('weekend');
+                                    employeeTaskRow.appendChild(td);
+                                });
+                                tbody.appendChild(employeeTaskRow);                            
+                            }
+
+
+                            // 5. Auslastung (Workload) anzeigen
+                            if (showWorkload) {
+                                const WorkloadRow = document.createElement('tr');
+                                WorkloadRow.classList.add('detail-row');
+
+                                const WorkloadLabelCell = document.createElement('td');
+                                WorkloadLabelCell.textContent = 'Auslastung';
+                                WorkloadLabelCell.classList.add('employee-name', 'detail-row-label');
+                                WorkloadRow.appendChild(WorkloadLabelCell);
+
+                                data.days.forEach(day => {
+                                    const td = document.createElement('td');
+                                    const taskeffort = getTaskEffortForDate(day, employee, holidays);
+                                    const availability = getAvailabilityForDate(day, employee);
+                                    const workload = taskeffort / (availability/100)*100;
+                                    if (!day.isWeekend && !day.isHoliday) {
+                                        if (!availability==0) {
+                                            td.textContent = (workload).toFixed(0) + '%';
                                             td.style.backgroundColor = getWorkloadColor(workload, data.colors);
                                         }
-                                        else
-                                        td.textContent = '';
+                                        else {
+                                            if (workload > 0) {
+                                                td.textContent = '∞';
+                                                td.style.backgroundColor = getWorkloadColor(workload, data.colors);
+                                            }
+                                            else
+                                            td.textContent = '';
+                                        }
                                     }
-                                }
 
-                                // const wlcolor = getWorkloadColor(workload, data.colors);
+                                    // const wlcolor = getWorkloadColor(workload, data.colors);
 
-                                // console.log ('Color: ', workload + ' / ' + wlcolor);
-                                // td.style.backgroundColor = getWorkloadColor(taskeffort, data.colors);
-                                if (day.isWeekend) td.classList.add('weekend');
-                                WorkloadRow.appendChild(td);
-                            });
-                            tbody.appendChild(WorkloadRow);                            
-                        }
-
+                                    // console.log ('Color: ', workload + ' / ' + wlcolor);
+                                    // td.style.backgroundColor = getWorkloadColor(taskeffort, data.colors);
+                                    if (day.isWeekend) td.classList.add('weekend');
+                                    WorkloadRow.appendChild(td);
+                                });
+                                tbody.appendChild(WorkloadRow);                            
+                            }
 
 
-                        // #6 Rest-Verfügbarkeit anzeigen
-                        if (showRemaining) {
-                            const RemainingRow = document.createElement('tr');
-                            RemainingRow.classList.add('detail-row');
 
-                            const RemainingLabelCell = document.createElement('td');
-                            RemainingLabelCell.textContent = 'Rest-Verfügbarkeit (MAK)';
-                            RemainingLabelCell.classList.add('employee-name', 'detail-row-label');
-                            RemainingRow.appendChild(RemainingLabelCell);
+                            // #6 Rest-Verfügbarkeit anzeigen
+                            if (showRemaining) {
+                                const RemainingRow = document.createElement('tr');
+                                RemainingRow.classList.add('detail-row');
 
-                            data.days.forEach(day => {
-                                const td = document.createElement('td');
-                                const taskeffort = getTaskEffortForDate(day, employee, holidays);
-                                const availability = getAvailabilityForDate(day, employee);
-                                const remaining = (availability/100) - taskeffort;  
-                                if (remaining < 0) {
-                                    td.style.color  = 'red'; // Hellrot für negative Werte
-                                } 
-                                else if (remaining > 0) {
-                                    td.style.color  = 'green'; // Grün für positive Werte
-                                } 
-                                else {
-                                    td.style.color  = 'grey'; // Schwarz für Null
-                                }
+                                const RemainingLabelCell = document.createElement('td');
+                                RemainingLabelCell.textContent = 'Rest-Verfügbarkeit (MAK)';
+                                RemainingLabelCell.classList.add('employee-name', 'detail-row-label');
+                                RemainingRow.appendChild(RemainingLabelCell);
+
+                                data.days.forEach(day => {
+                                    const td = document.createElement('td');
+                                    const taskeffort = getTaskEffortForDate(day, employee, holidays);
+                                    const availability = getAvailabilityForDate(day, employee);
+                                    const remaining = (availability/100) - taskeffort;  
+                                    if (remaining < 0) {
+                                        td.style.color  = 'red'; // Hellrot für negative Werte
+                                    } 
+                                    else if (remaining > 0) {
+                                        td.style.color  = 'green'; // Grün für positive Werte
+                                    } 
+                                    else {
+                                        td.style.color  = 'grey'; // Schwarz für Null
+                                    }
 
 
-                                if (!day.isWeekend && !day.isHoliday) {
-                                    td.textContent = (remaining).toFixed(2);                                   
-                                }
+                                    if (!day.isWeekend && !day.isHoliday) {
+                                        td.textContent = (remaining).toFixed(2);                                   
+                                    }
 
-                                // td.style.backgroundColor = getWorkloadColor(taskeffort, data.colors);
-                                if (day.isWeekend) td.classList.add('weekend');
-                                RemainingRow.appendChild(td);
-                            });
-                            tbody.appendChild(RemainingRow);                            
-                        }
+                                    // td.style.backgroundColor = getWorkloadColor(taskeffort, data.colors);
+                                    if (day.isWeekend) td.classList.add('weekend');
+                                    RemainingRow.appendChild(td);
+                                });
+                                tbody.appendChild(RemainingRow);                            
+                            }
 
+                        });
                     });
-                });
-
+                
 
                 const allEmployees = Object.values(data.departments).flat();
                 // console.log('Alle Mitarbeiter:', allEmployees);
 
                 // #1: Zusammenfassung für MAK-Kapazität ---
                 if (showMakCapacity) {
-                    // 1. Array für die Tagessummen initialisieren
-                    const dailyTotals = Array(data.days.length).fill(0);
+                    if (viewType === 'days') {
+                        // 1. Array für die Tagessummen initialisieren
+                        const dailyTotals = Array(data.days.length).fill(0);
 
-                    // 2. Durch jeden Tag des Monats iterieren
-                    data.days.forEach((day, index) => {
-                        // Für jeden Tag die Kapazität aller Mitarbeiter aufaddieren
-                        allEmployees.forEach(employee => {
-                            const capacityInfo = getCapacityForDate(employee.capacities, day.date);
-                            // console.log('capacityInfo_2:', capacityInfo);
-                            if (capacityInfo && typeof capacityInfo.value === 'number') {
-                                dailyTotals[index] += capacityInfo.value;
-                            }
+                        // 2. Durch jeden Tag des Monats iterieren
+                        data.days.forEach((day, index) => {
+                            // Für jeden Tag die Kapazität aller Mitarbeiter aufaddieren
+                            allEmployees.forEach(employee => {
+                                const capacityInfo = getCapacityForDate(employee.capacities, day.date);
+                                // console.log('capacityInfo_2:', capacityInfo);
+                                if (capacityInfo && typeof capacityInfo.value === 'number') {
+                                    dailyTotals[index] += capacityInfo.value;
+                                }
+                            });
                         });
-                    });
 
-                    // 3. Die Summenzeile erstellen
-                    const summaryRow = document.createElement('tr');
-                    summaryRow.classList.add('summary-row');
+                        // 3. Die Summenzeile erstellen
+                        const summaryRow = document.createElement('tr');
+                        summaryRow.classList.add('summary-row');
 
-                    const summaryLabelCell = document.createElement('td');
-                    summaryLabelCell.textContent = 'MAK-Kapazität';
-                    summaryLabelCell.classList.add('employee-name', 'summary-label');
-                    summaryRow.appendChild(summaryLabelCell);
+                        const summaryLabelCell = document.createElement('td');
+                        summaryLabelCell.textContent = 'MAK-Kapazität';
+                        summaryLabelCell.classList.add('employee-name', 'summary-label');
+                        summaryRow.appendChild(summaryLabelCell);
 
-                    // 4. Zellen für jede Tagessumme erstellen und füllen
-                    dailyTotals.forEach((total, index) => {
-                        const td = document.createElement('td');
-                        // Summe nur anzeigen, wenn sie größer als 0 ist
-                        // console.log('Summe:', 'Index = ' + index + ': ' + total);
-                        // if (total > 0) {
-                        if (!data.days[index].isWeekend && !data.days[index].isHoliday && total > 0) {                            
-                            td.textContent = (total/100).toFixed(2);
-                        }
-                        if (data.days[index].isWeekend) {
-                            td.classList.add('weekend');
-                        }
-                        summaryRow.appendChild(td);
-                    });
+                        // 4. Zellen für jede Tagessumme erstellen und füllen
+                        dailyTotals.forEach((total, index) => {
+                            const td = document.createElement('td');
+                            // Summe nur anzeigen, wenn sie größer als 0 ist
+                            // console.log('Summe:', 'Index = ' + index + ': ' + total);
+                            // if (total > 0) {
+                            if (!data.days[index].isWeekend && !data.days[index].isHoliday && total > 0) {                            
+                                td.textContent = (total/100).toFixed(2);
+                            }
+                            if (data.days[index].isWeekend) {
+                                td.classList.add('weekend');
+                            }
+                            summaryRow.appendChild(td);
+                        });
 
-                    // 5. Die fertige Zeile an die Tabelle anhängen
-                    tbody.appendChild(summaryRow);
+                        // 5. Die fertige Zeile an die Tabelle anhängen
+                        tbody.appendChild(summaryRow);
+                    }
                 }
                 
                 // #2: Zusammenfassung für Verfügbarkeit ---
                 if (showAvailability) {
-                    // 1. Array für die Tagessummen initialisieren
-                    const dailyAvailabilityTotals = Array(data.days.length).fill(0);
+                    if (viewType === 'days') {
+                        // 1. Array für die Tagessummen initialisieren
+                        const dailyAvailabilityTotals = Array(data.days.length).fill(0);
 
-                    // 2. Durch jeden Tag des Monats iterieren
-                    data.days.forEach((day, index) => {
-                        allEmployees.forEach(employee => {
-                            const availability = getAvailabilityForDate(day, employee);
-                            // if (typeof availability === 'number') {
-                            if (!data.days[index].isWeekend && !data.days[index].isHoliday && typeof availability === 'number') {         
-                                dailyAvailabilityTotals[index] += availability;
-                            }
-                            // console.log('Gesamt: ', index + ' --> ' + dailyAvailabilityTotals[index]);
+                        // 2. Durch jeden Tag des Monats iterieren
+                        data.days.forEach((day, index) => {
+                            allEmployees.forEach(employee => {
+                                const availability = getAvailabilityForDate(day, employee);
+                                // if (typeof availability === 'number') {
+                                if (!data.days[index].isWeekend && !data.days[index].isHoliday && typeof availability === 'number') {         
+                                    dailyAvailabilityTotals[index] += availability;
+                                }
+                                // console.log('Gesamt: ', index + ' --> ' + dailyAvailabilityTotals[index]);
+                            });
                         });
-                    });
 
-                    // 3. Die Summenzeile erstellen
-                    const summaryRow = document.createElement('tr');
-                    summaryRow.classList.add('summary-row');
+                        // 3. Die Summenzeile erstellen
+                        const summaryRow = document.createElement('tr');
+                        summaryRow.classList.add('summary-row');
 
-                    const summaryLabelCell = document.createElement('td');
-                    summaryLabelCell.textContent = 'Verfügbarkeit';
-                    summaryLabelCell.classList.add('employee-name', 'summary-label');
-                    summaryRow.appendChild(summaryLabelCell);
+                        const summaryLabelCell = document.createElement('td');
+                        summaryLabelCell.textContent = 'Verfügbarkeit';
+                        summaryLabelCell.classList.add('employee-name', 'summary-label');
+                        summaryRow.appendChild(summaryLabelCell);
 
-                    // 4. Zellen für jede Tagessumme erstellen und füllen
-                    dailyAvailabilityTotals.forEach((total, index) => {
-                        const td = document.createElement('td');
-                        if (total > 0) {
-                            td.textContent = (total/100).toFixed(2);
-                        }
-                        if (data.days[index].isWeekend) {
-                            td.classList.add('weekend');
-                        }
-                        summaryRow.appendChild(td);
-                    });
+                        // 4. Zellen für jede Tagessumme erstellen und füllen
+                        dailyAvailabilityTotals.forEach((total, index) => {
+                            const td = document.createElement('td');
+                            if (total > 0) {
+                                td.textContent = (total/100).toFixed(2);
+                            }
+                            if (data.days[index].isWeekend) {
+                                td.classList.add('weekend');
+                            }
+                            summaryRow.appendChild(td);
+                        });
 
-                    // 5. Die fertige Zeile an die Tabelle anhängen
-                    tbody.appendChild(summaryRow);
+                        // 5. Die fertige Zeile an die Tabelle anhängen
+                        tbody.appendChild(summaryRow);
+                    }
                 }      
 
                 // #3: Zusammenfassung für Verfügbarkeit in % ---
@@ -1146,14 +1373,10 @@
                 }
             });
         }
-        
-        function changeMonth(delta) {
-            currentDate.setMonth(currentDate.getMonth() + delta);
-            updateCalendar();
-        }
+    
         
         // Initial update
         updateCalendar();
     </script>
 </body>
-</html>
+</html>        

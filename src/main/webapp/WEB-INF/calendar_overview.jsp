@@ -329,16 +329,21 @@
             /**
             * Berechnet die Verfügbarkeit eines Mitarbeiters für einen bestimmten Tag.
             */
+            // console.log('.    - getAvailabilityForDate (day):      ',day);
+            // console.log('.    - getAvailabilityForDate (employee): ',employee);
             // Regel 1: Wenn es ein Feiertag ist, ist die Verfügbarkeit 0.
             if (day.isHoliday) {
+                // console.log('.    - getAvailabilityForDate (return) = feiertag');
                 return 0;
             }
             // Regel 2: Wenn der Mitarbeiter abwesend ist, ist die Verfügbarkeit 0.
             if (employee.absences && employee.absences.includes(day.date)) {
+                // console.log('.    - getAvailabilityForDate (return) = abwesend');
                 return 0;
             }
             // Ansonsten entspricht die Verfügbarkeit der gültigen MAK-Kapazität.
             const capacityInfo = getCapacityForDate(employee.capacities, day.date);
+            // console.log('.    - getAvailabilityForDate (return) = ', capacityInfo);
             return capacityInfo ? capacityInfo.value : 0; // Gehe von 0 aus, wenn keine Kapazität definiert ist
         }
        
@@ -612,7 +617,7 @@
                 const monthNames = ["Januar", "Februar", "März", "April", "Mai", "Juni", "Juli", "August", "September", "Oktober", "November", "Dezember"];
                 const currentMonthText = monthNames[currentDate.getMonth()] + ' ' + currentDate.getFullYear();
                 document.getElementById('currentMonth').textContent = currentMonthText;
-
+                console.log('Data: ',data);
 
 
                 // Status der Checkboxen auslesen
@@ -859,16 +864,67 @@
                                 availabilityLabelCell.classList.add('employee-name', 'detail-row-label');
                                 availabilityRow.appendChild(availabilityLabelCell);
 
-                                data.days.forEach(day => {
-                                    const td = document.createElement('td');
-                                    const availability = getAvailabilityForDate(day, employee);
-                                    if (!day.isWeekend && !day.isHoliday) {
-                                        td.textContent = (availability/100).toFixed(2);
+                                if (viewType === 'days') {
+                                    data.days.forEach(day => {
+                                        const td = document.createElement('td');
+                                        const availability = getAvailabilityForDate(day, employee);
+                                        if (!day.isWeekend && !day.isHoliday) {
+                                            td.textContent = (availability/100).toFixed(2);
+                                        }
+                                        if (day.isWeekend) td.classList.add('weekend');
+                                        availabilityRow.appendChild(td);
+                                    });
+                                    tbody.appendChild(availabilityRow);
+                                } else if (viewType === 'weeks') {
+                                    // Wochenansicht
+                                    let firstDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+                                    for (let i = 0; i < 20; i++) {
+                                        let weekDate = new Date(firstDayOfMonth.getTime()); 
+                                        weekDate.setDate(weekDate.getDate() + (i * 7));
+                                        // Berechne Start- und Enddatum der Woche (Montag bis Sonntag)
+                                        let weekStart = new Date(weekDate);
+                                        weekStart.setDate(weekStart.getDate() - weekStart.getDay() + 2); // Montag
+                                        let weekEnd = new Date(weekStart);
+                                        weekEnd.setDate(weekEnd.getDate() + 6); // Sonntag
+                                        
+                                        let daysInWeek;
+                                        for (let j = 0; j < 7; j++) {
+                                            let dDate = new Date(weekStart);
+                                            dDate.setDate(dDate.getDate() + j);
+                                            let dDateStr = dDate.toISOString().split('T')[0];
+                                            let dayInfo = data.daysinweeks.find(d => d.date === dDateStr);
+                                            console.log(' DayInfo: ',dayInfo);
+                                            if (dDateStr) {
+                                                if (!daysInWeek) daysInWeek = [];   
+                                                daysInWeek.push(dayInfo);
+                                            }
+                                        }
+                                        
+                                        console.log ('.  Woche: ',daysInWeek);
+
+
+                                        // Berechne die Summe der Woche
+                                        let total = 0;
+                                        daysInWeek.forEach(day => {
+                                            // let cap = getCapacityForDate(employee.capacities, day);
+                                            console.log('läuft am ', day.date + ' für ' + employee.name);
+                                            let availability = getAvailabilityForDate(day, employee);
+                                            console.log('  Verfügbarkeit = ', availability);
+                                            if (availability !== null && day.isholiday !== true && day.isWeekend !== true) {
+                                                total += availability;
+                                            }
+                                            // console.log('  Total = ', total);
+                                        });
+
+                                        const td = document.createElement('td');
+                                        if (total !== null) {
+                                            td.textContent = (total/100).toFixed(2);
+                                        }
+                                        availabilityRow.appendChild(td);
+                                        tbody.appendChild(availabilityRow);
                                     }
-                                    if (day.isWeekend) td.classList.add('weekend');
-                                    availabilityRow.appendChild(td);
-                                });
-                                tbody.appendChild(availabilityRow);
+                                
+                                }
                             }
 
                             // 4. Aufgaben anzeigen
@@ -989,89 +1045,93 @@
 
                 // #1: Zusammenfassung für MAK-Kapazität ---
                 if (showMakCapacity) {
-                    // 1. Array für die Tagessummen initialisieren
-                    const dailyTotals = Array(data.days.length).fill(0);
+                    if (viewType === 'days') {
+                        // 1. Array für die Tagessummen initialisieren
+                        const dailyTotals = Array(data.days.length).fill(0);
 
-                    // 2. Durch jeden Tag des Monats iterieren
-                    data.days.forEach((day, index) => {
-                        // Für jeden Tag die Kapazität aller Mitarbeiter aufaddieren
-                        allEmployees.forEach(employee => {
-                            const capacityInfo = getCapacityForDate(employee.capacities, day.date);
-                            // console.log('capacityInfo_2:', capacityInfo);
-                            if (capacityInfo && typeof capacityInfo.value === 'number') {
-                                dailyTotals[index] += capacityInfo.value;
-                            }
+                        // 2. Durch jeden Tag des Monats iterieren
+                        data.days.forEach((day, index) => {
+                            // Für jeden Tag die Kapazität aller Mitarbeiter aufaddieren
+                            allEmployees.forEach(employee => {
+                                const capacityInfo = getCapacityForDate(employee.capacities, day.date);
+                                // console.log('capacityInfo_2:', capacityInfo);
+                                if (capacityInfo && typeof capacityInfo.value === 'number') {
+                                    dailyTotals[index] += capacityInfo.value;
+                                }
+                            });
                         });
-                    });
 
-                    // 3. Die Summenzeile erstellen
-                    const summaryRow = document.createElement('tr');
-                    summaryRow.classList.add('summary-row');
+                        // 3. Die Summenzeile erstellen
+                        const summaryRow = document.createElement('tr');
+                        summaryRow.classList.add('summary-row');
 
-                    const summaryLabelCell = document.createElement('td');
-                    summaryLabelCell.textContent = 'MAK-Kapazität';
-                    summaryLabelCell.classList.add('employee-name', 'summary-label');
-                    summaryRow.appendChild(summaryLabelCell);
+                        const summaryLabelCell = document.createElement('td');
+                        summaryLabelCell.textContent = 'MAK-Kapazität';
+                        summaryLabelCell.classList.add('employee-name', 'summary-label');
+                        summaryRow.appendChild(summaryLabelCell);
 
-                    // 4. Zellen für jede Tagessumme erstellen und füllen
-                    dailyTotals.forEach((total, index) => {
-                        const td = document.createElement('td');
-                        // Summe nur anzeigen, wenn sie größer als 0 ist
-                        // console.log('Summe:', 'Index = ' + index + ': ' + total);
-                        // if (total > 0) {
-                        if (!data.days[index].isWeekend && !data.days[index].isHoliday && total > 0) {                            
-                            td.textContent = (total/100).toFixed(2);
-                        }
-                        if (data.days[index].isWeekend) {
-                            td.classList.add('weekend');
-                        }
-                        summaryRow.appendChild(td);
-                    });
+                        // 4. Zellen für jede Tagessumme erstellen und füllen
+                        dailyTotals.forEach((total, index) => {
+                            const td = document.createElement('td');
+                            // Summe nur anzeigen, wenn sie größer als 0 ist
+                            // console.log('Summe:', 'Index = ' + index + ': ' + total);
+                            // if (total > 0) {
+                            if (!data.days[index].isWeekend && !data.days[index].isHoliday && total > 0) {                            
+                                td.textContent = (total/100).toFixed(2);
+                            }
+                            if (data.days[index].isWeekend) {
+                                td.classList.add('weekend');
+                            }
+                            summaryRow.appendChild(td);
+                        });
 
-                    // 5. Die fertige Zeile an die Tabelle anhängen
-                    tbody.appendChild(summaryRow);
+                        // 5. Die fertige Zeile an die Tabelle anhängen
+                        tbody.appendChild(summaryRow);
+                    }
                 }
                 
                 // #2: Zusammenfassung für Verfügbarkeit ---
                 if (showAvailability) {
-                    // 1. Array für die Tagessummen initialisieren
-                    const dailyAvailabilityTotals = Array(data.days.length).fill(0);
+                    if (viewType === 'days') {
+                        // 1. Array für die Tagessummen initialisieren
+                        const dailyAvailabilityTotals = Array(data.days.length).fill(0);
 
-                    // 2. Durch jeden Tag des Monats iterieren
-                    data.days.forEach((day, index) => {
-                        allEmployees.forEach(employee => {
-                            const availability = getAvailabilityForDate(day, employee);
-                            // if (typeof availability === 'number') {
-                            if (!data.days[index].isWeekend && !data.days[index].isHoliday && typeof availability === 'number') {         
-                                dailyAvailabilityTotals[index] += availability;
-                            }
-                            // console.log('Gesamt: ', index + ' --> ' + dailyAvailabilityTotals[index]);
+                        // 2. Durch jeden Tag des Monats iterieren
+                        data.days.forEach((day, index) => {
+                            allEmployees.forEach(employee => {
+                                const availability = getAvailabilityForDate(day, employee);
+                                // if (typeof availability === 'number') {
+                                if (!data.days[index].isWeekend && !data.days[index].isHoliday && typeof availability === 'number') {         
+                                    dailyAvailabilityTotals[index] += availability;
+                                }
+                                // console.log('Gesamt: ', index + ' --> ' + dailyAvailabilityTotals[index]);
+                            });
                         });
-                    });
 
-                    // 3. Die Summenzeile erstellen
-                    const summaryRow = document.createElement('tr');
-                    summaryRow.classList.add('summary-row');
+                        // 3. Die Summenzeile erstellen
+                        const summaryRow = document.createElement('tr');
+                        summaryRow.classList.add('summary-row');
 
-                    const summaryLabelCell = document.createElement('td');
-                    summaryLabelCell.textContent = 'Verfügbarkeit';
-                    summaryLabelCell.classList.add('employee-name', 'summary-label');
-                    summaryRow.appendChild(summaryLabelCell);
+                        const summaryLabelCell = document.createElement('td');
+                        summaryLabelCell.textContent = 'Verfügbarkeit';
+                        summaryLabelCell.classList.add('employee-name', 'summary-label');
+                        summaryRow.appendChild(summaryLabelCell);
 
-                    // 4. Zellen für jede Tagessumme erstellen und füllen
-                    dailyAvailabilityTotals.forEach((total, index) => {
-                        const td = document.createElement('td');
-                        if (total > 0) {
-                            td.textContent = (total/100).toFixed(2);
-                        }
-                        if (data.days[index].isWeekend) {
-                            td.classList.add('weekend');
-                        }
-                        summaryRow.appendChild(td);
-                    });
+                        // 4. Zellen für jede Tagessumme erstellen und füllen
+                        dailyAvailabilityTotals.forEach((total, index) => {
+                            const td = document.createElement('td');
+                            if (total > 0) {
+                                td.textContent = (total/100).toFixed(2);
+                            }
+                            if (data.days[index].isWeekend) {
+                                td.classList.add('weekend');
+                            }
+                            summaryRow.appendChild(td);
+                        });
 
-                    // 5. Die fertige Zeile an die Tabelle anhängen
-                    tbody.appendChild(summaryRow);
+                        // 5. Die fertige Zeile an die Tabelle anhängen
+                        tbody.appendChild(summaryRow);
+                    }
                 }      
 
                 // #3: Zusammenfassung für Verfügbarkeit in % ---

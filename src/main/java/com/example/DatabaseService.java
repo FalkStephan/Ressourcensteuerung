@@ -10,7 +10,7 @@ import java.sql.Statement;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.time.LocalDate;
-import java.time.DayOfWeek;
+// import java.time.DayOfWeek;
 import java.time.temporal.TemporalAdjusters;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -661,20 +661,6 @@ public class DatabaseService {
     // Feiertage
     // ####################
 
-    public static List<Map<String, Object>> getAllFeiertage() {
-        List<Map<String, Object>> list = new ArrayList<>();
-        try (Connection conn = getConnection(); Statement stmt = conn.createStatement(); ResultSet rs = stmt.executeQuery("SELECT * FROM feiertage ORDER BY datum")) {
-            while(rs.next()) {
-                Map<String, Object> f = new HashMap<>();
-                f.put("id", rs.getInt("id"));
-                f.put("datum", rs.getObject("datum", LocalDate.class));
-                f.put("bezeichnung", rs.getString("bezeichnung"));
-                list.add(f);
-            }
-        } catch (SQLException e) { e.printStackTrace(); }
-        return list;
-    }
-
     public static Map<String, Object> getFeiertagByDate(LocalDate datum) {
         String sql = "SELECT id, datum, bezeichnung FROM feiertage WHERE datum = ?";
         try (Connection conn = getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
@@ -783,6 +769,39 @@ public class DatabaseService {
             }
         }
         return holidays;
+    }
+
+
+    public static List<Map<String, Object>> getAllFeiertage() {
+        List<Map<String, Object>> feiertage = new ArrayList<>();
+        Connection conn = null;
+        PreparedStatement stmt = null;
+        ResultSet rs = null;
+
+        try {
+            conn = getConnection();
+            String sql = "SELECT * FROM feiertage ORDER BY datum";
+            stmt = conn.prepareStatement(sql);
+            rs = stmt.executeQuery();
+
+            while (rs.next()) {
+                Map<String, Object> feiertag = new HashMap<>();
+                feiertag.put("name", rs.getString("bezeichnung"));
+                feiertag.put("date", rs.getDate("datum").toLocalDate());
+                feiertage.add(feiertag);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace(); // Im Idealfall ein besseres Logging verwenden
+        } finally {
+            try {
+                if (rs != null) rs.close();
+                if (stmt != null) stmt.close();
+                if (conn != null) conn.close();
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+        }
+        return feiertage;
     }
 
 

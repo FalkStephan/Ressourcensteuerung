@@ -2,7 +2,7 @@ package com.example;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import com.google.gson.JsonSyntaxException;
+// import com.google.gson.JsonSyntaxException;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
@@ -13,16 +13,19 @@ import jakarta.servlet.http.HttpSession;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.sql.SQLException;
+import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.TemporalAdjusters;
 import java.util.ArrayList;
-import java.util.Collections;
+// import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+// import java.util.Set;
+// import java.util.stream.Collectors;
 
 // WICHTIG: Die URL-Zuordnung muss flexibel sein, um Unterpfade zu erlauben
 @WebServlet("/calendar-overview/*")
@@ -89,8 +92,11 @@ public class CalendarOverviewServlet extends HttpServlet {
 
                 Map<String, Object> responseData = new HashMap<>();
                 responseData.put("days", getDaysOfMonth(year, month));
+                responseData.put("daysinweeks", getDaysInWeeks(year, month));
                 responseData.put("departments", getAllUsersWithAbsencesAndDepartments(year, month, currentUser));
                 responseData.put("colors", DatabaseService.getCalendarColors());
+                responseData.put("feiertage", DatabaseService.getAllFeiertage());
+
 
                 String jsonResponse = gson.toJson(responseData);
                 out.print(jsonResponse);
@@ -179,6 +185,46 @@ public class CalendarOverviewServlet extends HttpServlet {
             }
             dayInfo.put("isHoliday", isHoliday);
             dayInfo.put("holidayName", holidayName);
+
+            days.add(dayInfo);
+        }
+        return days;
+    }
+
+    /**
+     * Erstellt eine Liste aller Tage innerhalb von 20 Wochen mit Zusatzinformationen.
+     */
+    private List<Map<String, Object>> getDaysInWeeks(int year, int month) {
+        List<Map<String, Object>> days = new ArrayList<>();
+        // Startdatum ist der erste Tag des übergebenen Monats
+        LocalDate startDate = LocalDate.of(year, month, 1);
+        List<Map<String, Object>> holidays = DatabaseService.getAllFeiertage();
+
+        // Iteriere über 140 Tage (20 Wochen * 7 Tage)
+        for (int i = 0; i < 140; i++) {
+            Map<String, Object> dayInfo = new LinkedHashMap<>();
+            LocalDate currentDate = startDate.plusDays(i);
+            DayOfWeek dayOfWeek = currentDate.getDayOfWeek();
+
+            dayInfo.put("date", currentDate.toString());
+            dayInfo.put("dayOfMonth", currentDate.getDayOfMonth());
+            dayInfo.put("dayOfWeek", dayOfWeek.getValue());
+            boolean isWeekend = dayOfWeek == DayOfWeek.SATURDAY || dayOfWeek == DayOfWeek.SUNDAY;
+            dayInfo.put("isWeekend", isWeekend);
+
+            // Prüfen, ob der Tag ein Feiertag ist
+            boolean isHoliday = false;
+            String holidayName = "";
+            for (Map<String, Object> holiday : holidays) {
+                if (currentDate.equals(holiday.get("date"))) {
+                    isHoliday = true;
+                    holidayName = (String) holiday.get("name");
+                    break;
+                }
+            }
+            dayInfo.put("isHoliday", isHoliday);
+            dayInfo.put("holidayName", holidayName);
+
 
             days.add(dayInfo);
         }

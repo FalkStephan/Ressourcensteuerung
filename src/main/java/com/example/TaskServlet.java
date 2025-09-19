@@ -146,6 +146,7 @@ public class TaskServlet extends HttpServlet {
 
 
 
+    /**
     // Hilfsmethode zum Escapen von JSON-Strings
     private String escapeJsonString(String input) {
         if (input == null) return "";
@@ -155,6 +156,7 @@ public class TaskServlet extends HttpServlet {
                     .replace("\r", "\\r")
                     .replace("\t", "\\t");
     }
+    */
     
     private void handleGetLastInsertedTaskId(HttpServletRequest request, HttpServletResponse response) 
             throws IOException {
