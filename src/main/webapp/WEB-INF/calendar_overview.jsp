@@ -874,7 +874,7 @@
                                         if (day.isWeekend) td.classList.add('weekend');
                                         availabilityRow.appendChild(td);
                                     });
-                                    tbody.appendChild(availabilityRow);
+                                    // tbody.appendChild(availabilityRow);
                                 } else if (viewType === 'weeks') {
                                     // Wochenansicht
                                     let firstDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
@@ -921,8 +921,9 @@
                                             td.textContent = (total/100).toFixed(2);
                                         }
                                         availabilityRow.appendChild(td);
-                                        tbody.appendChild(availabilityRow);
+                                        //tbody.appendChild(availabilityRow);
                                     }
+                                    tbody.appendChild(availabilityRow);
                                 
                                 }
                             }
@@ -943,17 +944,21 @@
                                 TaskLabelCell.classList.add('employee-name', 'detail-row-label');
                                 employeeTaskRow.appendChild(TaskLabelCell);
 
-                                data.days.forEach(day => {
-                                    const td = document.createElement('td');
-                                    const taskeffort = getTaskEffortForDate(day, employee, holidays);
-                                    // console.log ('Datum: ', day.date + ' --> ' + taskeffort + ' (' + employee.name + ')');
-                                    if (!day.isWeekend && !day.isHoliday) {
-                                        td.textContent = (taskeffort).toFixed(2);
-                                    }
-                                    if (day.isWeekend) td.classList.add('weekend');
-                                    employeeTaskRow.appendChild(td);
-                                });
-                                tbody.appendChild(employeeTaskRow);                            
+                                if (viewType === 'days') {
+                                    data.days.forEach(day => {
+                                        const td = document.createElement('td');
+                                        const taskeffort = getTaskEffortForDate(day, employee, holidays);
+                                        // console.log ('Datum: ', day.date + ' --> ' + taskeffort + ' (' + employee.name + ')');
+                                        if (!day.isWeekend && !day.isHoliday) {
+                                            td.textContent = (taskeffort).toFixed(2);
+                                        }
+                                        if (day.isWeekend) td.classList.add('weekend');
+                                        employeeTaskRow.appendChild(td);
+                                    });
+                                    tbody.appendChild(employeeTaskRow);            
+                                } else if (viewType === 'weeks') {
+
+                                }                
                             }
 
 
