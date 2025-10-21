@@ -265,7 +265,8 @@ public class TaskServlet extends HttpServlet {
             // Aktion ausführen
             if ("add".equals(action)) {
                 DatabaseService.addTask(name, startDate, endDate, effortDays, statusId, progress, abteilung, taskOptions, description, actor);
-                out.print("{\"success\": true, \"message\": \"Task erfolgreich erstellt\"}");
+                int taskId = DatabaseService.getLastInsertedTaskId();
+                out.print("{\"success\": true, \"message\": \"Task erfolgreich erstellt\", \"taskId\": " + taskId + "}");
             } else if ("edit".equals(action)) {
                 int id = Integer.parseInt(req.getParameter("id"));
                 DatabaseService.updateTask(id, name, startDate, endDate, effortDays, statusId, progress, abteilung, taskOptions, description, actor);

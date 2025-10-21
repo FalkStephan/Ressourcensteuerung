@@ -14,6 +14,7 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 
+
 @WebServlet("/feiertage")
 public class FeiertagServlet extends HttpServlet {
 
@@ -36,16 +37,13 @@ public class FeiertagServlet extends HttpServlet {
         
         List<Map<String, Object>> feiertage = DatabaseService.getAllFeiertage();
         
-        // --- KORREKTUR START ---
         // Konvertiere LocalDate zu java.sql.Date, damit <fmt:formatDate> es verarbeiten kann.
         for (Map<String, Object> feiertag : feiertage) {
             Object datumObj = feiertag.get("datum");
             if (datumObj instanceof LocalDate) {
                 feiertag.put("datum", Date.valueOf((LocalDate) datumObj));
             }
-        }
-        // --- KORREKTUR ENDE ---
-        
+        }        
         req.setAttribute("feiertage", feiertage);
         req.getRequestDispatcher("/WEB-INF/feiertage.jsp").forward(req, resp);
     }

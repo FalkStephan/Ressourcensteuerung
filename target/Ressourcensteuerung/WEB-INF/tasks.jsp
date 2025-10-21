@@ -1,6 +1,7 @@
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
 <%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
 <%@ taglib uri="http://java.sun.com/jsp/jstl/fmt" prefix="fmt" %>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/functions" prefix="fn" %>
 <!DOCTYPE html>
 <html lang="de">
 <head>
@@ -87,17 +88,27 @@
                             <td style="display: flex; gap: 5px;">
                                 <button type="button" class="button small toggle-assignments-btn" title="Zuweisungen anzeigen" value="0" onclick="toggleTaskAssignments()">▼</button>
                                 <a href="tasks?action=edit&id=${task.id}" class="button small">Bearbeiten</a>
-                                <form action="${pageContext.request.contextPath}/tasks" method="post" onsubmit="return confirm('Sind Sie sicher, dass Sie diese Aufgabe löschen möchten?');" style="display:inline;">
+                                <form action="${pageContext.request.contextPath}/tasks" method="post" style="display:inline;" data-task-name="${fn:escapeXml(task.name)}">
                                     <input type="hidden" name="action" value="delete">
                                     <input type="hidden" name="taskId" value="${task.id}">
                                     <input type="hidden" name="name" value="${user.name}">
-                                    <button type="submit" class="button small delete">Löschen</button>
+                                    <button type="button" class="button small delete" onclick="openDeleteModal(this.closest('form'))">Löschen</button>
                                 </form>
                             </td>
                         </tr>
                     </c:forEach>
                 </tbody>
             </table>
+        </div>
+        <div id="confirmDeleteModal" class="modal-overlay" style="display:none; position:fixed; inset:0; align-items:center; justify-content:center; background:rgba(0,0,0,0.4); z-index:9999;">
+            <div class="modal-content" style="background:#fff; padding:1.2em; border-radius:6px; width:360px; max-width:90%;">
+                <h3 id="confirmDeleteTitle" style="margin-top:0;">Aufgabe löschen</h3>
+                <p id="confirmDeleteMessage" style="margin:0 0 1em 0;">Soll die Aufgabe &quot;<span id="confirmDeleteTaskName"></span>&quot; wirklich gelöscht werden?</p>
+                <div style="display:flex; gap:0.5em; justify-content:flex-end;">
+                    <button type="button" class="button delete" onclick="confirmDelete()" style="background:#dc3545; color:#fff;">Löschen</button>
+                    <button type="button" class="button" onclick="closeDeleteModal()">Abbrechen</button>
+                </div>
+            </div>
         </div>
     </main>
 </div>
@@ -109,6 +120,7 @@
     let taskAssignments = new Map();
     let originalValues = new Map(); // Map für ursprüngliche Werte
     let assignedUsers = []; // Globales Array für zugewiesene Benutzer
+    let formToDelete = null;
 
     searchInput.addEventListener('keyup', () => {
         clearTimeout(debounceTimer);
@@ -589,6 +601,27 @@
             toggleButton.innerHTML = '▼';
             toggleButton.title = 'Zuweisungen anzeigen';
         }
+    }
+
+
+    function openDeleteModal(form) {
+        formToDelete = form;
+        const name = form.dataset.taskName || form.querySelector('input[name="taskId"]').value;
+        document.getElementById('confirmDeleteTaskName').textContent = name;
+        document.getElementById('confirmDeleteModal').style.display = 'flex';
+    }
+
+    function closeDeleteModal() {
+        formToDelete = null;
+        document.getElementById('confirmDeleteModal').style.display = 'none';
+    }
+
+    function confirmDelete() {
+        if (!formToDelete) return;
+        // Formular abschicken
+        formToDelete.submit();
+        // Modal schließen (falls Formular per AJAX gehandhabt wird, ansonsten Seite lädt neu)
+        closeDeleteModal();
     }
 
 

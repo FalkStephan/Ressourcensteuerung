@@ -34,17 +34,8 @@ public class DatabaseService {
         try {
             Class.forName("org.mariadb.jdbc.Driver");
             try (Connection conn = getConnection(); Statement stmt = conn.createStatement()) {
-                // Erstelle Tabelle für Aufgaben-Benutzerzuweisungen
-                String taskUserAssignmentsSql = "CREATE TABLE IF NOT EXISTS task_user_assignments (" +
-                    "task_id INTEGER NOT NULL," +
-                    "user_id INTEGER NOT NULL," +
-                    "effort_days DECIMAL(10,2) NOT NULL DEFAULT 0," +
-                    "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP," +
-                    "PRIMARY KEY (task_id, user_id)," +
-                    "FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE CASCADE," +
-                    "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE" +
-                ")";
-                stmt.executeUpdate(taskUserAssignmentsSql);
+                
+                // Tabelle users
                 String userSql = "CREATE TABLE IF NOT EXISTS users (" +
                         " id INTEGER PRIMARY KEY AUTO_INCREMENT," +
                         " username VARCHAR(255) NOT NULL UNIQUE," +
@@ -76,8 +67,16 @@ public class DatabaseService {
                 try { stmt.execute("ALTER TABLE users ADD COLUMN can_manage_capacities BOOLEAN NOT NULL DEFAULT FALSE"); } catch (Exception e) { /* Spalte existiert evtl. schon */ }
                 try { stmt.execute("ALTER TABLE users ADD COLUMN can_manage_settings BOOLEAN NOT NULL DEFAULT FALSE"); } catch (Exception e) { /* Spalte existiert evtl. schon */ }
                 try { stmt.execute("ALTER TABLE users ADD COLUMN can_manage_tasks BOOLEAN NOT NULL DEFAULT FALSE"); } catch (Exception e) { /* Spalte existiert evtl. schon */ }
-                try { stmt.execute("ALTER TABLE task_statuses ADD COLUMN color_code VARCHAR(7) DEFAULT '#FFFFFF'"); } catch (Exception e) { /* Spalte existiert evtl. schon */ }
-                try { stmt.execute("ALTER TABLE tasks ADD COLUMN abteilung VARCHAR(255)"); } catch (SQLException e) {}
+                
+                // Tabelle für settings
+                String settingsSql = "CREATE TABLE IF NOT EXISTS settings (" +
+                        " id INTEGER PRIMARY KEY AUTO_INCREMENT," +
+                        " setting_key VARCHAR(255) UNIQUE NOT NULL," +
+                        " setting_value VARCHAR(255) NOT NULL DEFAULT TRUE," +
+                        " description VARCHAR(255));";
+                stmt.execute(settingsSql);
+
+
                 try (Statement settingsStmt = conn.createStatement()) {
                     // Verwende INSERT IGNORE, um Fehler zu vermeiden, falls die Schlüssel bereits existieren
                     settingsStmt.addBatch("INSERT IGNORE INTO settings (setting_key, setting_value, description) VALUES ('calendar_workload_color_low', '#82fb79', 'Farbe für Auslastung gering')");
@@ -85,8 +84,73 @@ public class DatabaseService {
                     settingsStmt.addBatch("INSERT IGNORE INTO settings (setting_key, setting_value, description) VALUES ('calendar_workload_color_high', '#fb8e8e', 'Farbe für Auslastung hoch')");
                     settingsStmt.addBatch("INSERT IGNORE INTO settings (setting_key, setting_value, description) VALUES ('calendar_workload_value_medium', '0.25', 'Maximal-Wert für Auslastung mittel')");
                     settingsStmt.addBatch("INSERT IGNORE INTO settings (setting_key, setting_value, description) VALUES ('calendar_workload_value_high', '0.8', 'Minimal-Wert für Auslastung hoch')");
+                    settingsStmt.addBatch("INSERT IGNORE INTO settings (setting_key, setting_value, description) VALUES ('calendar_color_holiday', '#fba2a2', 'Farbe für Feiertage im Kalender')");
+                    settingsStmt.addBatch("INSERT IGNORE INTO settings (setting_key, setting_value, description) VALUES ('calendar_color_weekend', '#dbdbdb', 'Farbe für Wochenenden im Kalender')");
+                    settingsStmt.addBatch("INSERT IGNORE INTO settings (setting_key, setting_value, description) VALUES ('calendar_color_absence', '#b1b6fb', 'Farbe für Abwesenheiten im Kalender')");
+                    settingsStmt.addBatch("INSERT IGNORE INTO settings (setting_key, setting_value, description) VALUES ('calendar_color_workday', '#caeab8', 'Farbe für Arbeitstage im Kalender')");
                     settingsStmt.executeBatch();
                 }
+
+                //Tabelle für Logbuch
+                String logbookSql = "CREATE TABLE IF NOT EXISTS logbook (" +
+                        " id INTEGER PRIMARY KEY AUTO_INCREMENT," +
+                        " timestamp VARCHAR(255) NOT NULL," +
+                        " username VARCHAR(255) NOT NULL DEFAULT TRUE," +
+                        " action VARCHAR(255) NOT NULL DEFAULT TRUE," +
+                        " description VARCHAR(255));";
+                stmt.execute(logbookSql);
+
+                // Tabelle für Aufgaben-Status
+                String statusSql = "CREATE TABLE IF NOT EXISTS task_statuses (" +
+                        " id INTEGER PRIMARY KEY AUTO_INCREMENT," +
+                        " name VARCHAR(255) UNIQUE NOT NULL," +
+                        " active BOOLEAN NOT NULL DEFAULT TRUE," +
+                        " sort_order INTEGER NOT NULL DEFAULT 0," +
+                        " color_code VARCHAR(10) NOT NULL DEFAULT '#FFFFFF');";
+                stmt.execute(statusSql);
+                try { stmt.execute("ALTER TABLE task_statuses ADD COLUMN color_code VARCHAR(7) DEFAULT '#FFFFFF'"); } catch (Exception e) { /* Spalte existiert evtl. schon */ }
+                try (Statement settingsStmt = conn.createStatement()) {
+                    // Verwende INSERT IGNORE, um Fehler zu vermeiden, falls die Schlüssel bereits existieren
+                    settingsStmt.addBatch("INSERT IGNORE INTO task_statuses (name, active, sort_order, color_code) VALUES ('neu', true, 10, '#bab8bbff')");
+                    settingsStmt.addBatch("INSERT IGNORE INTO task_statuses (name, active, sort_order, color_code) VALUES ('geplant', true, 20, '#b3b3b3ff')");
+                    settingsStmt.addBatch("INSERT IGNORE INTO task_statuses (name, active, sort_order, color_code) VALUES ('in Arbeit', true, 30, '#fbf965')");
+                    settingsStmt.addBatch("INSERT IGNORE INTO task_statuses (name, active, sort_order, color_code) VALUES ('fertig', true, 40, '#82fb79')");
+                    settingsStmt.addBatch("INSERT IGNORE INTO task_statuses (name, active, sort_order, color_code) VALUES ('zurückgestellt', true, 50, '#fb8e8e')");
+                    settingsStmt.executeBatch();
+                }
+
+                String taskSql = "CREATE TABLE IF NOT EXISTS tasks (" +
+                        " id INTEGER PRIMARY KEY AUTO_INCREMENT," +
+                        " name VARCHAR(255) NOT NULL," +
+                        " start_date DATE," +
+                        " end_date DATE," +
+                        " effort_days DECIMAL(10, 2)," +
+                        " status_id INTEGER," +
+                        " progress_percent INTEGER DEFAULT 0," +
+                        " abteilung VARCHAR(255)," +
+                        " task_options TEXT, " +
+                        " description TEXT, " +
+                        " FOREIGN KEY(status_id) REFERENCES task_statuses(id));";
+                stmt.execute(taskSql);
+                try { stmt.execute("ALTER TABLE tasks ADD COLUMN task_options TEXT"); } catch (Exception e) { /* Spalte existiert evtl. schon */ }
+                try { stmt.execute("ALTER TABLE tasks ADD COLUMN description TEXT"); } catch (Exception e) { /* Spalte existiert evtl. schon */ }
+                try { stmt.execute("ALTER TABLE tasks ADD COLUMN abteilung VARCHAR(255)"); } catch (SQLException e) {}
+                
+
+
+
+                String taskUserAssignmentsSql = "CREATE TABLE IF NOT EXISTS task_user_assignments (" +
+                    "task_id INTEGER NOT NULL," +
+                    "user_id INTEGER NOT NULL," +
+                    "effort_days DECIMAL(10,2) NOT NULL DEFAULT 0," +
+                    "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP," +
+                    "PRIMARY KEY (task_id, user_id)," +
+                    "FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE CASCADE," +
+                    "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE" +
+                ")";
+                stmt.executeUpdate(taskUserAssignmentsSql);
+
+
                 
 
 
@@ -122,31 +186,8 @@ public class DatabaseService {
                         " FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE);";
                 stmt.execute(capacitiySql);
 
-                // Tabelle für Aufgaben-Status
-                String statusSql = "CREATE TABLE IF NOT EXISTS task_statuses (" +
-                        " id INTEGER PRIMARY KEY AUTO_INCREMENT," +
-                        " name VARCHAR(255) NOT NULL," +
-                        " active BOOLEAN NOT NULL DEFAULT TRUE," +
-                        " sort_order INTEGER NOT NULL DEFAULT 0," +
-                        " color_code VARCHAR(7) NOT NULL DEFAULT '#FFFFFF');";
-                stmt.execute(statusSql);
+                
 
-                // Tabelle für Aufgaben
-                String taskSql = "CREATE TABLE IF NOT EXISTS tasks (" +
-                        " id INTEGER PRIMARY KEY AUTO_INCREMENT," +
-                        " name VARCHAR(255) NOT NULL," +
-                        " start_date DATE," +
-                        " end_date DATE," +
-                        " effort_days DECIMAL(10, 2)," +
-                        " status_id INTEGER," +
-                        " progress_percent INTEGER DEFAULT 0," +
-                        " abteilung VARCHAR(255)," +
-                        " task_options TEXT, " +
-                        " description TEXT, " +
-                        " FOREIGN KEY(status_id) REFERENCES task_statuses(id));";
-                stmt.execute(taskSql);
-                try { stmt.execute("ALTER TABLE tasks ADD COLUMN task_options TEXT"); } catch (Exception e) { /* Spalte existiert evtl. schon */ }
-                try { stmt.execute("ALTER TABLE tasks ADD COLUMN description TEXT"); } catch (Exception e) { /* Spalte existiert evtl. schon */ }
                 
                 
 
@@ -154,7 +195,6 @@ public class DatabaseService {
                 createAdminIfNotExists(conn);
             }
         } catch (Exception e) {
-            // Zeile 85 in der Fehlermeldung
             throw new RuntimeException("Konnte die Datenbank nicht initialisieren.", e);
         }
     }
@@ -786,6 +826,7 @@ public class DatabaseService {
 
             while (rs.next()) {
                 Map<String, Object> feiertag = new HashMap<>();
+                feiertag.put("id", rs.getString("id"));
                 feiertag.put("name", rs.getString("bezeichnung"));
                 feiertag.put("date", rs.getDate("datum").toLocalDate());
                 feiertage.add(feiertag);
@@ -871,16 +912,19 @@ public class DatabaseService {
         return absences;
     }
 
-        public static Map<Integer, List<String>> getAbsencesForMonth(int year, int month) throws SQLException {
+    public static Map<Integer, List<String>> getAbsencesForMonth(int year, int month) throws SQLException {
         /**
-         * Holt alle Abwesenheitstage für einen Monat.
-         * Berücksichtigt jetzt Zeiträume (start_date, end_date) aus der Datenbank
+         * Holt alle Abwesenheitstage für einen Zeitraum von 21 Wochen.
+         * Berücksichtigt  Zeiträume (start_date, end_date) aus der Datenbank
          * und teilt diese in einzelne Tage auf.
          */        
         Map<Integer, List<String>> allAbsences = new HashMap<>();
 
         LocalDate monthStart = LocalDate.of(year, month, 1);
-        LocalDate monthEnd = monthStart.with(TemporalAdjusters.lastDayOfMonth());
+        // LocalDate monthEnd = monthStart.with(TemporalAdjusters.lastDayOfMonth());
+        LocalDate monthEnd = monthStart.plusWeeks(21);
+        // System.out.println("monthStart: " + monthStart);
+        // System.out.println("monthEnd: " + monthEnd);
 
         // SQL-Anweisung an den korrekten Tabellennamen "user_absences" angepasst
         String sql = "SELECT user_id, start_date, end_date FROM user_absences WHERE start_date <= ? AND end_date >= ?";
@@ -897,11 +941,14 @@ public class DatabaseService {
                 int userId = rs.getInt("user_id");
                 LocalDate startDate = rs.getDate("start_date").toLocalDate();
                 LocalDate endDate = rs.getDate("end_date").toLocalDate();
+                // System.out.println(" User: " + userId);
+                // System.out.println("   start_date: " + startDate);
+                // System.out.println("   end_date  : " + endDate);
 
                 for (LocalDate date = startDate; !date.isAfter(endDate); date = date.plusDays(1)) {
-                    if (date.getYear() == year && date.getMonthValue() == month) {
+                    // if (date.getYear() == year && date.getMonthValue() == month) {
                         allAbsences.computeIfAbsent(userId, k -> new ArrayList<>()).add(date.toString());
-                    }
+                    // }
                 }
             }
         }
@@ -1045,7 +1092,7 @@ public class DatabaseService {
             stmt.setString(1, value);
             stmt.setString(2, key);
             stmt.executeUpdate();
-            logAction(actor, "Einstellung ändern", "Setting '" + key + "' auf '" + value + "' geändert");
+            logAction(actor, "Einstellung ändern", "Parameter '" + key + "' auf '" + value + "' geändert");
         }
     }
 

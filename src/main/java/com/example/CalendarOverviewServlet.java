@@ -96,6 +96,7 @@ public class CalendarOverviewServlet extends HttpServlet {
                 responseData.put("departments", getAllUsersWithAbsencesAndDepartments(year, month, currentUser));
                 responseData.put("colors", DatabaseService.getCalendarColors());
                 responseData.put("feiertage", DatabaseService.getAllFeiertage());
+                responseData.put("absences", DatabaseService.getAbsencesForMonth(year, month));
 
 
                 String jsonResponse = gson.toJson(responseData);

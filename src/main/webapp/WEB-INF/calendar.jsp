@@ -110,6 +110,8 @@
     }
     function hideAddModal() {
         document.getElementById('addAbsenceModal').style.display = 'none';
+        // Optional: Formular zurücksetzen beim Schließen
+        document.getElementById('addAbsenceForm').reset();
     }
 
     function showDeleteModal(btn) {
@@ -137,6 +139,16 @@
             }
         });
     }
+
+    // --- NEUER CODE HINZUGEFÜGT ---
+    // Setzt das "Bis-Datum", wenn das "Von-Datum" geändert wird UND "Bis-Datum" leer ist.
+    document.getElementById('startDate').addEventListener('change', function() {
+        const endDateInput = document.getElementById('endDate');
+        if (endDateInput.value === '') {
+            endDateInput.value = this.value;
+        }
+    });
+    // --- ENDE NEUER CODE ---
 </script>
 </body>
 </html>

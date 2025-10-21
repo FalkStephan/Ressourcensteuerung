@@ -26,21 +26,22 @@
                         </tr>
                     </thead>
                     <tbody>
-                        <c:forEach var="f" items="${feiertage}">
+                        <c:forEach var="ft" items="${feiertage}">
                             <tr>
-                                <td><fmt:formatDate value="${f.datum}" pattern="dd.MM.yyyy"/></td>
-                                <td><c:out value="${f.bezeichnung}" /></td>
+                                <td><c:out value="${ft.date}" /></td>
+                                <td><c:out value="${ft.name}" /></td>
                                 <td>
                                     <button type="button" class="button small"
                                             onclick="showEditForm(this)"
-                                            data-id="${f.id}"
-                                            data-datum="${f.datum}"
-                                            data-bezeichnung="${fn:escapeXml(f.bezeichnung)}">
+                                            data-id="${ft.id}"
+                                            data-datum="${ft.date}"
+                                            data-bezeichnung="${fn:escapeXml(ft.name)}">
                                         Bearbeiten
                                     </button>
                                     <button type="button" class="button small delete" onclick="showDeleteModal(this)"
-                                            data-id="${f.id}"
-                                            data-bezeichnung="${fn:escapeXml(f.bezeichnung)}">
+                                            data-id="${ft.id}"
+                                            data-bezeichnung="${fn:escapeXml(ft.name)}"
+                                            data-datum="${ft.date}">
                                         Löschen
                                     </button>
                                 </td>
@@ -80,10 +81,14 @@
 
     <div id="deleteModal" class="modal-overlay" style="display:none;">
         <div class="modal-content">
-            <p>Soll der Feiertag <strong id="deleteName"></strong> wirklich gelöscht werden?</p>
+            <p>Soll der Feiertag <strong id="deleteName"></strong> am <strong id="deleteDate"></strong> wirklich gelöscht werden?</p>
             <form id="deleteForm" method="post" action="feiertage">
+
                 <input type="hidden" name="action" value="delete" />
                 <input type="hidden" name="id" id="deleteId" />
+                <input type="hidden" name="bezeichnung" id="deleteName" />
+                <input type="hidden" name="datum" id="deleteDate" />
+
                 <div class="modal-buttons">
                     <button type="submit" class="button delete">Ja, löschen</button>
                     <button type="button" class="button" onclick="hideDeleteModal()">Abbrechen</button>
@@ -128,10 +133,9 @@
             document.getElementById('formAction').value = 'edit';
             document.getElementById('formId').value = btn.dataset.id;
             
-            // Konvertiere das Datum für das <input type="date">
-            const date = new Date(btn.dataset.datum);
-            const isoDate = date.toISOString().substring(0, 10);
-            document.getElementById('formDatum').value = isoDate;
+            // Das 'YYYY-MM-DD'-Format von LocalDate.toString()
+            // wird direkt in das Datumsfeld eingetragen.
+            document.getElementById('formDatum').value = btn.dataset.datum;
             
             document.getElementById('formBezeichnung').value = btn.dataset.bezeichnung;
             document.getElementById('feiertagModal').style.display = 'flex';
@@ -144,6 +148,22 @@
         function showDeleteModal(btn) {
             document.getElementById('deleteId').value = btn.dataset.id;
             document.getElementById('deleteName').textContent = btn.dataset.bezeichnung;
+
+            console.log('Datum zum Löschen:', btn.dataset);
+            
+            // Datum auslesen (Format: YYYY-MM-DD)
+            const isoDate = btn.dataset.datum;
+            
+            // In DD.MM.YYYY umwandeln
+            try {
+                const parts = isoDate.split('-');
+                const formattedDate = parts[2] + '.' + parts[1] + '.' + parts[0];
+                document.getElementById('deleteDate').textContent = formattedDate;
+            } catch (e) {
+                // Fallback, falls Datum ungültig ist
+                document.getElementById('deleteDate').textContent = isoDate; 
+            }
+            
             document.getElementById('deleteModal').style.display = 'flex';
         }
 

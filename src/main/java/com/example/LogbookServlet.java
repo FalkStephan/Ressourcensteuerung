@@ -50,14 +50,6 @@ public class LogbookServlet extends HttpServlet {
         int totalLogs = DatabaseService.getTotalLogCount(search);
         int totalPages = (int) Math.ceil((double) totalLogs / limit);
         
-        // =================================================================
-        // NEU: DEBUG-AUSGABEN IM TERMINAL
-        System.out.println("--- Logbuch Debug ---");
-        System.out.println("Gefundene Log-Einträge: " + logs.size());
-        System.out.println("Daten: " + logs);
-        System.out.println("---------------------");
-        // =================================================================
-
         req.setAttribute("logs", logs);
         req.setAttribute("currentPage", page);
         req.setAttribute("totalPages", totalPages);

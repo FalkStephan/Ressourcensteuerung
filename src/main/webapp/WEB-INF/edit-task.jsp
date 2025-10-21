@@ -111,7 +111,7 @@
                     
                     <div>
                         <label for="taskEffort">Aufwand (PT):</label>
-                        <input type="number" step="0.1" name="effort_days" id="taskEffort" value="${task.effort_days}" required/>
+                        <input type="number" step="0.5" name="effort_days" id="taskEffort" value="${task.effort_days}" required/>
                     </div>
                     
                     <div>
@@ -177,18 +177,24 @@
     // Beim Laden der Seite
     document.addEventListener('DOMContentLoaded', function() {
         // Wenn eine Task-ID vorhanden ist, lade die zugewiesenen Benutzer
-        const taskId = document.querySelector('input[name="id"]')?.value;
+        let taskId = document.querySelector('input[name="id"]')?.value;
         // console.log('Aufruf der Seite.....');
         if (taskId) {
             // console.log('TaskId laden: ', taskId);
             loadAssignedUsers(taskId);
         }
         else {
-            console.log('neue TaskId!');
+            // console.log('neue TaskId!');
             // 1. Fortschritt auf 0 setzen
             const progressInput = document.getElementById('taskProgress');
             if (progressInput) {
                 progressInput.value = 0;
+            }
+
+            // 1. Aufwand auf 0 setzen
+            const effortInput = document.getElementById('taskEffort');
+            if (effortInput) {
+                effortInput.value = 0;
             }
 
             // 2. Start-Datum auf das heutige Datum setzen
@@ -225,6 +231,8 @@
                 
                 const responseText = await response.text();
                 console.log('Server-Antwort (Text):', responseText);
+                // const taskId = formData.get('id') || (await getLastInsertedTaskId());
+                // console.log('Task-ID nach dem Speichern:', taskId);
                 
                 let jsonResponse;
                 try {
@@ -240,10 +248,6 @@
                 }
                 
                 // Task-ID ermitteln
-                let taskId = document.querySelector('input[name="id"]')?.value;
-                console.log('Task-ID: ', taskId);
-                console.log('Response-ID: ', jsonResponse.taskId);
-                
                 if (!taskId && jsonResponse.taskId) {
                     taskId = jsonResponse.taskId;
                 }
