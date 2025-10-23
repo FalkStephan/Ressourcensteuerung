@@ -353,20 +353,20 @@
                 throw new Error('Netzwerkantwort war nicht OK');
             }
             const assignments = await response.json();
-            console.log('Geladene Zuweisungen:', assignments);
+            // console.log('Geladene Zuweisungen:', assignments);
             return assignments;
             return await response.json();
         } catch (error) {
-            console.error('Fehler beim Laden der Zuweisungen:', error);
+            // console.error('Fehler beim Laden der Zuweisungen:', error);
             return []; // Leeres Array im Fehlerfall zurückgeben
         }
     }
 
     // Funktion zum Speichern der ursprünglichen Werte
     async function saveOriginalValues() {
-        console.log('Alte Werte speichern');
+        // console.log('Alte Werte speichern');
         const taskElements = document.querySelectorAll('.task-item');
-        console.log('. Taskelement:', teaskelements);
+        // console.log('. Taskelement:', teaskelements);
         taskElements.forEach(taskElement => {
             const taskId = taskElement.getAttribute('data-task-id');
             originalValues.set(taskId, {
@@ -450,7 +450,7 @@
                             });
                         }
                     } catch (error) {
-                        console.error('Fehler beim Laden der Zuweisungen für Task', taskId, ':', error);
+                        // console.error('Fehler beim Laden der Zuweisungen für Task', taskId, ':', error);
                         const errorRow = document.createElement('tr');
                         errorRow.className = 'task-assignment-row';
                         errorRow.innerHTML = `<td colspan="8"><div class="task-assignment error">Fehler beim Laden der Zuweisungen</div></td>`;
@@ -473,12 +473,12 @@
 
         // Sicherheitsprüfung: Nur fortfahren, wenn der Tabellenkörper gefunden wurde.
         if (!tableBody) {
-            console.error("Fehler: Der Tabellenkörper (tbody) wurde nicht gefunden. Das Skript kann nicht ausgeführt werden.");
+            // console.error("Fehler: Der Tabellenkörper (tbody) wurde nicht gefunden. Das Skript kann nicht ausgeführt werden.");
             return;
         }
 
         // 1. Ein einziger Klick-Listener für die gesamte Tabelle
-        console.log('Klick');
+        // console.log('Klick');
         tableBody.addEventListener('click', function(event) {
             const toggleButton = event.target.closest('.toggle-assignments-btn');
 
@@ -507,7 +507,7 @@
         const assignmentRows = document.querySelectorAll(`.task-assignment-row[data-task-parent='${taskId}']`);
 
         // Fall 1: Zuweisungen sind sichtbar -> ausblenden
-        console.log('Klick-Info: ', toggleButton.value);
+        // console.log('Klick-Info: ', toggleButton.value);
         // if (toggleButton.value == '1') {
         //     console.log('Schliessen');
         //     assignmentRows.forEach(row => row.remove());
@@ -596,7 +596,7 @@
                 lastElement.parentNode.insertBefore(noAssignmentsRow, lastElement.nextSibling);
             }
         } catch (error) {
-            console.error(`Fehler beim Laden der Zuweisungen für Task ${taskId}:`, error);
+            // console.error(`Fehler beim Laden der Zuweisungen für Task ${taskId}:`, error);
             taskRow.classList.remove('active-task');
             toggleButton.innerHTML = '▼';
             toggleButton.title = 'Zuweisungen anzeigen';
