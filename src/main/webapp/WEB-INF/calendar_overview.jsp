@@ -1796,17 +1796,19 @@
                         // 1. Array für die Tagessummen initialisieren
                         const TaskTotals = Array(data.days.length).fill(0);
                         
+                        // console.log('Daata:', data);
+                        // console.log('Days:', data.days);
+                        // console.log('DaysInWeeks:', data.daysinweeks);
+
                         // 2. Durch jeden Tag des Monats iterieren
                         data.days.forEach((day, index) => {
                             allEmployees.forEach(employee => {
-                                const Tasks = getTaskEffortForDate(day, employee, data.days.filter(d => d.isHoliday));
+                                const Tasks = getTaskEffortForDate(day, employee, data.feiertage);
                                 if (!data.days[index].isWeekend && !data.days[index].isHoliday) {         
                                     TaskTotals[index] += Tasks;
                                 }
                             });
                         });
-
-                        
 
                         // 4. Zellen für jede Tagessumme erstellen und füllen
                         TaskTotals.forEach((total, index) => {
@@ -1821,36 +1823,75 @@
                         });
                     } else if (viewType === 'weeks') {
                         // Wochenansicht
+                        let firstDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);    
+
+                        // 1. Array für die Tagessummen initialisieren
+                        const TaskTotals = Array(20).fill(0);
+                                                
+                        // Durch alle Wochen interieren
+                        for (let i = 0; i < 20; i++) {
+                            let weekDate = new Date(firstDayOfMonth.getTime()); 
+                            weekDate.setDate(weekDate.getDate() + (i * 7));
+                            // Berechne Start- und Enddatum der Woche (Montag bis Sonntag)
+                            let weekStart = new Date(weekDate);
+                            weekStart.setDate(weekStart.getDate() - weekStart.getDay() + 2); // Montag
+                            let weekEnd = new Date(weekStart);
+                            weekEnd.setDate(weekEnd.getDate() + 6); // Sonntag
+
+                            // Datum mit DayInfo
+                            let daysInWeek;
+                            for (let j = 0; j < 7; j++) {
+                                let dDate = new Date(weekStart);
+                                dDate.setDate(dDate.getDate() + j);
+                                let dDateStr = dDate.toISOString().split('T')[0];
+                                let dayInfo = data.daysinweeks.find(d => d.date === dDateStr);
+                                if (dayInfo) {
+                                    if (!daysInWeek) daysInWeek = [];   
+                                    daysInWeek.push(dayInfo);
+                                }
+                            }
+                            // console.log('DaysInWeeks (komplett):', data.daysinweeks);
+                            // console.log('DaysInWeeks:', daysInWeek);
+                            // console.log('Woche ' + (i+1) + ' (' + weekStart.toISOString().split('T')[0] + ' bis ' + weekEnd.toISOString().split('T')[0] + '):');
+
+                            // Berechne die Summe der Woche
+                            daysInWeek.forEach(day => {
+                                // Für jeden Tag die Verfügbarkeit aller Mitarbeiter aufaddieren
+                                if (day.isWeekend || day.isHoliday) {
+                                    // console.log('  Überspringe Wochenende/Feiertag am ' + day.date);
+                                    // return; // Überspringe Wochenenden und Feiertage
+                                } else {
+                                    // console.log('Tag: ' + day.date);
+                                
+                                    allEmployees.forEach(employee => {
+                                        // console.log('  Mitarbeiter: ' + employee.name);
+                                        let Tasks = getTaskEffortForDate(day, employee, data.feiertage);
+                                        // Tasks = (Tasks).toFixed(2);
+                                        // console.log('    Aufgaben: ' + Tasks);
+                                        // if (!data.days[i].isWeekend && !data.days[i].isHoliday) {         
+                                            TaskTotals[i] += Tasks;
+                                        // }
+                                    });
+                                }
+                            });
+
+                           //  console.log('--> Wochenwert: ' + TaskTotals[i]);
+
+                            const td = document.createElement('td');
+                            if (TaskTotals[i] !== null) {
+                                td.textContent = (TaskTotals[i]).toFixed(2);
+                            }
+                            summaryRow.appendChild(td);
+                        }
                     }
 
                     // 5. Die fertige Zeile an die Tabelle anhängen
                     tbody.appendChild(summaryRow);
                 }
 
-
                 // #4: Zusammenfassung für Workload (Team)
                 if (showWorkloadTeam) {
-                    // 1. Array für die Tagessummen initialisieren
-                    const dailyAvailabilityTotals = Array(data.days.length).fill(0);
-                    const TaskTotals = Array(data.days.length).fill(0);
-
-                    // 2. Durch jeden Tag des Monats iterieren
-                    data.days.forEach((day, index) => {
-                        allEmployees.forEach(employee => {
-                            const availability = getAvailabilityForDate(day, employee);
-                            // if (typeof availability === 'number') {
-                            if (!data.days[index].isWeekend && !data.days[index].isHoliday && typeof availability === 'number') {         
-                                dailyAvailabilityTotals[index] += availability;
-                            }
-                            
-                            const Tasks = getTaskEffortForDate(day, employee, data.days.filter(d => d.isHoliday));
-                            if (!data.days[index].isWeekend && !data.days[index].isHoliday) {         
-                                TaskTotals[index] += Tasks;
-                            }
-                        });
-                    });
-
-                    // 3. Die Summenzeile erstellen
+                    // Die Summenzeile erstellen
                     const summaryRow = document.createElement('tr');
                     summaryRow.classList.add('summary-row');
 
@@ -1859,57 +1900,123 @@
                     summaryLabelCell.classList.add('employee-name', 'summary-label');
                     summaryRow.appendChild(summaryLabelCell);
 
-                    // 4. Zellen für jede Tagessumme erstellen und füllen
-                    // console.log('dailyAvailabilityTotals', dailyAvailabilityTotals);
-                    // console.log('TaskTotals', TaskTotals);
-                    let ergebnis;
 
-                    dailyAvailabilityTotals.forEach((total, index) => {
-                        const td = document.createElement('td');
-                        ergebnis = (TaskTotals[index] *100 / dailyAvailabilityTotals[index]);
-                        // console.log('ergebnis (', index + ') ' + ergebnis);
-                        if (ergebnis > 0) {
-                            td.textContent = (ergebnis*100).toFixed(0) + '%';
-                            td.style.backgroundColor = getColorForPercentage(100 - ergebnis*100, data.colors);
+                    if (viewType === 'days') {
+
+                        // 1. Array für die Tagessummen initialisieren
+                        const dailyAvailabilityTotals = Array(data.days.length).fill(0);
+                        const TaskTotals = Array(data.days.length).fill(0);
+
+                        // 2. Durch jeden Tag des Monats iterieren
+                        data.days.forEach((day, index) => {
+                            allEmployees.forEach(employee => {
+                                const availability = getAvailabilityForDate(day, employee);
+                                // if (typeof availability === 'number') {
+                                if (!data.days[index].isWeekend && !data.days[index].isHoliday && typeof availability === 'number') {         
+                                    dailyAvailabilityTotals[index] += availability;
+                                }
+                                
+                                const Tasks = getTaskEffortForDate(day, employee, data.days.filter(d => d.isHoliday));
+                                if (!data.days[index].isWeekend && !data.days[index].isHoliday) {         
+                                    TaskTotals[index] += Tasks;
+                                }
+                            });
+                        });
+
+                        
+
+                        // 4. Zellen für jede Tagessumme erstellen und füllen
+                        // console.log('dailyAvailabilityTotals', dailyAvailabilityTotals);
+                        // console.log('TaskTotals', TaskTotals);
+                        let ergebnis;
+
+                        dailyAvailabilityTotals.forEach((total, index) => {
+                            const td = document.createElement('td');
+                            ergebnis = (TaskTotals[index] *100 / dailyAvailabilityTotals[index]);
+                            // console.log('ergebnis (', index + ') ' + ergebnis);
+                            if (ergebnis > 0) {
+                                td.textContent = (ergebnis*100).toFixed(0) + '%';
+                                td.style.backgroundColor = getColorForPercentage(100 - ergebnis*100, data.colors);
+                            }
+                            if (data.days[index].isWeekend) {
+                                td.classList.add('weekend');
+                            }
+                            summaryRow.appendChild(td);
+                        });
+
+                    } else if (viewType === 'weeks') {
+                        // Wochenansicht
+                        let firstDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);    
+
+                        // 1. Array für die Tagessummen initialisieren
+                        const weekAvailabilityTotals = Array(20).fill(0);
+                        const TaskTotals = Array(20).fill(0);
+                        
+                        // Durch alle Wochen interieren
+                        for (let i = 0; i < 20; i++) {
+                            let weekDate = new Date(firstDayOfMonth.getTime()); 
+                            weekDate.setDate(weekDate.getDate() + (i * 7));
+                            // Berechne Start- und Enddatum der Woche (Montag bis Sonntag)
+                            let weekStart = new Date(weekDate);
+                            weekStart.setDate(weekStart.getDate() - weekStart.getDay() + 2); // Montag
+                            let weekEnd = new Date(weekStart);
+                            weekEnd.setDate(weekEnd.getDate() + 6); // Sonntag
+                            
+                            let daysInWeek;
+                            for (let j = 0; j < 7; j++) {
+                                let dDate = new Date(weekStart);
+                                dDate.setDate(dDate.getDate() + j);
+                                let dDateStr = dDate.toISOString().split('T')[0];
+                                let dayInfo = data.daysinweeks.find(d => d.date === dDateStr);
+                                if (dayInfo) {
+                                    if (!daysInWeek) daysInWeek = [];   
+                                    daysInWeek.push(dayInfo);
+                                }
+                            }
+
+                            // Berechne die Summe der Woche
+                            daysInWeek.forEach(day => {
+                                // Für jeden Tag die Verfügbarkeit aller Mitarbeiter aufaddieren
+                                // console.log ('Tag:', day);
+                                if (day.isWeekend || day.isHoliday) {
+                                    // console.log('  Überspringe Wochenende/Feiertag am ' + day.date);
+                                    return; // Überspringe Wochenenden und Feiertage
+                                } else {
+                                    allEmployees.forEach(employee => {
+                                        const availability = getAvailabilityForDate(day, employee);
+                                        // console.log('Mitarbeiter: ' + employee.name + ' am ' + day.date + ' mit ' + (availability !== null ? availability : 'keine') + ' Verfügbarkeit');
+                                        if (availability && typeof availability === 'number') {
+                                            weekAvailabilityTotals[i] += availability;
+                                        }
+
+                                        let Tasks = getTaskEffortForDate(day, employee, data.feiertage);
+                                        TaskTotals[i] += Tasks;
+                                    });
+                                }
+                            });
+
+                            // console.log('----- Woche ' + (i+1) + ' (' + weekStart.toISOString().split('T')[0] + ' bis ' + weekEnd.toISOString().split('T')[0] + '): ' + weekAvailabilityTotals[i]);
+
+                            const td = document.createElement('td');
+                            const workloadPercent = (TaskTotals[i] *100 / weekAvailabilityTotals[i]);
+                            if (workloadPercent !== null) {
+                                td.textContent = (workloadPercent*100).toFixed(0) + '%';
+                                td.style.backgroundColor = getColorForPercentage(workloadPercent*100);
+                            }
+                            summaryRow.appendChild(td);
                         }
-                        if (data.days[index].isWeekend) {
-                            td.classList.add('weekend');
-                        }
-                        summaryRow.appendChild(td);
-                    });
+                
+                        // Die fertige Zeile an die Tabelle anhängen
+                        tbody.appendChild(summaryRow);
+                    }
 
                     // 5. Die fertige Zeile an die Tabelle anhängen
                     tbody.appendChild(summaryRow);
                 }
 
-
-                
-
-                     
-
-
                 // #5: Zusammenfassung für Rest-Verfügbarkeit
                 if (showRemaining  || showRemainingTeam) {
-                    // 1. Array für die Tagessummen initialisieren
-                    const TaskTotals = Array(data.days.length).fill(0);
-                    const dailyAvailabilityTotals = Array(data.days.length).fill(0);
-
-                    // 2. Durch jeden Tag des Monats iterieren
-                    data.days.forEach((day, index) => {
-                        allEmployees.forEach(employee => {
-                            const Tasks = getTaskEffortForDate(day, employee, data.days.filter(d => d.isHoliday));
-                            if (!data.days[index].isWeekend && !data.days[index].isHoliday) {         
-                                TaskTotals[index] += Tasks;
-                            }
-
-                            const availability = getAvailabilityForDate(day, employee);
-                            if (!data.days[index].isWeekend && !data.days[index].isHoliday && typeof availability === 'number') {         
-                                dailyAvailabilityTotals[index] += availability;
-                            }
-                        });
-                    });
-
-                    // 3. Die Summenzeile erstellen
+                    // Die Summenzeile erstellen
                     const summaryRow = document.createElement('tr');
                     summaryRow.classList.add('summary-row');
 
@@ -1918,37 +2025,144 @@
                     summaryLabelCell.classList.add('employee-name', 'summary-label');
                     summaryRow.appendChild(summaryLabelCell);
 
-                    // 4. Zellen für jede Tagessumme erstellen und füllen
-                    TaskTotals.forEach((total, index) => {
-                        const td = document.createElement('td');
-                        const RemainValue = dailyAvailabilityTotals[index]/100 - total;
-                        const RemainValuePercent = RemainValue / (RemainValue + total);
-                        // console.log ('Remaining:   ', ' --> ' + RemainValue ); 
-                        // console.log ('Total:       ', ' --> ' + total ); 
-                        // console.log ('Remaining_%: ', ' ----> ' + RemainValuePercent ); 
+
+                    if (viewType === 'days') {
+
+                        // 1. Array für die Tagessummen initialisieren
+                        const TaskTotals = Array(data.days.length).fill(0);
+                        const dailyAvailabilityTotals = Array(data.days.length).fill(0);
+
+                        // 2. Durch jeden Tag des Monats iterieren
+                        data.days.forEach((day, index) => {
+                            allEmployees.forEach(employee => {
+                                const Tasks = getTaskEffortForDate(day, employee, data.days.filter(d => d.isHoliday));
+                                if (!data.days[index].isWeekend && !data.days[index].isHoliday) {         
+                                    TaskTotals[index] += Tasks;
+                                }
+
+                                const availability = getAvailabilityForDate(day, employee);
+                                if (!data.days[index].isWeekend && !data.days[index].isHoliday && typeof availability === 'number') {         
+                                    dailyAvailabilityTotals[index] += availability;
+                                }
+                            });
+                        });
+
                         
-                        if (data.days[index].isWeekend) {
-                            td.classList.add('weekend');
-                        }
-                        else {
-                            td.textContent = RemainValue.toFixed(2);
-                        }
+
+                        // 4. Zellen für jede Tagessumme erstellen und füllen
+                        TaskTotals.forEach((total, index) => {
+                            const td = document.createElement('td');
+                            const RemainValue = dailyAvailabilityTotals[index]/100 - total;
+                            const RemainValuePercent = RemainValue / (RemainValue + total);
+                            // console.log ('Remaining:   ', ' --> ' + RemainValue ); 
+                            // console.log ('Total:       ', ' --> ' + total ); 
+                            // console.log ('Remaining_%: ', ' ----> ' + RemainValuePercent ); 
                             
-                        if (RemainValue < 0) {
-                            td.style.color  = 'red'; // Hellrot für negative Werte
-                            td.style.backgroundColor = data.colors.calendar_workload_color_high;
-                        } 
-                        else if (RemainValue > 0) {
-                            td.style.color  = 'green'; // Grün für positive Werte
-                            td.style.backgroundColor = getColorForPercentage(100-RemainValue, data.colors);
-                        } 
-                        else {
-                            td.style.color  = 'grey'; // Schwarz für Null
-                            td.style.backgroundColor = getColorForPercentage(100-RemainValue, data.colors);
-                        }
+                            if (data.days[index].isWeekend) {
+                                td.classList.add('weekend');
+                            }
+                            else {
+                                td.textContent = RemainValue.toFixed(2);
+                            }
+                                
+                            if (RemainValue < 0) {
+                                td.style.color  = 'red'; // Hellrot für negative Werte
+                                td.style.backgroundColor = data.colors.calendar_workload_color_high;
+                            } 
+                            else if (RemainValue > 0) {
+                                td.style.color  = 'green'; // Grün für positive Werte
+                                td.style.backgroundColor = getColorForPercentage(100-RemainValue, data.colors);
+                            } 
+                            else {
+                                td.style.color  = 'grey'; // Schwarz für Null
+                                td.style.backgroundColor = getColorForPercentage(100-RemainValue, data.colors);
+                            }
+                            
+                            summaryRow.appendChild(td);
+                        });
+
+                    } else if (viewType === 'weeks') {
+                        // Wochenansicht
+                        let firstDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);    
+
+                        // 1. Array für die Tagessummen initialisieren
+                        const weekAvailabilityTotals = Array(20).fill(0);
+                        const TaskTotals = Array(20).fill(0);
                         
-                        summaryRow.appendChild(td);
-                    });
+                        // Durch alle Wochen interieren
+                        for (let i = 0; i < 20; i++) {
+                            let weekDate = new Date(firstDayOfMonth.getTime()); 
+                            weekDate.setDate(weekDate.getDate() + (i * 7));
+                            // Berechne Start- und Enddatum der Woche (Montag bis Sonntag)
+                            let weekStart = new Date(weekDate);
+                            weekStart.setDate(weekStart.getDate() - weekStart.getDay() + 2); // Montag
+                            let weekEnd = new Date(weekStart);
+                            weekEnd.setDate(weekEnd.getDate() + 6); // Sonntag
+                            
+                            let daysInWeek;
+                            for (let j = 0; j < 7; j++) {
+                                let dDate = new Date(weekStart);
+                                dDate.setDate(dDate.getDate() + j);
+                                let dDateStr = dDate.toISOString().split('T')[0];
+                                let dayInfo = data.daysinweeks.find(d => d.date === dDateStr);
+                                if (dayInfo) {
+                                    if (!daysInWeek) daysInWeek = [];   
+                                    daysInWeek.push(dayInfo);
+                                }
+                            }
+
+                            // Berechne die Summe der Woche
+                            daysInWeek.forEach(day => {
+                                // Für jeden Tag die Verfügbarkeit aller Mitarbeiter aufaddieren
+                                // console.log ('Tag:', day);
+                                if (day.isWeekend || day.isHoliday) {
+                                    // console.log('  Überspringe Wochenende/Feiertag am ' + day.date);
+                                    return; // Überspringe Wochenenden und Feiertage
+                                } else {
+                                    // console.log('  Berücksichtige Tag am ' + day.date);
+                                
+                                    allEmployees.forEach(employee => {
+                                        const availability = getAvailabilityForDate(day, employee);
+                                        // console.log('Mitarbeiter: ' + employee.name + ' am ' + day.date + ' mit ' + (availability !== null ? availability : 'keine') + ' Verfügbarkeit');
+                                        if (availability && typeof availability === 'number') {
+                                            weekAvailabilityTotals[i] += availability;
+                                        }
+                                        let Tasks = getTaskEffortForDate(day, employee, data.feiertage);
+                                        TaskTotals[i] += Tasks;
+                                    });
+                                }
+                            });
+
+                            // console.log('----- Woche ' + (i+1) + ' (' + weekStart.toISOString().split('T')[0] + ' bis ' + weekEnd.toISOString().split('T')[0] + '): ' + weekAvailabilityTotals[i]);
+
+                            const td = document.createElement('td');
+                            const RemainValue = weekAvailabilityTotals[i]/100 - TaskTotals[i];
+                            const RemainValuePercent = RemainValue / (RemainValue + TaskTotals[i]);
+
+                            console.log ('Remaining:   ', ' --> ' + RemainValuePercent );
+
+                            if (RemainValue !== null) {
+                                td.textContent = (RemainValue).toFixed(2);
+                            }
+                            if (RemainValue < 0) {
+                                td.style.color  = 'red'; // Hellrot für negative Werte
+                                td.style.backgroundColor = data.colors.calendar_workload_color_high;
+                            } 
+                            else if (RemainValue > 0) {
+                                td.style.color  = 'green'; // Grün für positive Werte
+                                td.style.backgroundColor = getColorForPercentage(RemainValuePercent*100, data.colors);
+                            } 
+                            else {
+                                td.style.color  = 'grey'; // Schwarz für Null
+                                td.style.backgroundColor = getColorForPercentage(RemainValuePercent*100, data.colors);
+                            }
+                            summaryRow.appendChild(td);
+                        }
+                
+                        // Die fertige Zeile an die Tabelle anhängen
+                        tbody.appendChild(summaryRow);
+
+                    }
 
                     // 5. Die fertige Zeile an die Tabelle anhängen
                     tbody.appendChild(summaryRow);

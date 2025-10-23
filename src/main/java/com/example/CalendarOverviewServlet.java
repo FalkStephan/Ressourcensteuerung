@@ -197,8 +197,17 @@ public class CalendarOverviewServlet extends HttpServlet {
      */
     private List<Map<String, Object>> getDaysInWeeks(int year, int month) {
         List<Map<String, Object>> days = new ArrayList<>();
-        // Startdatum ist der erste Tag des übergebenen Monats
-        LocalDate startDate = LocalDate.of(year, month, 1);
+        
+        // Ermittle den ersten Tag des Monats
+        LocalDate firstDayOfMonth = LocalDate.of(year, month, 1);
+        
+        // KORREKTUR: Das Startdatum ist der Montag der Woche, in der der 1. des Monats liegt.
+        // .with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)) stellt sicher:
+        // - Wenn der 1. ein Mittwoch ist, wird der vorherige Montag genommen.
+        // - Wenn der 1. ein Montag ist, wird dieser Montag genommen.
+        // - Wenn der 1. ein Sonntag ist, wird der Montag der *vorherigen* Woche genommen.
+        LocalDate startDate = firstDayOfMonth.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
+        
         List<Map<String, Object>> holidays = DatabaseService.getAllFeiertage();
 
         // Iteriere über 140 Tage (20 Wochen * 7 Tage)

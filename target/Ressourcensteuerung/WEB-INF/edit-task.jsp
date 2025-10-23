@@ -111,7 +111,7 @@
                     
                     <div>
                         <label for="taskEffort">Aufwand (PT):</label>
-                        <input type="number" step="1" name="effort_days" id="taskEffort" value="${task.effort_days}" required/>
+                        <input type="number" step="0.5" name="effort_days" id="taskEffort" value="${task.effort_days}" required/>
                     </div>
                     
                     <div>
@@ -177,7 +177,7 @@
     // Beim Laden der Seite
     document.addEventListener('DOMContentLoaded', function() {
         // Wenn eine Task-ID vorhanden ist, lade die zugewiesenen Benutzer
-        const taskId = document.querySelector('input[name="id"]')?.value;
+        let taskId = document.querySelector('input[name="id"]')?.value;
         // console.log('Aufruf der Seite.....');
         if (taskId) {
             // console.log('TaskId laden: ', taskId);
@@ -217,7 +217,7 @@
                 const formData = new URLSearchParams(new FormData(form));
                 
                 // Debug-Ausgabe
-                console.log('Sende Task-Daten:', Object.fromEntries(formData));
+                // console.log('Sende Task-Daten:', Object.fromEntries(formData));
                 
                 // Task speichern
                 const response = await fetch('tasks', {
@@ -230,7 +230,7 @@
                 });
                 
                 const responseText = await response.text();
-                console.log('Server-Antwort (Text):', responseText);
+                // console.log('Server-Antwort (Text):', responseText);
                 // const taskId = formData.get('id') || (await getLastInsertedTaskId());
                 // console.log('Task-ID nach dem Speichern:', taskId);
                 
@@ -238,7 +238,7 @@
                 try {
                     jsonResponse = JSON.parse(responseText);
                 } catch (e) {
-                    console.error('Fehler beim JSON-Parsen:', e);
+                    // console.error('Fehler beim JSON-Parsen:', e);
                     throw new Error('Ungültige Server-Antwort');
                 }
                 
@@ -248,23 +248,10 @@
                 }
                 
                 // Task-ID ermitteln
-                if (taskId) {
-                    console.log('Vorhandene Task-ID: ', taskId);
-                } else {
-                    let taskId = document.querySelector('input[name="id"]')?.value;
-                    console.log('Neue Task-ID aus Antwort_1: ', jsonResponse.taskId);
-                    console.log('Neue Task-ID aus Antwort_2: ', taskId);
-                }
-
-
-
-                
-                
-                
                 if (!taskId && jsonResponse.taskId) {
                     taskId = jsonResponse.taskId;
                 }
-                console.log('Task-ID: ', taskId);
+                // console.log('Task-ID: ', taskId);
                 
                 if (!taskId) {
                     throw new Error('Keine Task-ID verfügbar');
@@ -284,7 +271,7 @@
                         assignments.append(`effortDays_${index}`, user.effort_days.toString());
                     });
                     
-                    console.log('Sende Zuweisungen:', Object.fromEntries(assignments));
+                    // console.log('Sende Zuweisungen:', Object.fromEntries(assignments));
                     
                     const assignmentResponse = await fetch('tasks', {
                         method: 'POST',
@@ -295,14 +282,14 @@
                     });
                     
                     const assignmentText = await assignmentResponse.text();
-                    console.log('Server-Antwort für Zuweisungen:', assignmentText);
+                    // console.log('Server-Antwort für Zuweisungen:', assignmentText);
                 }
                 
                 // Erfolgreiche Speicherung
                 window.location.href = 'tasks';
                 
             } catch (error) {
-                console.error('Fehler beim Speichern:', error);
+                // console.error('Fehler beim Speichern:', error);
                 alert(error.message);
             }
         });
@@ -320,7 +307,7 @@
                 throw new Error('Ungültige Benutzer-ID: ' + userIdStr);
             }
             
-            console.log('Lade Details für Benutzer:', userIdStr);
+            // console.log('Lade Details für Benutzer:', userIdStr);
             
             const response = await fetch('tasks?action=getUserDetails&userId=' + userIdStr);
             
@@ -343,14 +330,14 @@
             };
             
         } catch (error) {
-            console.error('Fehler in loadUserDetails:', error);
+            // console.error('Fehler in loadUserDetails:', error);
             throw error;
         }
     }
 
     async function loadAssignedUsers(taskId) {
         if (!taskId) {
-            console.error('Keine Task-ID angegeben');
+            // console.error('Keine Task-ID angegeben');
             return;
         }
         try {
@@ -363,7 +350,7 @@
             if (!Array.isArray(users)) {
                 throw new Error('Ungültiges Datenformat für zugewiesene Benutzer');
             }
-            console.log('User:', users);
+            // console.log('User:', users);
 
 
             assignedUsers = users.map(user => ({
@@ -379,7 +366,7 @@
             
             
         } catch (error) {
-            console.error('Fehler beim Laden der zugewiesenen Benutzer:', error);
+            // console.error('Fehler beim Laden der zugewiesenen Benutzer:', error);
             alert('Fehler beim Laden der zugewiesenen Benutzer: ' + error.message);
         }
     }
@@ -429,7 +416,7 @@
             closeUserSelectDialog();
             
         } catch (error) {
-            console.error('Fehler beim Zuweisen des Benutzers:', error);
+            // console.error('Fehler beim Zuweisen des Benutzers:', error);
             alert(error.message);
         }
     }
