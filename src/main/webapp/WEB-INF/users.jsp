@@ -385,14 +385,14 @@
 
         // --- Tabellen-Sortierung ---
         let currentSortColumn = -1;
- let currentSortDir = 'asc';
+        let currentSortDir = 'asc';
         function sortTable(columnIndex, type) {
             const table = document.getElementById('userTable');
- const tbody = table.querySelector('tbody');
+            const tbody = table.querySelector('tbody');
             const rows = Array.from(tbody.querySelectorAll('tr'));
             const headers = table.querySelectorAll('.sortable-header');
- const sortDir = (columnIndex === currentSortColumn && currentSortDir === 'asc') ? 'desc' : 'asc';
- rows.sort((a, b) => {
+            const sortDir = (columnIndex === currentSortColumn && currentSortDir === 'asc') ? 'desc' : 'asc';
+            rows.sort((a, b) => {
                 const cellA = a.querySelectorAll('td')[columnIndex].innerText.toLowerCase();
                 const cellB = b.querySelectorAll('td')[columnIndex].innerText.toLowerCase();
                 let valA = cellA;
@@ -412,7 +412,7 @@
          
         return 0;
             });
- headers.forEach(header => header.classList.remove('asc', 'desc'));
+            headers.forEach(header => header.classList.remove('asc', 'desc'));
             headers[columnIndex].classList.add(sortDir);
             tbody.innerHTML = '';
             rows.forEach(row => tbody.appendChild(row));
@@ -429,13 +429,13 @@
         // --- Spaltenauswahl anwenden ---
         function applyColPrefs() {
             const colChecks = document.querySelectorAll('.col-toggle');
- const table = document.getElementById('userTable');
+            const table = document.getElementById('userTable');
             if (!table) return;
             const ths = table.querySelectorAll('thead th');
- colChecks.forEach((cb, idx) => {
+            colChecks.forEach((cb, idx) => {
                 if (ths[idx]) ths[idx].style.display = cb.checked ? '' : 'none';
             });
- const trs = table.querySelectorAll('tbody tr');
+            const trs = table.querySelectorAll('tbody tr');
             trs.forEach(tr => {
                 const tds = tr.querySelectorAll('td');
                 colChecks.forEach((cb, idx) => {

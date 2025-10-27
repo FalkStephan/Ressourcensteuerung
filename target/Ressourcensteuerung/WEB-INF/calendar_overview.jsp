@@ -65,6 +65,28 @@
             text-align: left !important;
         }
 
+        /* NEU: Markierung für den aktuellen Tag */
+        .today-marker-header {
+            background-color: #fff9c4 !important; /* Leichtes Gelb für den Header */
+            box-shadow: inset 0 0 4px rgba(204, 172, 0, 0.6);
+        }
+        .today-marker-cell {
+            /* Ein auffälligerer linker/rechter Rand für alle Zellen in der Spalte */
+            border-left: 2px solid #FBC02D !important;
+            border-right: 2px solid #FBC02D !important;
+        }
+
+        /* NEU: Markierung für die aktuelle Woche */
+        .current-week-header {
+            background-color: #fff9c4 !important; /* Leichtes Gelb für den Header */
+            box-shadow: inset 0 0 4px rgba(204, 172, 0, 0.6);
+        }
+        .current-week-cell {
+            /* Ein auffälligerer linker/rechter Rand für alle Zellen in der Spalte */
+            border-left: 2px solid #FBC02D !important;
+            border-right: 2px solid #FBC02D !important;
+        }
+
         .view-options {
             display: flex;
             gap: 1.5em; /* Abstand zwischen den Checkboxen */
@@ -77,9 +99,9 @@
             padding: 2px 8px; /* Reduziert den vertikalen und horizontalen Abstand in der Zelle */
             line-height: 1.2; /* Verringert den Zeilenabstand */     
             font-size: 0.85em; /* Macht die Schrift etwas kleiner */
-            color: #333;      /* Etwas dunklere Schrift für bessere Lesbarkeit */     
+            color: #333;     /* Etwas dunklere Schrift für bessere Lesbarkeit */    
         }
-      
+       
         .detail-row .highlight {
             background-color: #dbd000; /* Ein leichtes Türkis als Hintergrund */
             /* font-weight: bold; */
@@ -128,7 +150,7 @@
             padding: 2px 8px; /* Reduziert den vertikalen und horizontalen Abstand in der Zelle */
             line-height: 1.2; /* Verringert den Zeilenabstand */     
             font-size: 0.85em; /* Macht die Schrift etwas kleiner */
-            color: #333;      /* Etwas dunklere Schrift für bessere Lesbarkeit */    
+            color: #333;     /* Etwas dunklere Schrift für bessere Lesbarkeit */   
         }
 
         .summary-label {
@@ -152,7 +174,6 @@
                     <span id="currentMonth"></span>
                     <button onclick="changeMonth(1)" class="button">Nächster Monat &gt;</button>
 
-                    <!-- Suchfeld für Live-Filter der Benutzer -->
                     <div style="margin-left:1em;">
                         <input id="employeeSearch" type="search" placeholder="Benutzer suchen..." style="padding:6px; min-width:220px;" />
                     </div>
@@ -179,12 +200,10 @@
                         <thead>
                             <tr>
                                 <th class="employee-name">Mitarbeiter</th>
-                                <!-- Tage werden per JavaScript eingefügt -->
-                            </tr>
+                                </tr>
                         </thead>
                         <tbody>
-                            <!-- Mitarbeiter und Tage werden per JavaScript eingefügt -->
-                        </tbody>
+                            </tbody>
                     </table>
                 </div>
             </div>
@@ -224,6 +243,21 @@
                     }
                 });
             }
+
+            // --- NEU HINZUGEFÜGT ---
+            // Klick-Listener für den Monats-Text hinzufügen
+            const monthDisplay = document.getElementById('currentMonth');
+            if (monthDisplay) {
+                monthDisplay.style.cursor = 'pointer'; // Zeigt an, dass es klickbar ist
+                monthDisplay.style.userSelect = 'none'; // Verhindert Textmarkierung
+                monthDisplay.title = "Zum aktuellen Monat springen"; // Tooltip
+                monthDisplay.addEventListener('click', function() {
+                    currentDate = new Date(); // Setzt auf den aktuellen Tag/Monat
+                    updateCalendar(); // Kalender neu laden
+                });
+            }
+            // --- ENDE NEU HINZUGEFÜGT ---
+
             // Initialen Kalender beim ersten Laden der Seite aufbauen
             // updateCalendar();
         });
@@ -386,7 +420,7 @@
             // console.log(`-> KEIN TREFFER für diesen Tag gefunden.`);
             return null; // Kein gültiger Kapazitätseintrag gefunden
         }
-      
+       
         function getAvailabilityForDate(day, employee) {
             /**
             * Berechnet die Verfügbarkeit eines Mitarbeiters für einen bestimmten Tag.
@@ -482,12 +516,12 @@
             // console.log(' - Dauer: ', count);
             return count > 0 ? count : 1; // Division durch Null vermeiden
         }
-        
+       
         function getTaskEffortForDate(day, employee, holidays) {
             /**
             * FUNKTION: Berechnet die tägliche Aufgabenlast für einen Mitarbeiter.
             */
-            // console.log(`--> Tag:   `,day);
+            // console.log(`--> Tag:    `,day);
             // console.log(`User:      `,employee);
             // console.log(`Feiertage: `,holidays);
             let totalEffort = 0;
@@ -509,7 +543,7 @@
                         if (task.task_options === 'waiting') {
                             // abwesend und Aufgabe = waiting
                             // workdays = countWorkdays(task.start_date, task.end_date, holidays, absenceSet);    
-                            workdays = 0;                    
+                            workdays = 0;                  
                         } else { 
                             // abwesend und Aufgabe = 'continue' or undefined
                             workdays = countWorkdays(task.start_date, task.end_date, holidays);
@@ -520,7 +554,7 @@
                         // anwesend
                         if (task.task_options === 'waiting') {
                             // anwesend und Aufgabe = waiting
-                            workdays = countWorkdays(task.start_date, task.end_date, holidays, absenceSet);                        
+                            workdays = countWorkdays(task.start_date, task.end_date, holidays, absenceSet);                    
                         } else { 
                             // anwesend und Aufgabe = 'continue' or undefined
                             workdays = countWorkdays(task.start_date, task.end_date, holidays);
@@ -567,7 +601,7 @@
 
             return totalEffort;
         }
-     
+       
         function toggleTaskDetails(clickedRow) {
             /**
             * Blendet die Aufgabendetails ein oder aus.
@@ -658,7 +692,6 @@
                         let weekEnd = new Date(weekStart);
                         weekEnd.setDate(weekEnd.getDate() + 6); // Sonntag
                         
-
                         let daysInWeek;
                         for (let j = 0; j < 7; j++) {
                             let dDate = new Date(weekStart);
@@ -694,7 +727,7 @@
                             }
                             else {
                                 // console.log('Kein DayInfo für Datum: ', day.date);
-                            }  
+                            } 
                         });
 
                         const td = document.createElement('td');
@@ -714,6 +747,17 @@
         // Die "große" Funktion zum Aktualisieren des Kalenders
         function updateCalendar() {
             const viewType = document.querySelector('input[name="view"]:checked').value;
+            
+            // NEU: Heutiges Datum im YYYY-MM-DD Format ermitteln
+            const today = new Date();
+            const todayString = today.getFullYear() + '-' +
+                                (today.getMonth() + 1).toString().padStart(2, '0') + '-' +
+                                today.getDate().toString().padStart(2, '0');
+
+            // NEU: Heutige Kalenderwoche und Jahr ermitteln
+            const currentWeekNumber = getWeekNumber(today);
+            const currentYear = today.getFullYear();
+
             fetch('${pageContext.request.contextPath}/calendar-overview/data?' + new URLSearchParams({
                 year: currentDate.getFullYear(),
                 month: currentDate.getMonth() + 1
@@ -817,6 +861,13 @@
                         const th = document.createElement('th');
                         th.textContent = day.dayOfMonth;
                         if (day.isWeekend) th.classList.add('weekend');
+                        
+                        // NEU: Heutigen Tag in der Kopfzeile markieren
+                        if (day.date === todayString) {
+                            th.classList.add('today-marker-header');
+                            th.title = "Heute"; // Tooltip
+                        }
+
                         dayHeaderRow.appendChild(th);
                     });
                     thead.appendChild(dayHeaderRow);
@@ -847,7 +898,15 @@
                         monthMap.set(month, monthMap.get(month) + 1);
 
                         const th = document.createElement('th');
-                        th.textContent = getWeekNumber(weekDate);
+                        const weekForHeader = getWeekNumber(weekDate); // KW ermitteln
+                        th.textContent = weekForHeader;
+
+                        // NEU: Prüfung für aktuelle Woche (KW und Jahr müssen übereinstimmen)
+                        if (weekForHeader === currentWeekNumber && weekDate.getFullYear() === currentYear) {
+                            th.classList.add('current-week-header');
+                            th.title = "Aktuelle Woche";
+                        }
+                        
                         weekHeaderRow.appendChild(th);
                     }
 
@@ -860,33 +919,6 @@
 
                     thead.appendChild(monthHeaderRow);
                     thead.appendChild(weekHeaderRow);
-
-
-                    /**
-                    Object.entries(data.departments).forEach(([department, employees]) => {
-                        const departmentRow = document.createElement('tr');
-                        departmentRow.classList.add('department-header');
-                        const departmentCell = document.createElement('td');
-                        departmentCell.textContent = department;
-                        departmentCell.colSpan = 21;
-                        departmentRow.appendChild(departmentCell);
-                        tbody.appendChild(departmentRow);
-
-                        employees.forEach(employee => {
-                            const tr = document.createElement('tr');
-                            const nameCell = document.createElement('td');
-                            nameCell.textContent = employee.name;
-                            nameCell.classList.add('employee-name');
-                            tr.appendChild(nameCell);
-
-                            for (let i = 0; i < 20; i++) {
-                                const td = document.createElement('td');
-                                tr.appendChild(td);
-                            }
-                            tbody.appendChild(tr);
-                        });
-                    });
-                    */
                 }
 
                 // Mitarbeier abteilungsweise in den Zeilen anlegen
@@ -897,7 +929,7 @@
                     headerCell.textContent = department;
                     if (viewType === 'days') {
                         headerCell.colSpan = data.days.length + 1;
-                    } else if (viewType === 'weeks') {    
+                    } else if (viewType === 'weeks') {   
                         headerCell.colSpan = 21; // Mitarbeiter + 20 Wochen
                     }
                     
@@ -928,8 +960,30 @@
                                 } else {
                                     td.classList.add('workday');
                                 }
+                                
+                                // NEU: Heutigen Tag in der Haupt-Mitarbeiterzeile markieren
+                                if (day.date === todayString) {
+                                    td.classList.add('today-marker-cell');
+                                }
+
                                 tr.appendChild(td);
                             });
+                        } else if (viewType === 'weeks') {
+                            // NEU: Leere Zellen für die Wochenansicht (Hauptzeile) hinzufügen
+                            let firstDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+                            for (let i = 0; i < 20; i++) {
+                                const td = document.createElement('td'); // Leere Zelle
+
+                                // Logik zum Prüfen der Woche
+                                let weekDate = new Date(firstDayOfMonth.getTime());
+                                weekDate.setDate(weekDate.getDate() + (i * 7));
+                                const weekForCell = getWeekNumber(weekDate);
+                                
+                                if (weekForCell === currentWeekNumber && weekDate.getFullYear() === currentYear) {
+                                    td.classList.add('current-week-cell');
+                                }
+                                tr.appendChild(td);
+                            }
                         }
                         tbody.appendChild(tr);
 
@@ -962,6 +1016,12 @@
                                     }
                                     // Hier können optional noch Klassen für Styling (weekend, etc.) hinzugefügt werden
                                     if (day.isWeekend) td.classList.add('weekend');
+                                    
+                                    // NEU: Heutigen Tag markieren
+                                    if (day.date === todayString) {
+                                        td.classList.add('today-marker-cell');
+                                    }
+
                                     makRow.appendChild(td);
                                 });
                             } else if (viewType === 'weeks') {
@@ -1004,6 +1064,13 @@
                                     if (avgCapacity !== null) {
                                         td.textContent = (avgCapacity/100).toFixed(2);
                                     }
+                                    
+                                    // NEU: Prüfung für aktuelle Woche
+                                    const weekForCell = getWeekNumber(weekDate);
+                                    if (weekForCell === currentWeekNumber && weekDate.getFullYear() === currentYear) {
+                                        td.classList.add('current-week-cell');
+                                    }
+
                                     makRow.appendChild(td);
                                 }
                             }
@@ -1030,6 +1097,12 @@
                                         td.textContent = (availability/100).toFixed(2);
                                     }
                                     if (day.isWeekend) td.classList.add('weekend');
+                                    
+                                    // NEU: Heutigen Tag markieren
+                                    if (day.date === todayString) {
+                                        td.classList.add('today-marker-cell');
+                                    }
+
                                     availabilityRow.appendChild(td);
                                 });
                                 // tbody.appendChild(availabilityRow);
@@ -1083,6 +1156,13 @@
                                     if (total !== null) {
                                         td.textContent = (total/100).toFixed(2);
                                     }
+                                    
+                                    // NEU: Prüfung für aktuelle Woche
+                                    const weekForCell = getWeekNumber(weekDate);
+                                    if (weekForCell === currentWeekNumber && weekDate.getFullYear() === currentYear) {
+                                        td.classList.add('current-week-cell');
+                                    }
+
                                     availabilityRow.appendChild(td);
                                     //tbody.appendChild(availabilityRow);
                                 }                                
@@ -1093,6 +1173,8 @@
                         // 4. Aufgaben anzeigen
                         if (showTasks) {
                             const employeeTaskRow = document.createElement('tr');
+                            console.log('Dataset:', data);
+                            console.log('MA:', employee);
                             employeeTaskRow.classList.add('detail-row', 'expandable');
                             employeeTaskRow.dataset.employeeId = employee.id;
                             employeeTaskRow.dataset.holidays = JSON.stringify(data.feiertage);
@@ -1117,6 +1199,12 @@
                                         td.textContent = (taskeffort).toFixed(2);
                                     }
                                     if (day.isWeekend) td.classList.add('weekend');
+                                    
+                                    // NEU: Heutigen Tag markieren
+                                    if (day.date === todayString) {
+                                        td.classList.add('today-marker-cell');
+                                    }
+                                    
                                     employeeTaskRow.appendChild(td);
                                 });
                                             
@@ -1166,10 +1254,17 @@
                                     if (total !== null) {
                                         td.textContent = (total).toFixed(2);
                                     }
+                                    
+                                    // NEU: Prüfung für aktuelle Woche
+                                    const weekForCell = getWeekNumber(weekDate);
+                                    if (weekForCell === currentWeekNumber && weekDate.getFullYear() === currentYear) {
+                                        td.classList.add('current-week-cell');
+                                    }
+                                    
                                     employeeTaskRow.appendChild(td);
                                 }
                             } 
-                            tbody.appendChild(employeeTaskRow);               
+                            tbody.appendChild(employeeTaskRow);           
                         }
 
                         // 5. Auslastung (Workload) anzeigen
@@ -1208,6 +1303,12 @@
                                     // console.log ('Color: ', workload + ' / ' + wlcolor);
                                     // td.style.backgroundColor = getWorkloadColor(taskeffort, data.colors);
                                     if (day.isWeekend) td.classList.add('weekend');
+                                    
+                                    // NEU: Heutigen Tag markieren
+                                    if (day.date === todayString) {
+                                        td.classList.add('today-marker-cell');
+                                    }
+                                    
                                     WorkloadRow.appendChild(td);
                                 });
                             } else if (viewType === 'weeks') {
@@ -1275,10 +1376,17 @@
                                     // if (workload !== null) {
                                     //     td.textContent = (workload).toFixed(0);
                                     // }
+                                    
+                                    // NEU: Prüfung für aktuelle Woche
+                                    const weekForCell = getWeekNumber(weekDate);
+                                    if (weekForCell === currentWeekNumber && weekDate.getFullYear() === currentYear) {
+                                        td.classList.add('current-week-cell');
+                                    }
+                                    
                                     WorkloadRow.appendChild(td);
                                 }
                             }
-                            tbody.appendChild(WorkloadRow);                            
+                            tbody.appendChild(WorkloadRow);             
                         }
 
                         // #6 Rest-Verfügbarkeit anzeigen
@@ -1299,7 +1407,7 @@
                                     const td = document.createElement('td');
                                     const taskeffort = getTaskEffortForDate(day, employee, data.feiertage);
                                     const availability = getAvailabilityForDate(day, employee);
-                                    const remaining = (availability/100) - taskeffort;  
+                                    const remaining = (availability/100) - taskeffort;   
                                     if (remaining < 0) {
                                         td.style.color  = 'red'; // Hellrot für negative Werte
                                     } 
@@ -1312,11 +1420,17 @@
 
 
                                     if (!day.isWeekend && !day.isHoliday) {
-                                        td.textContent = (remaining).toFixed(2);                                   
+                                        td.textContent = (remaining).toFixed(2);                                       
                                     }
 
                                     // td.style.backgroundColor = getWorkloadColor(taskeffort, data.colors);
                                     if (day.isWeekend) td.classList.add('weekend');
+                                    
+                                    // NEU: Heutigen Tag markieren
+                                    if (day.date === todayString) {
+                                        td.classList.add('today-marker-cell');
+                                    }
+                                    
                                     RemainingRow.appendChild(td);
                                 });
                             } else if (viewType === 'weeks') {
@@ -1378,17 +1492,24 @@
                                     } 
                                     else {
                                         td.style.color  = 'grey'; // Schwarz für Null
-                                    }  
+                                    } 
 
                                     
                                     if (remaining !== null) {
                                         td.textContent = (remaining).toFixed(2);
                                     }
+                                    
+                                    // NEU: Prüfung für aktuelle Woche
+                                    const weekForCell = getWeekNumber(weekDate);
+                                    if (weekForCell === currentWeekNumber && weekDate.getFullYear() === currentYear) {
+                                        td.classList.add('current-week-cell');
+                                    }
+
                                     RemainingRow.appendChild(td);
                                     //tbody.appendChild(availabilityRow);
                                 } 
                             }
-                            tbody.appendChild(RemainingRow);                            
+                            tbody.appendChild(RemainingRow);             
                         };
                     });
                 });
@@ -1429,12 +1550,18 @@
                             // Summe nur anzeigen, wenn sie größer als 0 ist
                             // console.log('Summe:', 'Index = ' + index + ': ' + total);
                             // if (total > 0) {
-                            if (!data.days[index].isWeekend && !data.days[index].isHoliday && total > 0) {                            
+                            if (!data.days[index].isWeekend && !data.days[index].isHoliday && total > 0) {       
                                 td.textContent = (total/100).toFixed(2);
                             }
                             if (data.days[index].isWeekend) {
                                 td.classList.add('weekend');
                             }
+                            
+                            // NEU: Heutigen Tag markieren (hier über index)
+                            if (data.days[index].date === todayString) {
+                                td.classList.add('today-marker-cell');
+                            }
+
                             summaryRow.appendChild(td);
                         });
                     } else if (viewType === 'weeks') {
@@ -1497,6 +1624,13 @@
                             if (avgCapacity !== null) {
                                 td.textContent = (avgCapacity).toFixed(2);
                             }
+                            
+                            // NEU: Prüfung für aktuelle Woche
+                            const weekForCell = getWeekNumber(weekDate);
+                            if (weekForCell === currentWeekNumber && weekDate.getFullYear() === currentYear) {
+                                td.classList.add('current-week-cell');
+                            }
+                            
                             summaryRow.appendChild(td);
                         }
                     }
@@ -1525,7 +1659,7 @@
                             allEmployees.forEach(employee => {
                                 const availability = getAvailabilityForDate(day, employee);
                                 // if (typeof availability === 'number') {
-                                if (!data.days[index].isWeekend && !data.days[index].isHoliday && typeof availability === 'number') {         
+                                if (!data.days[index].isWeekend && !data.days[index].isHoliday && typeof availability === 'number') {     
                                     dailyAvailabilityTotals[index] += availability;
                                 }
                                 // console.log('Gesamt: ', index + ' --> ' + dailyAvailabilityTotals[index]);
@@ -1543,6 +1677,12 @@
                             if (data.days[index].isWeekend) {
                                 td.classList.add('weekend');
                             }
+                            
+                            // NEU: Heutigen Tag markieren (hier über index)
+                            if (data.days[index].date === todayString) {
+                                td.classList.add('today-marker-cell');
+                            }
+
                             summaryRow.appendChild(td);
                         });
 
@@ -1605,13 +1745,20 @@
                             if (weekAvailabilityTotals[i] !== null) {
                                 td.textContent = (weekAvailabilityTotals[i]/100).toFixed(2);
                             }
+                            
+                            // NEU: Prüfung für aktuelle Woche
+                            const weekForCell = getWeekNumber(weekDate);
+                            if (weekForCell === currentWeekNumber && weekDate.getFullYear() === currentYear) {
+                                td.classList.add('current-week-cell');
+                            }
+                            
                             summaryRow.appendChild(td);
                         }
-                
+                        
                         // Die fertige Zeile an die Tabelle anhängen
                         tbody.appendChild(summaryRow);
                     }       
-                }      
+                }       
 
                 // #3: Zusammenfassung für Verfügbarkeit in % ---
                 if (showAvailabilityPercent) {
@@ -1669,6 +1816,12 @@
                             if (data.days[index].isWeekend) {
                                 td.classList.add('weekend');
                             }
+                            
+                            // NEU: Heutigen Tag markieren (hier über index)
+                            if (data.days[index].date === todayString) {
+                                td.classList.add('today-marker-cell');
+                            }
+                            
                             summaryRow.appendChild(td);
                         });
                     } else if (viewType === 'weeks') {
@@ -1738,14 +1891,14 @@
                                         //Verfügbarkeit
                                         if (day.isWeekend || day.isHoliday) {
                                             // console.log('  Überspringe Wochenende/Feiertag am ' + day.date);
-                                        } else {                                                 
+                                        } else {                                
                                             countWorkdays++;    
                                             const availability = getAvailabilityForDate(day, employee);
                                                 // console.log('Mitarbeiter: ' + employee.name + ' am ' + day.date + ' mit ' + (availability !== null ? availability : 'keine') + ' Verfügbarkeit');
                                                 if (availability && typeof availability === 'number') {
                                                     weekAvailabilityTotals[i] += availability;
                                                 }
-                                            let cap = getCapacityForDate(employee.capacities, day.date);                                        
+                                            let cap = getCapacityForDate(employee.capacities, day.date);                                   
                                             if (cap && typeof cap.value ==="number") {
                                                 let capValue = cap.value;
                                                 weekTotals[i] += cap.value;
@@ -1773,6 +1926,13 @@
                                 td.textContent = (avgCapacity*100).toFixed(0) + '%';
                                 td.style.backgroundColor = getColorForPercentage(avgCapacity*100);
                             }
+                            
+                            // NEU: Prüfung für aktuelle Woche
+                            const weekForCell = getWeekNumber(weekDate);
+                            if (weekForCell === currentWeekNumber && weekDate.getFullYear() === currentYear) {
+                                td.classList.add('current-week-cell');
+                            }
+                            
                             summaryRow.appendChild(td);
                         }
                     } 
@@ -1796,11 +1956,15 @@
                         // 1. Array für die Tagessummen initialisieren
                         const TaskTotals = Array(data.days.length).fill(0);
                         
+                        // console.log('Daata:', data);
+                        // console.log('Days:', data.days);
+                        // console.log('DaysInWeeks:', data.daysinweeks);
+
                         // 2. Durch jeden Tag des Monats iterieren
                         data.days.forEach((day, index) => {
                             allEmployees.forEach(employee => {
-                                const Tasks = getTaskEffortForDate(day, employee, data.days.filter(d => d.isHoliday));
-                                if (!data.days[index].isWeekend && !data.days[index].isHoliday) {         
+                                const Tasks = getTaskEffortForDate(day, employee, data.feiertage);
+                                if (!data.days[index].isWeekend && !data.days[index].isHoliday) {      
                                     TaskTotals[index] += Tasks;
                                 }
                             });
@@ -1815,6 +1979,12 @@
                             if (data.days[index].isWeekend) {
                                 td.classList.add('weekend');
                             }
+                            
+                            // NEU: Heutigen Tag markieren (hier über index)
+                            if (data.days[index].date === todayString) {
+                                td.classList.add('today-marker-cell');
+                            }
+
                             summaryRow.appendChild(td);
                         });
                     } else if (viewType === 'weeks') {
@@ -1823,8 +1993,7 @@
 
                         // 1. Array für die Tagessummen initialisieren
                         const TaskTotals = Array(20).fill(0);
-                        const weekAvailabilityTotals = Array(20).fill(0);
-                        
+                                                
                         // Durch alle Wochen interieren
                         for (let i = 0; i < 20; i++) {
                             let weekDate = new Date(firstDayOfMonth.getTime()); 
@@ -1847,9 +2016,9 @@
                                     daysInWeek.push(dayInfo);
                                 }
                             }
-                            console.log('DaysInWeeks (komplett):', data.daysinweeks);
-                            console.log('DaysInWeeks:', daysInWeek);
-                            console.log('Woche ' + (i+1) + ' (' + weekStart.toISOString().split('T')[0] + ' bis ' + weekEnd.toISOString().split('T')[0] + '):');
+                            // console.log('DaysInWeeks (komplett):', data.daysinweeks);
+                            // console.log('DaysInWeeks:', daysInWeek);
+                            // console.log('Woche ' + (i+1) + ' (' + weekStart.toISOString().split('T')[0] + ' bis ' + weekEnd.toISOString().split('T')[0] + '):');
 
                             // Berechne die Summe der Woche
                             daysInWeek.forEach(day => {
@@ -1858,23 +2027,33 @@
                                     // console.log('  Überspringe Wochenende/Feiertag am ' + day.date);
                                     // return; // Überspringe Wochenenden und Feiertage
                                 } else {
-                                    console.log('Tag: ' + day.date);
+                                    // console.log('Tag: ' + day.date);
                                 
                                     allEmployees.forEach(employee => {
-                                        console.log('  Mitarbeiter: ' + employee.name);
-                                        const Tasks = getTaskEffortForDate(day, employee, data.days.filter(d => d.isHoliday));
-                                        console.log('    Aufgaben: ' + Tasks);
-                                        // if (!data.days[i].isWeekend && !data.days[i].isHoliday) {         
+                                        // console.log('  Mitarbeiter: ' + employee.name);
+                                        let Tasks = getTaskEffortForDate(day, employee, data.feiertage);
+                                        // Tasks = (Tasks).toFixed(2);
+                                        // console.log('    Aufgaben: ' + Tasks);
+                                        // if (!data.days[i].isWeekend && !data.days[i].isHoliday) {      
                                             TaskTotals[i] += Tasks;
                                         // }
                                     });
                                 }
                             });
 
+                           //  console.log('--> Wochenwert: ' + TaskTotals[i]);
+
                             const td = document.createElement('td');
                             if (TaskTotals[i] !== null) {
                                 td.textContent = (TaskTotals[i]).toFixed(2);
                             }
+                            
+                            // NEU: Prüfung für aktuelle Woche
+                            const weekForCell = getWeekNumber(weekDate);
+                            if (weekForCell === currentWeekNumber && weekDate.getFullYear() === currentYear) {
+                                td.classList.add('current-week-cell');
+                            }
+
                             summaryRow.appendChild(td);
                         }
                     }
@@ -1883,30 +2062,9 @@
                     tbody.appendChild(summaryRow);
                 }
 
-
                 // #4: Zusammenfassung für Workload (Team)
                 if (showWorkloadTeam) {
-                    // 1. Array für die Tagessummen initialisieren
-                    const dailyAvailabilityTotals = Array(data.days.length).fill(0);
-                    const TaskTotals = Array(data.days.length).fill(0);
-
-                    // 2. Durch jeden Tag des Monats iterieren
-                    data.days.forEach((day, index) => {
-                        allEmployees.forEach(employee => {
-                            const availability = getAvailabilityForDate(day, employee);
-                            // if (typeof availability === 'number') {
-                            if (!data.days[index].isWeekend && !data.days[index].isHoliday && typeof availability === 'number') {         
-                                dailyAvailabilityTotals[index] += availability;
-                            }
-                            
-                            const Tasks = getTaskEffortForDate(day, employee, data.days.filter(d => d.isHoliday));
-                            if (!data.days[index].isWeekend && !data.days[index].isHoliday) {         
-                                TaskTotals[index] += Tasks;
-                            }
-                        });
-                    });
-
-                    // 3. Die Summenzeile erstellen
+                    // Die Summenzeile erstellen
                     const summaryRow = document.createElement('tr');
                     summaryRow.classList.add('summary-row');
 
@@ -1915,57 +2073,136 @@
                     summaryLabelCell.classList.add('employee-name', 'summary-label');
                     summaryRow.appendChild(summaryLabelCell);
 
-                    // 4. Zellen für jede Tagessumme erstellen und füllen
-                    // console.log('dailyAvailabilityTotals', dailyAvailabilityTotals);
-                    // console.log('TaskTotals', TaskTotals);
-                    let ergebnis;
 
-                    dailyAvailabilityTotals.forEach((total, index) => {
-                        const td = document.createElement('td');
-                        ergebnis = (TaskTotals[index] *100 / dailyAvailabilityTotals[index]);
-                        // console.log('ergebnis (', index + ') ' + ergebnis);
-                        if (ergebnis > 0) {
-                            td.textContent = (ergebnis*100).toFixed(0) + '%';
-                            td.style.backgroundColor = getColorForPercentage(100 - ergebnis*100, data.colors);
+                    if (viewType === 'days') {
+
+                        // 1. Array für die Tagessummen initialisieren
+                        const dailyAvailabilityTotals = Array(data.days.length).fill(0);
+                        const TaskTotals = Array(data.days.length).fill(0);
+
+                        // 2. Durch jeden Tag des Monats iterieren
+                        data.days.forEach((day, index) => {
+                            allEmployees.forEach(employee => {
+                                const availability = getAvailabilityForDate(day, employee);
+                                // if (typeof availability === 'number') {
+                                if (!data.days[index].isWeekend && !data.days[index].isHoliday && typeof availability === 'number') {     
+                                    dailyAvailabilityTotals[index] += availability;
+                                }
+                                
+                                const Tasks = getTaskEffortForDate(day, employee, data.days.filter(d => d.isHoliday));
+                                if (!data.days[index].isWeekend && !data.days[index].isHoliday) {      
+                                    TaskTotals[index] += Tasks;
+                                }
+                            });
+                        });
+
+                        
+
+                        // 4. Zellen für jede Tagessumme erstellen und füllen
+                        // console.log('dailyAvailabilityTotals', dailyAvailabilityTotals);
+                        // console.log('TaskTotals', TaskTotals);
+                        let ergebnis;
+
+                        dailyAvailabilityTotals.forEach((total, index) => {
+                            const td = document.createElement('td');
+                            ergebnis = (TaskTotals[index] *100 / dailyAvailabilityTotals[index]);
+                            // console.log('ergebnis (', index + ') ' + ergebnis);
+                            if (ergebnis > 0) {
+                                td.textContent = (ergebnis*100).toFixed(0) + '%';
+                                td.style.backgroundColor = getColorForPercentage(100 - ergebnis*100, data.colors);
+                            }
+                            if (data.days[index].isWeekend) {
+                                td.classList.add('weekend');
+                            }
+                            
+                            // NEU: Heutigen Tag markieren (hier über index)
+                            if (data.days[index].date === todayString) {
+                                td.classList.add('today-marker-cell');
+                            }
+
+                            summaryRow.appendChild(td);
+                        });
+
+                    } else if (viewType === 'weeks') {
+                        // Wochenansicht
+                        let firstDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);    
+
+                        // 1. Array für die Tagessummen initialisieren
+                        const weekAvailabilityTotals = Array(20).fill(0);
+                        const TaskTotals = Array(20).fill(0);
+                        
+                        // Durch alle Wochen interieren
+                        for (let i = 0; i < 20; i++) {
+                            let weekDate = new Date(firstDayOfMonth.getTime()); 
+                            weekDate.setDate(weekDate.getDate() + (i * 7));
+                            // Berechne Start- und Enddatum der Woche (Montag bis Sonntag)
+                            let weekStart = new Date(weekDate);
+                            weekStart.setDate(weekStart.getDate() - weekStart.getDay() + 2); // Montag
+                            let weekEnd = new Date(weekStart);
+                            weekEnd.setDate(weekEnd.getDate() + 6); // Sonntag
+                            
+                            let daysInWeek;
+                            for (let j = 0; j < 7; j++) {
+                                let dDate = new Date(weekStart);
+                                dDate.setDate(dDate.getDate() + j);
+                                let dDateStr = dDate.toISOString().split('T')[0];
+                                let dayInfo = data.daysinweeks.find(d => d.date === dDateStr);
+                                if (dayInfo) {
+                                    if (!daysInWeek) daysInWeek = [];   
+                                    daysInWeek.push(dayInfo);
+                                }
+                            }
+
+                            // Berechne die Summe der Woche
+                            daysInWeek.forEach(day => {
+                                // Für jeden Tag die Verfügbarkeit aller Mitarbeiter aufaddieren
+                                // console.log ('Tag:', day);
+                                if (day.isWeekend || day.isHoliday) {
+                                    // console.log('  Überspringe Wochenende/Feiertag am ' + day.date);
+                                    return; // Überspringe Wochenenden und Feiertage
+                                } else {
+                                    allEmployees.forEach(employee => {
+                                        const availability = getAvailabilityForDate(day, employee);
+                                        // console.log('Mitarbeiter: ' + employee.name + ' am ' + day.date + ' mit ' + (availability !== null ? availability : 'keine') + ' Verfügbarkeit');
+                                        if (availability && typeof availability === 'number') {
+                                            weekAvailabilityTotals[i] += availability;
+                                        }
+
+                                        let Tasks = getTaskEffortForDate(day, employee, data.feiertage);
+                                        TaskTotals[i] += Tasks;
+                                    });
+                                }
+                            });
+
+                            // console.log('----- Woche ' + (i+1) + ' (' + weekStart.toISOString().split('T')[0] + ' bis ' + weekEnd.toISOString().split('T')[0] + '): ' + weekAvailabilityTotals[i]);
+
+                            const td = document.createElement('td');
+                            const workloadPercent = (TaskTotals[i] *100 / weekAvailabilityTotals[i]);
+                            if (workloadPercent !== null) {
+                                td.textContent = (workloadPercent*100).toFixed(0) + '%';
+                                td.style.backgroundColor = getColorForPercentage(workloadPercent*100);
+                            }
+                            
+                            // NEU: Prüfung für aktuelle Woche
+                            const weekForCell = getWeekNumber(weekDate);
+                            if (weekForCell === currentWeekNumber && weekDate.getFullYear() === currentYear) {
+                                td.classList.add('current-week-cell');
+                            }
+
+                            summaryRow.appendChild(td);
                         }
-                        if (data.days[index].isWeekend) {
-                            td.classList.add('weekend');
-                        }
-                        summaryRow.appendChild(td);
-                    });
+                        
+                        // Die fertige Zeile an die Tabelle anhängen
+                        tbody.appendChild(summaryRow);
+                    }
 
                     // 5. Die fertige Zeile an die Tabelle anhängen
                     tbody.appendChild(summaryRow);
                 }
 
-
-                
-
-                     
-
-
                 // #5: Zusammenfassung für Rest-Verfügbarkeit
                 if (showRemaining  || showRemainingTeam) {
-                    // 1. Array für die Tagessummen initialisieren
-                    const TaskTotals = Array(data.days.length).fill(0);
-                    const dailyAvailabilityTotals = Array(data.days.length).fill(0);
-
-                    // 2. Durch jeden Tag des Monats iterieren
-                    data.days.forEach((day, index) => {
-                        allEmployees.forEach(employee => {
-                            const Tasks = getTaskEffortForDate(day, employee, data.days.filter(d => d.isHoliday));
-                            if (!data.days[index].isWeekend && !data.days[index].isHoliday) {         
-                                TaskTotals[index] += Tasks;
-                            }
-
-                            const availability = getAvailabilityForDate(day, employee);
-                            if (!data.days[index].isWeekend && !data.days[index].isHoliday && typeof availability === 'number') {         
-                                dailyAvailabilityTotals[index] += availability;
-                            }
-                        });
-                    });
-
-                    // 3. Die Summenzeile erstellen
+                    // Die Summenzeile erstellen
                     const summaryRow = document.createElement('tr');
                     summaryRow.classList.add('summary-row');
 
@@ -1974,45 +2211,160 @@
                     summaryLabelCell.classList.add('employee-name', 'summary-label');
                     summaryRow.appendChild(summaryLabelCell);
 
-                    // 4. Zellen für jede Tagessumme erstellen und füllen
-                    TaskTotals.forEach((total, index) => {
-                        const td = document.createElement('td');
-                        const RemainValue = dailyAvailabilityTotals[index]/100 - total;
-                        const RemainValuePercent = RemainValue / (RemainValue + total);
-                        // console.log ('Remaining:   ', ' --> ' + RemainValue ); 
-                        // console.log ('Total:       ', ' --> ' + total ); 
-                        // console.log ('Remaining_%: ', ' ----> ' + RemainValuePercent ); 
+
+                    if (viewType === 'days') {
+
+                        // 1. Array für die Tagessummen initialisieren
+                        const TaskTotals = Array(data.days.length).fill(0);
+                        const dailyAvailabilityTotals = Array(data.days.length).fill(0);
+
+                        // 2. Durch jeden Tag des Monats iterieren
+                        data.days.forEach((day, index) => {
+                            allEmployees.forEach(employee => {
+                                const Tasks = getTaskEffortForDate(day, employee, data.days.filter(d => d.isHoliday));
+                                if (!data.days[index].isWeekend && !data.days[index].isHoliday) {      
+                                    TaskTotals[index] += Tasks;
+                                }
+
+                                const availability = getAvailabilityForDate(day, employee);
+                                if (!data.days[index].isWeekend && !data.days[index].isHoliday && typeof availability === 'number') {     
+                                    dailyAvailabilityTotals[index] += availability;
+                                }
+                            });
+                        });
+
                         
-                        if (data.days[index].isWeekend) {
-                            td.classList.add('weekend');
-                        }
-                        else {
-                            td.textContent = RemainValue.toFixed(2);
-                        }
+
+                        // 4. Zellen für jede Tagessumme erstellen und füllen
+                        TaskTotals.forEach((total, index) => {
+                            const td = document.createElement('td');
+                            const RemainValue = dailyAvailabilityTotals[index]/100 - total;
+                            const RemainValuePercent = RemainValue / (RemainValue + total);
+                            // console.log ('Remaining:   ', ' --> ' + RemainValue ); 
+                            // console.log ('Total:       ', ' --> ' + total ); 
+                            // console.log ('Remaining_%: ', ' ----> ' + RemainValuePercent );  
                             
-                        if (RemainValue < 0) {
-                            td.style.color  = 'red'; // Hellrot für negative Werte
-                            td.style.backgroundColor = data.colors.calendar_workload_color_high;
-                        } 
-                        else if (RemainValue > 0) {
-                            td.style.color  = 'green'; // Grün für positive Werte
-                            td.style.backgroundColor = getColorForPercentage(100-RemainValue, data.colors);
-                        } 
-                        else {
-                            td.style.color  = 'grey'; // Schwarz für Null
-                            td.style.backgroundColor = getColorForPercentage(100-RemainValue, data.colors);
+                            if (data.days[index].isWeekend) {
+                                td.classList.add('weekend');
+                            }
+                            else {
+                                td.textContent = RemainValue.toFixed(2);
+                            }
+                                
+                            if (RemainValue < 0) {
+                                td.style.color  = 'red'; // Hellrot für negative Werte
+                                td.style.backgroundColor = data.colors.calendar_workload_color_high;
+                            } 
+                            else if (RemainValue > 0) {
+                                td.style.color  = 'green'; // Grün für positive Werte
+                                td.style.backgroundColor = getColorForPercentage(100-RemainValue, data.colors);
+                            } 
+                            else {
+                                td.style.color  = 'grey'; // Schwarz für Null
+                                td.style.backgroundColor = getColorForPercentage(100-RemainValue, data.colors);
+                            }
+                            
+                            // NEU: Heutigen Tag markieren (hier über index)
+                            if (data.days[index].date === todayString) {
+                                td.classList.add('today-marker-cell');
+                            }
+
+                            summaryRow.appendChild(td);
+                        });
+
+                    } else if (viewType === 'weeks') {
+                        // Wochenansicht
+                        let firstDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);    
+
+                        // 1. Array für die Tagessummen initialisieren
+                        const weekAvailabilityTotals = Array(20).fill(0);
+                        const TaskTotals = Array(20).fill(0);
+                        
+                        // Durch alle Wochen interieren
+                        for (let i = 0; i < 20; i++) {
+                            let weekDate = new Date(firstDayOfMonth.getTime()); 
+                            weekDate.setDate(weekDate.getDate() + (i * 7));
+                            // Berechne Start- und Enddatum der Woche (Montag bis Sonntag)
+                            let weekStart = new Date(weekDate);
+                            weekStart.setDate(weekStart.getDate() - weekStart.getDay() + 2); // Montag
+                            let weekEnd = new Date(weekStart);
+                            weekEnd.setDate(weekEnd.getDate() + 6); // Sonntag
+                            
+                            let daysInWeek;
+                            for (let j = 0; j < 7; j++) {
+                                let dDate = new Date(weekStart);
+                                dDate.setDate(dDate.getDate() + j);
+                                let dDateStr = dDate.toISOString().split('T')[0];
+                                let dayInfo = data.daysinweeks.find(d => d.date === dDateStr);
+                                if (dayInfo) {
+                                    if (!daysInWeek) daysInWeek = [];   
+                                    daysInWeek.push(dayInfo);
+                                }
+                            }
+
+                            // Berechne die Summe der Woche
+                            daysInWeek.forEach(day => {
+                                // Für jeden Tag die Verfügbarkeit aller Mitarbeiter aufaddieren
+                                // console.log ('Tag:', day);
+                                if (day.isWeekend || day.isHoliday) {
+                                    // console.log('  Überspringe Wochenende/Feiertag am ' + day.date);
+                                    return; // Überspringe Wochenenden und Feiertage
+                                } else {
+                                    // console.log('  Berücksichtige Tag am ' + day.date);
+                                
+                                    allEmployees.forEach(employee => {
+                                        const availability = getAvailabilityForDate(day, employee);
+                                        // console.log('Mitarbeiter: ' + employee.name + ' am ' + day.date + ' mit ' + (availability !== null ? availability : 'keine') + ' Verfügbarkeit');
+                                        if (availability && typeof availability === 'number') {
+                                            weekAvailabilityTotals[i] += availability;
+                                        }
+                                        let Tasks = getTaskEffortForDate(day, employee, data.feiertage);
+                                        TaskTotals[i] += Tasks;
+                                    });
+                                }
+                            });
+
+                            // console.log('----- Woche ' + (i+1) + ' (' + weekStart.toISOString().split('T')[0] + ' bis ' + weekEnd.toISOString().split('T')[0] + '): ' + weekAvailabilityTotals[i]);
+
+                            const td = document.createElement('td');
+                            const RemainValue = weekAvailabilityTotals[i]/100 - TaskTotals[i];
+                            const RemainValuePercent = RemainValue / (RemainValue + TaskTotals[i]);
+
+                            console.log ('Remaining:   ', ' --> ' + RemainValuePercent );
+
+                            if (RemainValue !== null) {
+                                td.textContent = (RemainValue).toFixed(2);
+                            }
+                            if (RemainValue < 0) {
+                                td.style.color  = 'red'; // Hellrot für negative Werte
+                                td.style.backgroundColor = data.colors.calendar_workload_color_high;
+                            } 
+                            else if (RemainValue > 0) {
+                                td.style.color  = 'green'; // Grün für positive Werte
+                                td.style.backgroundColor = getColorForPercentage(RemainValuePercent*100, data.colors);
+                            } 
+                            else {
+                                td.style.color  = 'grey'; // Schwarz für Null
+                                td.style.backgroundColor = getColorForPercentage(RemainValuePercent*100, data.colors);
+                            }
+                            
+                            // NEU: Prüfung für aktuelle Woche
+                            const weekForCell = getWeekNumber(weekDate);
+                            if (weekForCell === currentWeekNumber && weekDate.getFullYear() === currentYear) {
+                                td.classList.add('current-week-cell');
+                            }
+                            
+                            summaryRow.appendChild(td);
                         }
                         
-                        summaryRow.appendChild(td);
-                    });
+                        // Die fertige Zeile an die Tabelle anhängen
+                        tbody.appendChild(summaryRow);
+
+                    }
 
                     // 5. Die fertige Zeile an die Tabelle anhängen
                     tbody.appendChild(summaryRow);
                 }
-
-
-
-
 
                 if (data.colors) {
                     updateCalendarColors(data.colors);
@@ -2031,4 +2383,4 @@
         updateCalendar();
     </script>
 </body>
-</html>        
+</html>

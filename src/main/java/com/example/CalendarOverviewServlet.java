@@ -122,6 +122,17 @@ public class CalendarOverviewServlet extends HttpServlet {
         LocalDate monthStart = LocalDate.of(year, month, 1);
         LocalDate monthEnd = monthStart.with(TemporalAdjusters.lastDayOfMonth());
 
+        // Ermittle den ersten Tag des Monats
+        LocalDate firstDayOfMonth = LocalDate.of(year, month, 1);
+        
+        // Das Startdatum ist der Montag der Woche, in der der 1. des Monats liegt.
+        // .with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)) stellt sicher:
+        // - Wenn der 1. ein Mittwoch ist, wird der vorherige Montag genommen.
+        // - Wenn der 1. ein Montag ist, wird dieser Montag genommen.
+        // - Wenn der 1. ein Sonntag ist, wird der Montag der *vorherigen* Woche genommen.
+        LocalDate startDate = firstDayOfMonth.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
+        LocalDate endDate = startDate.plusDays(140); // 20 Wochen später
+
         // Schritt 1: Hole die korrekt gefilterte Liste der Benutzer
         List<Map<String, Object>> visibleUsers = DatabaseService.getAllActiveUsers(currentUser);
 
@@ -129,6 +140,7 @@ public class CalendarOverviewServlet extends HttpServlet {
         Map<Integer, List<String>> allAbsences = DatabaseService.getAbsencesForMonth(year, month);
         Map<Integer, List<Map<String, Object>>> allCapacities = DatabaseService.getAllCapacities();
         Map<Integer, List<Map<String, Object>>> allTasks = DatabaseService.getActiveTaskAssignmentsForDateRange(monthStart, monthEnd);
+        Map<Integer, List<Map<String, Object>>> allTasks20Weeks = DatabaseService.getActiveTaskAssignmentsForDateRange(startDate, endDate);
 
         // Schritt 3: Füge die Daten für die sichtbaren Benutzer zusammen
         Map<String, List<Map<String, Object>>> departments = new LinkedHashMap<>();
@@ -139,7 +151,6 @@ public class CalendarOverviewServlet extends HttpServlet {
 
             List<Map<String, Object>> userCapacities = allCapacities.getOrDefault(userId, new ArrayList<>());
 
-            // FINALE KORREKTUR:
             // 1. Verwendet den korrekten Schlüssel 'start_date'.
             // 2. Ist sicher gegen null-Werte im Datum (Comparator.nullsLast).
             userCapacities.sort(
@@ -151,6 +162,7 @@ public class CalendarOverviewServlet extends HttpServlet {
             
             user.put("capacities", userCapacities);
             user.put("tasks", allTasks.getOrDefault(userId, new ArrayList<>()));
+            user.put("tasks20weeks", allTasks20Weeks.getOrDefault(userId, new ArrayList<>()));
 
             String department = (String) user.get("abteilung");
             departments.computeIfAbsent(department != null ? department : "Ohne Abteilung", k -> new ArrayList<>()).add(user);

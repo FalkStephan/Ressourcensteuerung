@@ -111,7 +111,7 @@
                     
                     <div>
                         <label for="taskEffort">Aufwand (PT):</label>
-                        <input type="number" step="0.5" name="effort_days" id="taskEffort" value="${task.effort_days}" required/>
+                        <input type="number" step="0.1" name="effort_days" id="taskEffort" value="${task.effort_days}" required/>
                     </div>
                     
                     <div>
@@ -149,6 +149,7 @@
                 
                 <div style="margin-top: 2em;">
                     <button type="submit" class="button create">Speichern</button>
+                    <button type="button" id="saveAsCopyBtn" class="button" onclick="saveAsCopy()">Als Kopie speichern</button>
                     <a href="tasks" class="button delete">Abbrechen</a>
                 </div>
             </form>
@@ -454,7 +455,7 @@
             // Aufwand Input-Feld
             const effortInput = document.createElement('input');
             effortInput.type = 'number';
-            effortInput.step = '0.5';
+            effortInput.step = '0.1';
             effortInput.min = '0';
             effortInput.value = user.effort_days || 0;
             effortInput.style.width = '80px';
@@ -472,6 +473,73 @@
             
             container.appendChild(div);
         });
+    }
+
+    // Speichert die Zuweisungen (assignedUsers) für eine gegebene taskId
+    async function saveAssignmentsForTask(taskId) {
+        if (!taskId) return;
+        if (!assignedUsers || assignedUsers.length === 0) return;
+
+        const assignments = new URLSearchParams();
+        assignments.append('action', 'saveAssignments');
+        assignments.append('taskId', taskId);
+        assignments.append('count', assignedUsers.length.toString());
+        assignedUsers.forEach((user, index) => {
+            assignments.append(`userId_${index}`, user.id.toString());
+            assignments.append(`effortDays_${index}`, (user.effort_days || 0).toString());
+        });
+
+        await fetch('tasks', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: assignments.toString()
+        });
+    }
+
+    // Speichert die aktuelle Aufgabe als neue Kopie (Name + " (Kopie)") inkl. Zuweisungen
+    async function saveAsCopy() {
+        try {
+            const form = document.getElementById('taskForm');
+            const formData = new URLSearchParams(new FormData(form));
+
+            // Erzwinge 'add' und entferne vorhandene ID
+            formData.set('action', 'add');
+            formData.delete('id');
+
+            // Name mit "(Kopie)" ergänzen
+            const originalName = formData.get('name') || '';
+            const copySuffix = ' (Kopie)';
+            const newName = originalName.endsWith(copySuffix) ? originalName : (originalName + copySuffix);
+            formData.set('name', newName);
+
+            const response = await fetch('tasks', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'Accept': 'application/json'
+                },
+                body: formData.toString()
+            });
+
+            const text = await response.text();
+            let json;
+            try { json = JSON.parse(text); } catch (e) { throw new Error('Ungültige Server-Antwort beim Anlegen der Kopie'); }
+
+            if (!response.ok) {
+                throw new Error('Fehler beim Anlegen der Kopie: ' + (json.error || text));
+            }
+
+            const newTaskId = json.taskId;
+            if (!newTaskId) throw new Error('Keine neue Task-ID empfangen');
+
+            // Zuweisungen für die neue Task speichern
+            await saveAssignmentsForTask(newTaskId);
+
+            // Weiterleitung zur Aufgabenliste
+            window.location.href = 'tasks';
+        } catch (err) {
+            alert(err.message || 'Fehler beim Speichern der Kopie');
+        }
     }
 </script>
 
