@@ -535,8 +535,11 @@
             // Zuweisungen für die neue Task speichern
             await saveAssignmentsForTask(newTaskId);
 
+            // Seite "edit-task" für die neue Task öffnen
+            window.location.href = 'tasks?action=edit&id=' + encodeURIComponent(newTaskId);
+            
             // Weiterleitung zur Aufgabenliste
-            window.location.href = 'tasks';
+            // window.location.href = 'tasks';
         } catch (err) {
             alert(err.message || 'Fehler beim Speichern der Kopie');
         }

@@ -38,16 +38,16 @@
 
             
             
-            <table>
+            <table id="taskTable">
                 <thead>
                     <tr>
-                        <th>Aufgabe</th>
-                        <th>Abteilung</th>
-                        <th>Start</th>
-                        <th>Ende</th>
-                        <th>Aufwand (PT)</th>
-                        <th>Status</th>
-                        <th>Fortschritt (%)</th>
+                        <th class="sortable-header" onclick="sortTable(0, 'string')">Aufgabe</th>
+                        <th class="sortable-header" onclick="sortTable(1, 'string')">Abteilung</th>
+                        <th class="sortable-header" onclick="sortTable(2, 'number')">Start</th>
+                        <th class="sortable-header" onclick="sortTable(3, 'number')">Ende</th>
+                        <th class="sortable-header" onclick="sortTable(4, 'number')">Aufwand (PT)</th>
+                        <th class="sortable-header" onclick="sortTable(5, 'string')">Status</th>
+                        <th class="sortable-header" onclick="sortTable(6, 'number')">Fortschritt (%)</th>
                         <th>Aktionen</th>
                     </tr>
                 </thead>
@@ -128,6 +128,45 @@
             filterForm.submit();
         }, 500);
     });
+
+
+    // --- Tabellen-Sortierung ---
+    let currentSortColumn = -1;
+    let currentSortDir = 'asc';
+    function sortTable(columnIndex, type) {
+        const table = document.getElementById('taskTable');
+        const tbody = table.querySelector('tbody');
+        const rows = Array.from(tbody.querySelectorAll('tr'));
+        const headers = table.querySelectorAll('.sortable-header');
+        const sortDir = (columnIndex === currentSortColumn && currentSortDir === 'asc') ? 'desc' : 'asc';
+        rows.sort((a, b) => {
+            const cellA = a.querySelectorAll('td')[columnIndex].innerText.toLowerCase();
+            const cellB = b.querySelectorAll('td')[columnIndex].innerText.toLowerCase();
+            let valA = cellA;
+            let valB = cellB;
+            if (type === 'number') {
+                valA = parseInt(valA, 10) || 0;
+                valB = parseInt(valB, 10) || 0;
+            }
+            if (valA < valB) {  
+                return sortDir === 'asc' ? -1 : 1;
+            }
+            if (valA > valB) {
+                return sortDir === 'asc' ? 1 : -1;
+            }
+            return 0;
+        });
+        headers.forEach(header => header.classList.remove('asc', 'desc'));
+        headers[columnIndex].classList.add(sortDir);
+        tbody.innerHTML = '';
+        rows.forEach(row => tbody.appendChild(row));
+        currentSortColumn = columnIndex;
+        currentSortDir = sortDir;
+ }
+
+
+
+
 
     function showTaskModal(mode, btn) {
         const form = document.getElementById('taskForm');
@@ -262,6 +301,7 @@
         });
     }
 
+    /*
     // Event-Listener für das Formular
     document.getElementById('taskForm').addEventListener('submit', async function(e) {
         e.preventDefault();
@@ -292,6 +332,12 @@
         // Seite neu laden
         window.location.reload();
     });
+    */
+
+
+
+
+
 
     function removeAssignedUser(userId) {
         assignedUsers = assignedUsers.filter(user => user.userId !== userId);
@@ -624,6 +670,8 @@
         closeDeleteModal();
     }
 
+
+    
 
 </script>
 <style>

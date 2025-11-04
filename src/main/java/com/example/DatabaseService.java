@@ -91,6 +91,127 @@ public class DatabaseService {
                     settingsStmt.executeBatch();
                 }
 
+
+
+                // Settings (neu)
+                String settingsClusterSql = "CREATE TABLE IF NOT EXISTS settings_Cluster (" +
+                        " id INTEGER PRIMARY KEY AUTO_INCREMENT," +
+                        " cluster_name VARCHAR(255) UNIQUE NOT NULL," +
+                        " entry_prefix VARCHAR(255) UNIQUE NOT NULL," +
+                        " sort_order INTEGER NOT NULL DEFAULT 0," +
+                        " entries_changeable BOOLEAN NOT NULL DEFAULT FALSE," +
+                        " value_1_visible BOOLEAN NOT NULL DEFAULT FALSE," +
+                        " value_1_name VARCHAR(255)," +
+                        " boolean_1_visible BOOLEAN NOT NULL DEFAULT FALSE," +
+                        " boolean_1_name VARCHAR(255)," +
+                        " color_1_visible BOOLEAN NOT NULL DEFAULT FALSE," +
+                        " color_1_name VARCHAR(255));";
+                stmt.execute(settingsClusterSql);
+
+                // Settings_Cluster anlegen
+                try (Statement settingsStmt = conn.createStatement()) {
+                    settingsStmt.addBatch("INSERT IGNORE INTO settings_Cluster (cluster_name, entry_prefix, sort_order, entries_changeable, value_1_visible, value_1_name, boolean_1_visible, boolean_1_name, color_1_visible, color_1_name)" +
+                        " VALUES ('Kalender (An-/Abwesenheiten)', 'calendar_color', 10, FALSE, FALSE, NULL, FALSE, NULL, TRUE, 'Farbe')");
+                    settingsStmt.addBatch("INSERT IGNORE INTO settings_Cluster (cluster_name, entry_prefix, sort_order, entries_changeable, value_1_visible, value_1_name, boolean_1_visible, boolean_1_name, color_1_visible, color_1_name)" +
+                        " VALUES ('Kalender (Auslastung-Farben)', 'calendar_workload', 20, FALSE, FALSE, NULL, FALSE, NULL, TRUE, 'Farbe')");
+                    settingsStmt.addBatch("INSERT IGNORE INTO settings_Cluster (cluster_name, entry_prefix, sort_order, entries_changeable, value_1_visible, value_1_name, boolean_1_visible, boolean_1_name, color_1_visible, color_1_name)" + 
+                        " VALUES ('Kalender (Auslastung-Grenzen)', 'calendar_workloadvalue', 30, FALSE, TRUE, 'Wert', FALSE, NULL, FALSE, NULL)");
+                    settingsStmt.addBatch("INSERT IGNORE INTO settings_Cluster (cluster_name, entry_prefix, sort_order, entries_changeable, value_1_visible, value_1_name, boolean_1_visible, boolean_1_name, color_1_visible, color_1_name)"+
+                        " VALUES ('Status Aufgaben', 'task_status', 40, TRUE, FALSE, NULL, TRUE, 'aktiv', TRUE, 'Farbe')");
+                    settingsStmt.executeBatch();
+                }
+
+                String settingsEntriesSql = "CREATE TABLE IF NOT EXISTS settings_Entries (" +
+                        " id INTEGER PRIMARY KEY AUTO_INCREMENT," +
+                        " entry_key VARCHAR(255) NOT NULL," +
+                        " cluster_entry_key VARCHAR(255) NOT NULL," +
+                        " cluster_id INTEGER NOT NULL," +
+                        " FOREIGN KEY(cluster_id) REFERENCES settings_Cluster(id)," +
+                        " sort_order INTEGER NOT NULL DEFAULT 0," +
+                        " entry_name VARCHAR(255) NOT NULL," +
+                        " entry_description VARCHAR(255)," +
+                        " boolean_1 BOOLEAN NOT NULL DEFAULT FALSE," +
+                        " color_1 VARCHAR(10) NOT NULL DEFAULT '#FFFFFF'," +
+                        " value_1 DOUBLE NOT NULL DEFAULT 0);";
+                stmt.execute(settingsEntriesSql);
+
+                // Kalender (An-/Abwesenheiten)
+                try (Statement settingsStmt = conn.createStatement()) {
+                    settingsStmt.addBatch("INSERT IGNORE INTO settings_Entries ("+
+                        " entry_key, cluster_entry_key, cluster_id, sort_order, entry_name, entry_description, boolean_1, color_1, value_1) " +
+                        " SELECT 'holiday', 'calendar_color_holiday', sc.id, 10, 'Feiertag', 'Farbe für Feiertage im Kalender', FALSE, '#fba2a2', NULL" +
+                        " FROM settings_Cluster sc WHERE sc.entry_prefix = 'calendar_color';");
+                    settingsStmt.addBatch("INSERT IGNORE INTO settings_Entries ("+
+                        " entry_key, cluster_entry_key, cluster_id, sort_order, entry_name, entry_description, boolean_1, color_1, value_1) " +
+                        " SELECT 'weekend', 'calendar_color_weekend', sc.id, 20, 'Wochenende', 'Farbe für Wochenende im Kalender', FALSE, '#dbdbdb', NULL" +
+                        " FROM settings_Cluster sc WHERE sc.entry_prefix = 'calendar_color';");
+                    settingsStmt.addBatch("INSERT IGNORE INTO settings_Entries ("+
+                        " entry_key, cluster_entry_key, cluster_id, sort_order, entry_name, entry_description, boolean_1, color_1, value_1) " +
+                        " SELECT 'absence', 'calendar_color_absence', sc.id, 30, 'Abwesenheit', 'Farbe für Abwesenheitstage im Kalender', FALSE, '#b1b6fb', NULL" +
+                        " FROM settings_Cluster sc WHERE sc.entry_prefix = 'calendar_color';");
+                    settingsStmt.addBatch("INSERT IGNORE INTO settings_Entries ("+
+                        " entry_key, cluster_entry_key, cluster_id, sort_order, entry_name, entry_description, boolean_1, color_1, value_1) " +
+                        " SELECT 'workday', 'calendar_color_workday', sc.id, 40, 'Abwesenheit', 'Farbe für Arbeitstage im Kalender', FALSE, '#caeab8', NULL" +
+                        " FROM settings_Cluster sc WHERE sc.entry_prefix = 'calendar_color';");
+                    settingsStmt.executeBatch();
+                }
+                
+                // Kalender (Auslastung-Farben)
+                try (Statement settingsStmt = conn.createStatement()) {
+                    settingsStmt.addBatch("INSERT IGNORE INTO settings_Entries ("+
+                        " entry_key, cluster_entry_key, cluster_id, sort_order, entry_name, entry_description, boolean_1, color_1, value_1) " +
+                        " SELECT 'low', 'calendar_workload_low', sc.id, 10, 'gering', 'Farbe für Auslastung gering', FALSE, '#82fb79', NULL" +
+                        " FROM settings_Cluster sc WHERE sc.entry_prefix = 'calendar_workload';");
+                    settingsStmt.addBatch("INSERT IGNORE INTO settings_Entries ("+
+                        " entry_key, cluster_entry_key, cluster_id, sort_order, entry_name, entry_description, boolean_1, color_1, value_1) " +
+                        " SELECT 'medium', 'calendar_workload_low', sc.id, 20, 'gering', 'Farbe für Auslastung mittel', FALSE, '#fbf965', NULL" +
+                        " FROM settings_Cluster sc WHERE sc.entry_prefix = 'calendar_workload';");
+                    settingsStmt.addBatch("INSERT IGNORE INTO settings_Entries ("+
+                        " entry_key, cluster_entry_key, cluster_id, sort_order, entry_name, entry_description, boolean_1, color_1, value_1) " +
+                        " SELECT 'high', 'calendar_workload_low', sc.id, 30, 'gering', 'Farbe für Auslastung hoch', FALSE, '#ffb3b3', NULL" +
+                        " FROM settings_Cluster sc WHERE sc.entry_prefix = 'calendar_workload';");
+                    settingsStmt.executeBatch();
+                }
+                
+                // Kalender (Auslastung-Grenzen)
+                try (Statement settingsStmt = conn.createStatement()) {                    
+                    settingsStmt.addBatch("INSERT IGNORE INTO settings_Entries ("+
+                        " entry_key, cluster_entry_key, cluster_id, sort_order, entry_name, entry_description, boolean_1, color_1, value_1) " +
+                        " SELECT 'medium', 'calendar_workloadvalue_medium', sc.id, 10, 'mittel', 'Maximal-Wert für Auslastung mittel', FALSE, NULL, 0.25" +
+                        " FROM settings_Cluster sc WHERE sc.entry_prefix = 'calendar_workloadvalue';");
+                    settingsStmt.addBatch("INSERT IGNORE INTO settings_Entries ("+
+                        " entry_key, cluster_entry_key, cluster_id, sort_order, entry_name, entry_description, boolean_1, color_1, value_1) " +
+                        " SELECT 'high', 'calendar_workloadvalue_high', sc.id, 20, 'hoch', 'Maximal-Wert für Auslastung hoch', FALSE, NULL, 0.8" +
+                        " FROM settings_Cluster sc WHERE sc.entry_prefix = 'calendar_workloadvalue';");
+                    settingsStmt.executeBatch();
+                }
+                
+                // Status Aufgaben
+                try (Statement settingsStmt = conn.createStatement()) {
+                    settingsStmt.addBatch("INSERT IGNORE INTO settings_Entries ("+
+                        " entry_key, cluster_entry_key, cluster_id, sort_order, entry_name, entry_description, boolean_1, color_1, value_1) " +
+                        " SELECT 'new', 'task_status_new', sc.id, 10, 'neu', 'neue Aufgaben', FALSE, '#bab8bbff', NULL" +
+                        " FROM settings_Cluster sc WHERE sc.entry_prefix = 'task_status';");
+                    settingsStmt.addBatch("INSERT IGNORE INTO settings_Entries ("+
+                        " entry_key, cluster_entry_key, cluster_id, sort_order, entry_name, entry_description, boolean_1, color_1, value_1) " +
+                        " SELECT 'planned', 'task_status_planned', sc.id, 20, 'geplant', 'geplante Aufgaben', TRUE, '#b3b3b3ff', NULL" +
+                        " FROM settings_Cluster sc WHERE sc.entry_prefix = 'task_status';");
+                    settingsStmt.addBatch("INSERT IGNORE INTO settings_Entries ("+
+                        " entry_key, cluster_entry_key, cluster_id, sort_order, entry_name, entry_description, boolean_1, color_1, value_1) " +
+                        " SELECT 'work', 'task_status_work', sc.id, 30, 'in Arbeit', 'aktuelle Aufgaben in Arbeit', TRUE, '#fbf965', NULL" +
+                        " FROM settings_Cluster sc WHERE sc.entry_prefix = 'task_status';");
+                    settingsStmt.addBatch("INSERT IGNORE INTO settings_Entries ("+
+                        " entry_key, cluster_entry_key, cluster_id, sort_order, entry_name, entry_description, boolean_1, color_1, value_1) " +
+                        " SELECT 'done', 'task_status_done', sc.id, 40, 'fertig', 'erledigte Aufgaben', TRUE, '#82fb79', NULL" +
+                        " FROM settings_Cluster sc WHERE sc.entry_prefix = 'task_status';");
+                    settingsStmt.addBatch("INSERT IGNORE INTO settings_Entries ("+
+                        " entry_key, cluster_entry_key, cluster_id, sort_order, entry_name, entry_description, boolean_1, color_1, value_1) " +
+                        " SELECT 'onhold', 'task_status_onhold', sc.id, 50, 'zurückgestellt', 'zurückgestellte Aufgaben', FALSE, '#fb8e8e', NULL" +
+                        " FROM settings_Cluster sc WHERE sc.entry_prefix = 'task_status';");
+                    settingsStmt.executeBatch();
+                }
+
+
                 //Tabelle für Logbuch
                 String logbookSql = "CREATE TABLE IF NOT EXISTS logbook (" +
                         " id INTEGER PRIMARY KEY AUTO_INCREMENT," +
@@ -693,10 +814,6 @@ public class DatabaseService {
     }
     
 
-    
-
-
-
     // ####################
     // Feiertage
     // ####################
@@ -783,10 +900,7 @@ public class DatabaseService {
         }
     }
 
-    /**
-     * Holt Feiertage aus der Tabelle 'feiertage'
-     * und verwendet die korrekten Spaltennamen 'datum' und 'bezeichnung'.
-     */
+    // Holt Feiertage aus der Tabelle 'feiertage' und verwendet die korrekten Spaltennamen 'datum' und 'bezeichnung'.
     public static List<Map<String, Object>> getHolidaysForMonth(int year, int month) throws SQLException {
         List<Map<String, Object>> holidays = new ArrayList<>();
         // SQL-Anweisung an die korrekten Namen angepasst
@@ -1013,9 +1127,7 @@ public class DatabaseService {
         return null;
     }
 
-    /**
-     * Löscht einen Kapazitätseintrag aus der Datenbank.
-     */
+    // Löscht einen Kapazitätseintrag aus der Datenbank.
     public static void deleteCapacity(int capacityId, String actor) throws SQLException {
         Map<String, Object> oldCapacity = getCapacityById(capacityId);
         if (oldCapacity == null) {
@@ -1036,7 +1148,6 @@ public class DatabaseService {
             logAction(actor, "Löschen", desc);
         }
     }
-
 
     public static Map<Integer, List<Map<String, Object>>> getAllCapacities() throws SQLException {
         /**
@@ -1114,6 +1225,25 @@ public class DatabaseService {
     }
 
 
+    public static List<Map<String, Object>> getAllSettingEntries() throws SQLException {
+        List<Map<String, Object>> settingEntries = new ArrayList<>();
+        String sql = "SELECT * FROM settings_Entries ORDER BY cluster_enrty_key, sort_order";
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql);
+             ResultSet rs = stmt.executeQuery()) {
+            while (rs.next()) {
+                Map<String, Object> setting = new HashMap<>();
+                setting.put("key", rs.getString("id"));
+                setting.put("entry_key", rs.getString("entry_key"));
+                setting.put("cluster_entry_key", rs.getString("cluster_entry_key"));
+                setting.put("description", rs.getString("description"));
+                settingEntries.add(setting);
+            }
+        }
+        return settingEntries;
+    }
+
+
     // --------------------
     // Aufgaben-Status
     // --------------------
@@ -1172,10 +1302,10 @@ public class DatabaseService {
     }
 
 
-
     // ####################
     // Aufgaben
     // ####################
+
     public static List<Map<String, Object>> getAllTasks(String search, int statusId, Map<String, Object> currentUser) {
         List<Map<String, Object>> tasks = new ArrayList<>();
         
@@ -1369,7 +1499,6 @@ public class DatabaseService {
     // ####################
     // Aufgaben-Zuordnungen zu Usern 
     // ####################
-
 
     public static List<Map<String, Object>> getAssignedUsersForTask(int taskId) throws SQLException {
         List<Map<String, Object>> assignments = new ArrayList<>();

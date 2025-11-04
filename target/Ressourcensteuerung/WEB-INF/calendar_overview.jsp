@@ -525,14 +525,14 @@
             // console.log(`User:      `,employee);
             // console.log(`Feiertage: `,holidays);
             let totalEffort = 0;
-            if (!employee.tasks) return 0;
+            if (!employee.tasks20weeks) return 0;
             const currentDay = new Date(day.date + "T12:00:00");
             const absenceSet = new Set(employee.absences); // Für schnellen Zugriff
             // console.log(`User_Abs:      `,absenceSet);
 
-            employee.tasks.forEach(task => {
-                const startDate = new Date(task.start_date + "T12:00:00");
-                const endDate = new Date(task.end_date + "T12:00:00");
+            employee.tasks20weeks.forEach(tasks20weeks => {
+                const startDate = new Date(tasks20weeks.start_date + "T12:00:00");
+                const endDate = new Date(tasks20weeks.end_date + "T12:00:00");
                 
                 let workdays;
                 // Prüfen, ob der aktuelle Kalendertag im Aufgabenzeitraum liegt
@@ -540,24 +540,24 @@
                     // prüfen, ob der Mitarbeiter an diesem Tag abwesend ist
                     if (employee.absences && employee.absences.includes(day.date)) {
                         // abwesend
-                        if (task.task_options === 'waiting') {
+                        if (tasks20weeks.task_options === 'waiting') {
                             // abwesend und Aufgabe = waiting
                             // workdays = countWorkdays(task.start_date, task.end_date, holidays, absenceSet);    
                             workdays = 0;                  
                         } else { 
                             // abwesend und Aufgabe = 'continue' or undefined
-                            workdays = countWorkdays(task.start_date, task.end_date, holidays);
+                            workdays = countWorkdays(tasks20weeks.start_date, tasks20weeks.end_date, holidays);
                         }
 
 
                     } else {
                         // anwesend
-                        if (task.task_options === 'waiting') {
+                        if (tasks20weeks.task_options === 'waiting') {
                             // anwesend und Aufgabe = waiting
-                            workdays = countWorkdays(task.start_date, task.end_date, holidays, absenceSet);                    
+                            workdays = countWorkdays(tasks20weeks.start_date, tasks20weeks.end_date, holidays, absenceSet);                    
                         } else { 
                             // anwesend und Aufgabe = 'continue' or undefined
-                            workdays = countWorkdays(task.start_date, task.end_date, holidays);
+                            workdays = countWorkdays(tasks20weeks.start_date, tasks20weeks.end_date, holidays);
                         }
 
                     }
@@ -565,7 +565,7 @@
                     // console.log('Workdays: ', workdays);
                     let dailyEffort;
                     if (workdays >0) {
-                        dailyEffort = task.effort_days / workdays;    
+                        dailyEffort = tasks20weeks.effort_days / workdays;    
                     } else {
                         dailyEffort = 0;
                     }
@@ -625,42 +625,50 @@
 
             // Daten direkt aus dem 'data-*'-Attribut der angeklickten Zeile holen
             const tasks = JSON.parse(clickedRow.dataset.tasks);
+            const tasks20weeks = JSON.parse(clickedRow.dataset.tasks20weeks);
             const holidays = JSON.parse(clickedRow.dataset.holidays);
             const absences = JSON.parse(clickedRow.dataset.absences);
             const dayInfos = JSON.parse(clickedRow.dataset.daysinweeks);
             const employee = JSON.parse(clickedRow.dataset.employee);
 
             // console.log('DayInfo:',dayInfos);
-            
-            if (!tasks || tasks.length === 0) {
-                const noTasksRow = document.createElement('tr');
-                noTasksRow.classList.add('task-detail-row');
-                noTasksRow.innerHTML = `<td colspan="100%" class="employee-name task-detail-name" style="font-style: italic;">Keine Aufgaben für diesen Mitarbeiter im Zeitraum gefunden.</td>`;
-                clickedRow.parentNode.insertBefore(noTasksRow, clickedRow.nextSibling);
-                clickedRow.querySelector('.arrow-icon').innerHTML = '&#9652;'; // Pfeil nach oben
-                return;
-            }
 
             let lastElement = clickedRow;
+            const today = new Date();
+            const todayString = today.getFullYear() + '-' +
+                                (today.getMonth() + 1).toString().padStart(2, '0') + '-' +
+                                today.getDate().toString().padStart(2, '0');
+            const currentWeekNumber = getWeekNumber(today);
+            const currentYear = today.getFullYear();
 
-            tasks.forEach(task => {
-                const detailRow = document.createElement('tr');
-                detailRow.classList.add('task-detail-row');
-                const nameCell = document.createElement('td');
-                nameCell.textContent = task.task_name;
-                nameCell.classList.add('employee-name', 'task-detail-name');
-                detailRow.appendChild(nameCell);
 
-                let workdays;
-                if (task.task_options === 'waiting') {
-                    workdays = countWorkdays(task.start_date, task.end_date, holidays, absences);
-                } else { // 'continue' or undefined
-                    workdays = countWorkdays(task.start_date, task.end_date, holidays);
+            if (viewType === 'days') {
+                if (!tasks || tasks.length === 0) {
+                    const noTasksRow = document.createElement('tr');
+                    noTasksRow.classList.add('task-detail-row');
+                    noTasksRow.innerHTML = `<td colspan="100%" class="employee-name task-detail-name" style="font-style: italic text-align: left !important;">Keine Aufgaben für diesen Mitarbeiter im Zeitraum gefunden.</td>`;
+                    clickedRow.parentNode.insertBefore(noTasksRow, clickedRow.nextSibling);
+                    clickedRow.querySelector('.arrow-icon').innerHTML = '&#9652;'; // Pfeil nach oben
+                    return;
                 }
-                const dailyEffort = task.effort_days / workdays;
-                // console.log('DailyEffort: ',dailyEffort);
 
-                if (viewType === 'days') {
+                tasks.forEach(task => {
+                    const detailRow = document.createElement('tr');
+                    detailRow.classList.add('task-detail-row');
+                    const nameCell = document.createElement('td');
+                    nameCell.textContent = task.task_name;
+                    nameCell.classList.add('employee-name', 'task-detail-name');
+                    detailRow.appendChild(nameCell);
+
+                    let workdays;
+                    if (task.task_options === 'waiting') {
+                        workdays = countWorkdays(task.start_date, task.end_date, holidays, absences);
+                    } else { // 'continue' or undefined
+                        workdays = countWorkdays(task.start_date, task.end_date, holidays);
+                    }
+                    const dailyEffort = task.effort_days / workdays;
+                    // console.log('DailyEffort: ',dailyEffort);
+
                     JSON.parse(clickedRow.dataset.days).forEach(day => {
                         const td = document.createElement('td');
                         const currentDay = new Date(day.date + "T12:00:00");
@@ -679,9 +687,52 @@
                         }
                         if (day.isWeekend) td.classList.add('weekend');
                         detailRow.appendChild(td);
+
+                        // Heutigen Tag markieren
+                        if (day.date === todayString) {
+                            td.classList.add('today-marker-cell');
+                        }
                     });
-                } else if (viewType === 'weeks') {
-                    // Wochenansicht
+
+                    lastElement.parentNode.insertBefore(detailRow, lastElement.nextSibling);
+                    lastElement = detailRow;
+                });
+
+
+
+            } else if (viewType === 'weeks') {
+                // Wochenansicht
+                if (!tasks20weeks || tasks20weeks.length === 0) {
+                    const noTasksRow = document.createElement('tr');
+                    noTasksRow.classList.add('task-detail-row');
+                    noTasksRow.innerHTML = `<td colspan="100%" class="employee-name task-detail-name" style="font-style: italic text-align: left !important;">Keine Aufgaben für diesen Mitarbeiter im Zeitraum gefunden.</td>`;
+                    clickedRow.parentNode.insertBefore(noTasksRow, clickedRow.nextSibling);
+                    clickedRow.querySelector('.arrow-icon').innerHTML = '&#9652;'; // Pfeil nach oben
+                    return;
+                }
+
+                // console.log('tasks20weeks:',tasks20weeks);
+
+                tasks20weeks.forEach(tasks => {
+                    const detailRow = document.createElement('tr');
+                    detailRow.classList.add('task-detail-row');
+                    const nameCell = document.createElement('td');
+                    nameCell.textContent = tasks.task_name;
+                    nameCell.classList.add('employee-name', 'task-detail-name');
+                    detailRow.appendChild(nameCell);
+
+                    // console.log('tasks20weeks Aufgabe:',tasks);
+
+                    let workdays;
+                    if (tasks.task_options === 'waiting') {
+                        workdays = countWorkdays(tasks.start_date, tasks.end_date, holidays, absences);
+                    } else { // 'continue' or undefined
+                        workdays = countWorkdays(tasks.start_date, tasks.end_date, holidays);
+                    }
+                    const dailyEffort = tasks.effort_days / workdays;
+                    // console.log('DailyEffort: ',dailyEffort);
+
+
                     let firstDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
                     for (let i = 0; i < 20; i++) {
                         let weekDate = new Date(firstDayOfMonth.getTime()); 
@@ -712,9 +763,9 @@
                             if (day) {
                                 const taskeffort = dailyEffort;
                                 const currentDay = new Date(day.date + "T12:00:00");
-                                const startDate = new Date(task.start_date + "T12:00:00");
-                                const endDate = new Date(task.end_date + "T12:00:00");
-                                if (task.task_options === 'waiting') {
+                                const startDate = new Date(tasks.start_date + "T12:00:00");
+                                const endDate = new Date(tasks.end_date + "T12:00:00");
+                                if (tasks.task_options === 'waiting') {
                                     if (currentDay >= startDate && currentDay <= endDate && !day.isWeekend && !day.isHoliday && !absences.includes(day.date)) {
                                         total += taskeffort;
                                     }
@@ -735,15 +786,23 @@
                             td.textContent = (total).toFixed(2);
                         }
                         detailRow.appendChild(td);
+
+                        // Prüfung für aktuelle Woche                        
+                        const weekForCell = getWeekNumber(weekDate);
+                        if (weekForCell === currentWeekNumber && weekDate.getFullYear() === currentYear) {
+                            td.classList.add('current-week-cell');
+                        }
                     }
-                    
-                }
-                lastElement.parentNode.insertBefore(detailRow, lastElement.nextSibling);
-                lastElement = detailRow;
-            });
+
+                    lastElement.parentNode.insertBefore(detailRow, lastElement.nextSibling);
+                    lastElement = detailRow;
+                
+                });
+            }
+
             clickedRow.querySelector('.arrow-icon').innerHTML = '&#9652;'; // Pfeil nach oben
         }
-
+        
         // Die "große" Funktion zum Aktualisieren des Kalenders
         function updateCalendar() {
             const viewType = document.querySelector('input[name="view"]:checked').value;
@@ -1173,8 +1232,8 @@
                         // 4. Aufgaben anzeigen
                         if (showTasks) {
                             const employeeTaskRow = document.createElement('tr');
-                            console.log('Dataset:', data);
-                            console.log('MA:', employee);
+                            // console.log('Dataset:', data);
+                            // console.log('MA:', employee);
                             employeeTaskRow.classList.add('detail-row', 'expandable');
                             employeeTaskRow.dataset.employeeId = employee.id;
                             employeeTaskRow.dataset.holidays = JSON.stringify(data.feiertage);
@@ -1182,6 +1241,7 @@
                             employeeTaskRow.dataset.daysinweeks = JSON.stringify(data.daysinweeks);
                             employeeTaskRow.dataset.employee = JSON.stringify(employee);
                             employeeTaskRow.dataset.tasks = JSON.stringify(employee.tasks || []); // Wichtig: Leeres Array als Fallback
+                            employeeTaskRow.dataset.tasks20weeks = JSON.stringify(employee.tasks20weeks || []);
                             employeeTaskRow.dataset.absences = JSON.stringify(employee.absences || []);
 
                             const TaskLabelCell = document.createElement('td');
@@ -2330,7 +2390,7 @@
                             const RemainValue = weekAvailabilityTotals[i]/100 - TaskTotals[i];
                             const RemainValuePercent = RemainValue / (RemainValue + TaskTotals[i]);
 
-                            console.log ('Remaining:   ', ' --> ' + RemainValuePercent );
+                            // console.log ('Remaining:   ', ' --> ' + RemainValuePercent );
 
                             if (RemainValue !== null) {
                                 td.textContent = (RemainValue).toFixed(2);
